@@ -59,12 +59,12 @@ Workflow 상태 조회·다음 작업 선택·이벤트 기록의 정상 경로�
 | `--req-filter <REQ-ID,...>` | 범위를 이 요구로 좁힌다 | target 의 열린 요구 전부 |
 | `--sds-id <id>` | SDS 식별자 — 파일은 `docs/sds/<sds-id>.sds.md`. 소문자·숫자·`.`·`-` 만 쓰고 4~128자다 — `kiwi-pm` §0.14 세션 id 규칙과 같다 | `<target>-<slug>` (slug 는 작업 요지를 kebab-case 로) |
 | `--convergence-registry <path>` | wave SDS 용. 이 레지스트리에서 recipe 가 `regenerate` 또는 `orchestrator-only` 인 경로를 Files·Test Plan 에 적지 않는다(§2.3) | 없음 — 아무 경로도 빼지 않는다 |
-| `--existing-modules <path>` | wave 설계 기준선 JSON — `TARGET` 과 같은 wave(`wave-{n}`) 항목의 `existing_modules` 를 읽는다. 기준선은 wave 마다 키를 두므로 다른 wave 의 모듈은 읽지 않는다(§2.2, FR-FLOW-063 AC-7) | 없음 |
+| `--existing-modules <path>` | 분해가 노드마다 적은 `existing-modules.json`(노드 → 모듈 목록, `wave-decomposition.md §1`) — `--sds-id` 의 `{run_id}-wave-{n}` 에서 읽은 노드 `wave-{n}` 항목의 `existing_modules` 를 읽는다. `TARGET` 은 모든 wave 가 같이 쓰는 제품 target 이라 키가 되지 못한다. 지도는 노드마다 키를 두므로 다른 wave 의 모듈은 읽지 않는다(§2.2, FR-FLOW-063 AC-7) | 없음 |
 | `--close <sds-id>` | 마감 모드(§3) | off |
 | `--auto` · `--max` · `--mini` / `--loops N` · `--model <name>` | §0.8 · §0.3 · §0.9 · 검증 서브에이전트 모델 | off / 현재 세션 모델 |
 | `--no-pipeline-emit` | 위임 실행 표식 — 파이프라인 이벤트를 append 하지 않는다(§2.6) | off |
 
-R-ORCH 와 kiwi-wave-master 는 wave 마다 `--sds-id {run_id}-wave-{n}`, 그 wave 의 `--req-filter`, run 의 `--convergence-registry`, 그 wave 설계 기준선의 `--existing-modules` 를 넘긴다.
+R-ORCH 와 kiwi-wave-master 는 wave 마다 `--sds-id {run_id}-wave-{n}`, 그 wave 의 `--req-filter`, run 의 `--convergence-registry`, run 의 `existing-modules.json` 을 `--existing-modules` 로 넘긴다.
 
 ### 1.2 출력
 
@@ -103,7 +103,7 @@ Phase 5 : Status agreed + 보고 + 이벤트
 
 ### 2.2 Phase 1 — 읽기
 
-범위의 요구마다 `get_requirement` 로 AC 본문을 읽는다. 관련 코드를 읽어, SDS 에 적을 파일 경로와 심볼이 저장소의 실제 모듈과 맞게 한다 — 이미 있는 모듈을 새로 만들지 않는다. `--existing-modules` 가 있으면 그 JSON 에서 `TARGET` 의 wave 항목이 가진 `existing_modules` 를 읽고, Interfaces 는 거기 적힌 모듈을 새로 만들거나 이름을 바꾸지 않는다 — 그 목록은 wave 검증이 결과를 대조하는 기준이다.
+범위의 요구마다 `get_requirement` 로 AC 본문을 읽는다. 관련 코드를 읽어, SDS 에 적을 파일 경로와 심볼이 저장소의 실제 모듈과 맞게 한다 — 이미 있는 모듈을 새로 만들지 않는다. `--existing-modules` 가 있으면 그 JSON 에서 `--sds-id` 가 가리키는 노드(`{run_id}-wave-{n}` 의 `wave-{n}`) 항목이 가진 `existing_modules` 를 읽고, Interfaces 는 거기 적힌 모듈을 새로 만들거나 이름을 바꾸지 않는다 — 그 목록은 wave 검증이 결과를 대조하는 기준이다.
 
 ### 2.3 Phase 2 — 작성
 

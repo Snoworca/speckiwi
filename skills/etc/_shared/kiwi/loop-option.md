@@ -19,8 +19,8 @@ number of sequential rounds.
 
 - A **round** = one verify → improve cycle (evaluator runs → findings fixed → re-verify). Under the etc
   single-worker profile these rounds are executed sequentially.
-- The round cap is an **upper bound**. The existing severity gate (Normal `CRITICAL=0 + HIGH=0` / Max
-  `2-consecutive-MEDIUM-zero`) MAY terminate the loop earlier. So `--mini` means **"at most 3 rounds"**,
+- The round cap is an **upper bound**. The skill's own pass condition MAY terminate the loop earlier — kept finding 0 for a skill that judges by kept findings, and Normal `CRITICAL=0 + HIGH=0` / Max
+  `2-consecutive-MEDIUM-zero` for a skill that keeps a severity gate. So `--mini` means **"at most 3 rounds"**,
   not "exactly 3".
 - N in `--loops N` must be a **positive integer**. `N < 1` or a non-integer is **rejected with an error**
   (HALT + usage hint).

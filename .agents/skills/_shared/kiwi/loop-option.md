@@ -15,8 +15,8 @@ Shared definition of the options that bound the **verify → improve → re-veri
 | `--loops N` / `--loops=N` | Explicit loop counter — round cap = N (integer N ≥ 1) | off (skill's own default cap) |
 
 - A **round** = one verify → improve cycle (evaluator runs → findings fixed → re-verify).
-- The round cap is an **upper bound**. The existing severity gate (Normal `CRITICAL=0 + HIGH=0` / Max
-  `2-consecutive-MEDIUM-zero`) MAY terminate the loop earlier. So `--mini` means **"at most 3 rounds"**,
+- The round cap is an **upper bound**. The skill's own pass condition MAY terminate the loop earlier — kept finding 0 for a skill that judges by kept findings, and Normal `CRITICAL=0 + HIGH=0` / Max
+  `2-consecutive-MEDIUM-zero` for a skill that keeps a severity gate. So `--mini` means **"at most 3 rounds"**,
   not "exactly 3".
 - N in `--loops N` must be a **positive integer**. `N < 1` or a non-integer is **rejected with an error**
   (HALT + usage hint).

@@ -50,7 +50,9 @@ export const WAVE_PHASES = [
   "stage-close",
   // @req FR-FLOW-051 AC-6 — the two stages between a wave's SRS authoring and its verification.
   "sds",
-  "worker"
+  "worker",
+  // @req FR-NODE-250 AC-2 — a run rewrote its work graph; the line carries the new version's graph.
+  "redecompose"
 ] as const;
 export type WavePhase = (typeof WAVE_PHASES)[number];
 
@@ -122,6 +124,8 @@ export const VERB_RECOVERY_CLASS = {
   "final-verify": "idempotent-by-key",
   "emit-and-finish": "idempotent-by-key",
   "abort-run": "externally-visible",
+  // @req FR-NODE-250 AC-3 — a node's completion action, performed by the host outside the run.
+  "node-complete-action": "externally-visible",
   halt: null
 } as const satisfies Record<string, RecoveryClass | null>;
 
@@ -267,6 +271,12 @@ export type LoopMode = (typeof LOOP_MODES)[number];
  * so they carry Normal's requirement.
  */
 export const REQUIRED_CLEAN_STREAK: Record<LoopMode, number> = { normal: 1, max: 2, mini: 1, explicit: 1 };
+
+/**
+ * The distinct verifiers a round must name: one, and two under `--max`. `mini` and `explicit` vary
+ * the cap, not the verifier count. @req FR-NODE-254 AC-2
+ */
+export const REQUIRED_VERIFIER_COUNT: Record<LoopMode, number> = { normal: 1, max: 2, mini: 1, explicit: 1 };
 
 /**
  * 05 §4.1 property 1 — the resume card's precondition vocabulary. @req FR-NODE-151 AC-2 — four values
@@ -439,7 +449,16 @@ export const WAVES_EVENT_FIELDS = {
     "abort_gate",
     // @req FR-NODE-168 — the round index, and the field both run-state readers key on to tell a
     // round record from a compliant status assertion. Written today and declared nowhere.
-    "round"
+    "round",
+    // @req FR-NODE-250 AC-1, AC-2 — the work graph's reference and a node's confirmed DW ids.
+    "graph",
+    "done_when_confirmed",
+    // @req FR-NODE-250 AC-3 — the node-complete-action line's own fields.
+    "action_id",
+    "completion_ref",
+    "attempt",
+    "result",
+    "error"
   ]
 } as const;
 
@@ -463,7 +482,9 @@ export type WavesEventScope = keyof typeof WAVES_EVENT_REQUIRED_BY_SCOPE;
  * @req FR-NODE-218 AC-5
  */
 export function eventScopeOf(line: Readonly<Record<string, unknown>>): WavesEventScope | null {
-  if (line.round !== undefined || line.verb === "abort-run") return null;
+  // @req FR-NODE-250 AC-3 — a node-complete-action line has its own required set, which the validator
+  // checks (`node-complete-action-malformed`); its `result` field, not `event`, makes it a result.
+  if (line.round !== undefined || line.verb === "abort-run" || line.verb === NODE_COMPLETE_ACTION_VERB) return null;
   if (line.event === undefined) return "wave-state";
   return line.event === "intent" || line.event === "result" ? line.event : null;
 }
@@ -513,7 +534,12 @@ export const JOURNAL_RULE_CODES = [
   "journal-only-verdict",
   "abort-gate-outside-vocabulary",
   // @req FR-NODE-213 AC-6 — a verb, lane disposition or phase 4.0.0 retired, on a 2.0.0 line.
-  "vocabulary-retired-in-4-0-0"
+  "vocabulary-retired-in-4-0-0",
+  // @req FR-NODE-250 — the work-graph lines.
+  "journal-graph-malformed",
+  "journal-graph-misplaced",
+  "done-when-confirmed-malformed",
+  "node-complete-action-malformed"
 ] as const;
 export type JournalRuleCode = (typeof JOURNAL_RULE_CODES)[number];
 
@@ -721,6 +747,35 @@ export const JOURNAL_RULES: readonly WavesRule[] = [
     enforcement: "diagnostic",
     producer: "journal"
   },
+  // The four work-graph rules, positional like the two above. @req FR-NODE-250
+  {
+    code: "journal-graph-malformed",
+    rule: "a graph that is not {path, digest} with a sha256 hex digest, or a redecompose line without one — error on the newest line, warning on history",
+    source: "FR-NODE-250 AC-1, AC-2",
+    enforcement: "diagnostic",
+    producer: "journal"
+  },
+  {
+    code: "journal-graph-misplaced",
+    rule: "a graph on a line that is neither the run's first graph line nor a redecompose line — error on the newest line, warning on history",
+    source: "FR-NODE-250 AC-1",
+    enforcement: "diagnostic",
+    producer: "journal"
+  },
+  {
+    code: "done-when-confirmed-malformed",
+    rule: "a done_when_confirmed that is not a list of DW-<n> ids — error on the newest line, warning on history",
+    source: "FR-NODE-250 AC-1",
+    enforcement: "diagnostic",
+    producer: "journal"
+  },
+  {
+    code: "node-complete-action-malformed",
+    rule: "a node-complete-action line missing wave, action_id, completion_ref or attempt, or with a result outside sent/failed/waived or a non-string error — error on the newest line, warning on history",
+    source: "FR-NODE-250 AC-3",
+    enforcement: "diagnostic",
+    producer: "journal"
+  },
   // The five terminal-review rules. Declaring a code in `JOURNAL_RULE_CODES` and not here exempts it
   // from the fixture harness whose denominator is these tables — the rule ships, the union accepts
   // it, and nothing ever demands the violating-plus-legal pair every other journal rule pays for.
@@ -780,6 +835,49 @@ export const WAVES_EVENT_NON_VIOLATION_BULLETS = [
 // Small shared predicates
 // ---------------------------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------------------------
+// The work-graph lines — FR-NODE-250
+// ---------------------------------------------------------------------------------------------
+
+/** The phase a work-graph redecomposition line carries. @req FR-NODE-250 AC-2 */
+export const REDECOMPOSE_PHASE: WavePhase = "redecompose";
+
+/** @req FR-NODE-250 AC-3 */
+export const NODE_COMPLETE_ACTION_VERB: VerbName = "node-complete-action";
+
+/** The fields a node-complete-action line must carry beyond the line stamp. @req FR-NODE-250 AC-3 */
+export const NODE_COMPLETE_ACTION_REQUIRED = ["wave", "action_id", "completion_ref", "attempt"] as const;
+
+/** A result line's closed outcome; a line without `result` is the intent. @req FR-NODE-250 AC-3 */
+export const NODE_COMPLETE_ACTION_RESULTS = ["sent", "failed", "waived"] as const;
+export type NodeCompleteActionResult = (typeof NODE_COMPLETE_ACTION_RESULTS)[number];
+
+/** A done_when id, as the work graph declares it. @req FR-NODE-250 AC-1 */
+export const DONE_WHEN_ID = /^DW-[1-9][0-9]*$/;
+
+/** A journal line's reference to the work-graph file it ran from. */
+export interface GraphReference {
+  readonly path: string;
+  /** sha256 of the graph file's bytes, lowercase hex. */
+  readonly digest: string;
+}
+
+const SHA256_HEX = /^[0-9a-f]{64}$/;
+
+/**
+ * The `graph` value as a reference, or `null` when it is not exactly `{path, digest}` with a non-empty
+ * path and a sha256 hex digest. The one reading both the validator and the latest-reference reader use.
+ * @req FR-NODE-250 AC-1, AC-2
+ */
+export function graphReferenceOf(value: unknown): GraphReference | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  if (Object.keys(record).some((key) => key !== "path" && key !== "digest")) return null;
+  const { path, digest } = record;
+  if (typeof path !== "string" || path.length === 0 || typeof digest !== "string" || !SHA256_HEX.test(digest)) return null;
+  return { path, digest };
+}
+
 /** The schema version the first 4.0.0 lines carry. @req FR-NODE-213 AC-6 */
 export const FIRST_4_0_0_SCHEMA_VERSION = "2.0.0";
 
@@ -813,4 +911,15 @@ export function waveNumber(wave: string | undefined): number | null {
   const match = /^wave-(\d+)$/.exec(wave);
   if (!match) return null;
   return Number.parseInt(match[1] as string, 10);
+}
+
+/**
+ * Whether two wave names name the same wave, read by {@link waveNumber}: `wave-01` is `wave-1`. The one
+ * judgment every reader that joins a journal line to a work-graph node makes, so a line the status
+ * reader attributes to a node is that node's line everywhere. @req IR-CLI-113 AC-1, IR-CLI-114 AC-3,
+ * FR-NODE-251 AC-3, FR-NODE-246 AC-9
+ */
+export function sameWave(left: string | undefined, right: string | undefined): boolean {
+  const number = waveNumber(left);
+  return number !== null && number === waveNumber(right);
 }

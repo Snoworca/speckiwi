@@ -324,7 +324,9 @@ const ORCHESTRATOR_R8: readonly Pin[] = [
 ];
 
 const RESUME_PINS_R8: ReadonlyArray<readonly [string, string]> = [
-  ["author-wave-design", "버그 입력의 R-ORCH 면 그 버그를 맡는 wave 의 `excerpt.md` 에 재현 테스트 경로와 red 출력을 적는다(§5.3)."],
+  // 2026-11-05: the `author-wave-design` excerpt pin left with the wave excerpts (FR-FLOW-215 AC-1); the
+  // reproduction path now lives only in the requirement's Implementation Notes, which the register-wave-srs
+  // pin below and §5.3 carry.
   ["register-wave-srs", "버그 입력의 R-ORCH 면 그 버그를 맡는 wave 의 요구 Implementation Notes 에 재현 테스트 경로와 red 출력을 적어 그 요구의 실패하는 테스트로 지정한다(§5.3, `kiwi-coder` §0.20.5)."]
 ];
 
@@ -490,7 +492,6 @@ describe("bug run rules pinned verbatim, round 10", () => {
  * the line end (round 11).
  */
 const LINE_END_PINS: ReadonlyArray<{ readonly skill: string; readonly ko: string; readonly en?: string }> = [
-  { skill: "kiwi-orchestrator", ko: "버그 입력의 R-ORCH 면 그 버그를 맡는 wave 의 `excerpt.md` 에 재현 테스트 경로와 red 출력을 적는다(§5.3)." },
   { skill: "kiwi-orchestrator", ko: "버그 입력의 R-ORCH 면 그 버그를 맡는 wave 의 요구 Implementation Notes 에 재현 테스트 경로와 red 출력을 적어 그 요구의 실패하는 테스트로 지정한다(§5.3, `kiwi-coder` §0.20.5)." },
   { skill: "kiwi-orchestrator", ko: "재현이 git 이 추적하지 않던 기존 파일을 고쳤으면 커밋하지 않고 `bug-input-dirty-tree` 로 멈춘다(`--auto` 에서도). 사용자가 그 파일을 함께 커밋해도 된다고 답하면 그대로 커밋하고, 아니라고 답하면 그 파일을 커밋하지 않은 채 사용자가 재현 케이스를 정리한 뒤 재개하게 한다. 재개하면 `01.intake.md` 의 재현 기록을 지우고 `kiwi-bug-repro` 를 다시 부른다." },
   { skill: "kiwi-orchestrator", ko: "버그 입력의 R-ORCH 면 재현 테스트 파일을 그 버그를 맡는 wave 하나의 `files[]` 에만 넣는다(§5.3)." },
@@ -539,7 +540,7 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
     },
     "kiwi-orchestrator §5.3": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "e0e7d9c756705a68"
+      "digest": "d93d0c934c31c1e7"
     },
     "kiwi-orchestrator §V.commit-run-artifacts": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -559,19 +560,19 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
     },
     "kiwi-orchestrator §V.decompose-waves": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "1145fc08bee4b37b"
+      "digest": "6f574ffc7f6a8d56"
     },
     "kiwi-orchestrator §V.author-wave-design": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "28214473196915ff"
+      "digest": "e5e0b84bffcce593"
     },
     "kiwi-orchestrator §V.register-wave-srs": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "952575b137699783"
+      "digest": "742123880c748a6e"
     },
     "kiwi-orchestrator §V.derive-readiness": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "502102dcb38f6028"
+      "digest": "35284eb8c5c40df4"
     },
     "kiwi-orchestrator §V.promote-requirements": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -589,7 +590,7 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
     },
     "kiwi-orchestrator §5.3": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "e0e7d9c756705a68"
+      "digest": "d93d0c934c31c1e7"
     },
     "kiwi-orchestrator §V.commit-run-artifacts": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -609,19 +610,19 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
     },
     "kiwi-orchestrator §V.decompose-waves": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "1145fc08bee4b37b"
+      "digest": "6f574ffc7f6a8d56"
     },
     "kiwi-orchestrator §V.author-wave-design": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "28214473196915ff"
+      "digest": "e5e0b84bffcce593"
     },
     "kiwi-orchestrator §V.register-wave-srs": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "b91e5acbb0f1ade9"
+      "digest": "5c07d8055da2294f"
     },
     "kiwi-orchestrator §V.derive-readiness": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "502102dcb38f6028"
+      "digest": "35284eb8c5c40df4"
     },
     "kiwi-orchestrator §V.promote-requirements": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -643,7 +644,7 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
     },
     "kiwi-orchestrator §5.3": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "e0e7d9c756705a68"
+      "digest": "d93d0c934c31c1e7"
     },
     "kiwi-orchestrator §V.commit-run-artifacts": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -663,19 +664,19 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
     },
     "kiwi-orchestrator §V.decompose-waves": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "1145fc08bee4b37b"
+      "digest": "6f574ffc7f6a8d56"
     },
     "kiwi-orchestrator §V.author-wave-design": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "28214473196915ff"
+      "digest": "e5e0b84bffcce593"
     },
     "kiwi-orchestrator §V.register-wave-srs": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "b91e5acbb0f1ade9"
+      "digest": "5c07d8055da2294f"
     },
     "kiwi-orchestrator §V.derive-readiness": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "502102dcb38f6028"
+      "digest": "35284eb8c5c40df4"
     },
     "kiwi-orchestrator §V.promote-requirements": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -697,7 +698,7 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
     },
     "kiwi-orchestrator §5.3": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "e0e7d9c756705a68"
+      "digest": "d93d0c934c31c1e7"
     },
     "kiwi-orchestrator §V.commit-run-artifacts": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -717,19 +718,19 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
     },
     "kiwi-orchestrator §V.decompose-waves": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "1145fc08bee4b37b"
+      "digest": "6f574ffc7f6a8d56"
     },
     "kiwi-orchestrator §V.author-wave-design": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "28214473196915ff"
+      "digest": "e5e0b84bffcce593"
     },
     "kiwi-orchestrator §V.register-wave-srs": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "b91e5acbb0f1ade9"
+      "digest": "5c07d8055da2294f"
     },
     "kiwi-orchestrator §V.derive-readiness": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "502102dcb38f6028"
+      "digest": "35284eb8c5c40df4"
     },
     "kiwi-orchestrator §V.promote-requirements": {
       "file": "kiwi-orchestrator/SKILL.md",

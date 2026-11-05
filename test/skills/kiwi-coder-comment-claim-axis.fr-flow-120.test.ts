@@ -347,7 +347,7 @@ describe("FR-FLOW-120 — an axis finding can stop the pipeline", () => {
     expect(section, "§5.3 was not found").not.toBe("");
     // The Phase 2 gate is CRITICAL=0 + HIGH=0, and §5.3 files comments under LOW. Left there, every
     // axis-8 finding is advisory and the axis can never do the thing it was added to do.
-    const high = section.split(/\r?\n/).find((line) => line.includes("**HIGH**")) ?? "";
+    const high = section.split(/\r?\n/).find((line) => line.includes("**kept**")) ?? "";
     expect(high, "a false comment claim is not routed to a blocking severity").toContain("주석 주장");
   });
 
@@ -362,8 +362,8 @@ describe("FR-FLOW-120 — an axis finding can stop the pipeline", () => {
     const section = start < 0 ? "" : body.slice(start, body.indexOf("\n### ", start + 1));
     expect(section, "§5.3 was not found").not.toBe("");
 
-    const high = section.split(/\r?\n/).find((line) => line.includes("**HIGH**")) ?? "";
-    const low = section.split(/\r?\n/).find((line) => line.includes("**LOW**")) ?? "";
+    const high = section.split(/\r?\n/).find((line) => line.includes("**kept**")) ?? "";
+    const low = section.split(/\r?\n/).find((line) => line.includes("**dropped**")) ?? "";
     expect(high, "the axis-8 clause is not on the blocking line").toContain("주석 주장");
     expect(low, "the axis-8 clause was moved to the non-blocking line").not.toContain("주석 주장");
     // Read the WHOLE line, not the part after the clause: a verifier moved the qualifier to the left
@@ -376,7 +376,7 @@ describe("FR-FLOW-120 — an axis finding can stop the pipeline", () => {
     const downgrades = section
       .split(/\r?\n/)
       .filter((line) => /축\s*8|주석 주장/.test(line))
-      .filter((line) => /LOW|강등|낮출|하향/.test(line) && !line.includes("**HIGH**"));
+      .filter((line) => /LOW|강등|낮출|하향/.test(line) && !line.includes("**kept**"));
     expect(downgrades, "another §5.3 line downgrades the axis").toEqual([]);
   });
 
@@ -402,7 +402,7 @@ describe("FR-FLOW-120 — an axis finding can stop the pipeline", () => {
     const body = skillBody(variant);
     const start = body.indexOf("### 5.3 ");
     const section = start < 0 ? "" : body.slice(start, body.indexOf("\n### ", start + 1));
-    const low = section.split(/\r?\n/).find((line) => line.includes("**LOW**")) ?? "";
+    const low = section.split(/\r?\n/).find((line) => line.includes("**dropped**")) ?? "";
     expect(low, "comment style was escalated along with the claim check").toContain("주석");
   });
 });
@@ -478,8 +478,9 @@ const CANONICAL_BOUND = canonical(
  * the plan, and what a run must satisfy is the SDS-AC set of the SDS it implements. The axis-8 clause —
  * the part FR-FLOW-120 AC-7 is about — is unchanged.
  */
+// FR-FLOW-221 AC-3 (5.3.0): §5.3 keeps a finding by a run's proof; the blocking line is `kept`.
 const CANONICAL_HIGH = canonical(
-  "- **HIGH**: 테스트 fail, SDS-AC 미충족, 의도 이탈, 축 8 닫힌 4종의 주석 주장이 거짓으로 측정됨"
+  "- **kept**: 실행이 입증한 결함 — Mock 사용(§0.6 regex 출력), SDS-코드 매핑 누락(`--sds`, (d′) 게이트 출력), 빌드/타입 실패, 테스트 fail · green 미달성(러너 출력), SDS-AC 미충족 · 의도 이탈 · 경계 조건 누락 · 에러 처리 결함(실패하는 테스트나 재현), 보안 결함(재현), 축 8 닫힌 4종의 주석 주장이 거짓으로 측정됨(`existsSync` · `grep -c` 출력)"
 );
 
 /**
@@ -487,7 +488,8 @@ const CANONICAL_HIGH = canonical(
  * non-blocking severity, and it still does; what changed is that the severity now says it buys no
  * rework round. The pin is why that change had to be made on purpose rather than in passing.
  */
-const CANONICAL_LOW = canonical("- **LOW**: 스타일, 주석 표현·서식 — 정보 보고 전용이며 개선 루프 재작업 라운드 0");
+// FR-FLOW-221 AC-3 (5.3.0): comment wording is `dropped` and still buys no rework round (FR-FLOW-140).
+const CANONICAL_LOW = canonical("- **dropped**: 실행으로 입증하지 못한 것과 스타일 · 명명 · 리팩토링 취향 · 주석 표현 · 서식 — 보고만 하며 개선 루프 재작업 라운드 0");
 
 function copyBody(relPath: string): string {
   return readFileSync(path.join(REPO_ROOT, relPath), "utf8");
@@ -520,14 +522,14 @@ describe("FR-FLOW-120 — the axis contract is pinned by canonical equality, not
   it.each(COPIES)("AC-7: %s carries the blocking severity line verbatim", (_label, relPath) => {
     const section = severitySection(copyBody(relPath));
     expect(section, "§5.3 was not found outside a fence").not.toBe("");
-    const high = section.split("\n").find((line) => line.includes("**HIGH**"));
+    const high = section.split("\n").find((line) => line.includes("**kept**"));
     expect(high, "§5.3 declares no HIGH line").toBeDefined();
     expect(canonical(high ?? "")).toBe(CANONICAL_HIGH);
   });
 
   it.each(COPIES)("AC-7: %s carries the non-blocking severity line verbatim", (_label, relPath) => {
     const section = severitySection(copyBody(relPath));
-    const low = section.split("\n").find((line) => line.includes("**LOW**"));
+    const low = section.split("\n").find((line) => line.includes("**dropped**"));
     expect(low, "§5.3 declares no LOW line").toBeDefined();
     expect(canonical(low ?? "")).toBe(CANONICAL_LOW);
   });
@@ -546,10 +548,10 @@ describe("FR-FLOW-120 — the axis contract is pinned by canonical equality, not
    */
   const CANONICAL_PHASE2_GATE = new Map(
     [
-      ["skills/claude", "Phase 2 통과 조건: **CRITICAL=0 + HIGH=0 + green 확정**."],
-      ["skills/codex", "Phase 2 통과 조건: **CRITICAL=0 + HIGH=0 + green 확정**."],
-      ["skills/etc", "Phase 2 통과 조건: **green 확정 + 단일 evaluator 3회 연속 no actionable improvement**."],
-      [".agents mirror", "Phase 2 통과 조건: **CRITICAL=0 + HIGH=0 + green 확정**."]
+      ["skills/claude", "Phase 2 통과 조건: **kept finding 0 + green 확정**."],
+      ["skills/codex", "Phase 2 통과 조건: **kept finding 0 + green 확정**."],
+      ["skills/etc", "Phase 2 통과 조건: **kept finding 0 + green 확정**. etc 는 단일 evaluator 가 kept finding 0 을 3회 연속 돌려준 뒤에 통과한다(`../_shared/kiwi/local-llm-profile.md`)."],
+      [".agents mirror", "Phase 2 통과 조건: **kept finding 0 + green 확정**."]
     ].map(([label, text]) => [label as string, canonical(text as string)])
   );
 
@@ -606,8 +608,8 @@ describe("FR-FLOW-120 — the axis contract is pinned by canonical equality, not
         cells: [
           canonical(commentAxisRow(body) ?? ""),
           canonical(axisSection(body).split("\n").find((line) => line.startsWith("**축 8 의 경계**")) ?? ""),
-          canonical(section.split("\n").find((line) => line.includes("**HIGH**")) ?? ""),
-          canonical(section.split("\n").find((line) => line.includes("**LOW**")) ?? ""),
+          canonical(section.split("\n").find((line) => line.includes("**kept**")) ?? ""),
+          canonical(section.split("\n").find((line) => line.includes("**dropped**")) ?? ""),
         // A separator that cannot occur inside a canonicalised cell, written as an ESCAPE rather than
         // as the character itself. This line once held a literal NUL: it worked, and it made the whole
         // file binary to ripgrep — which is how four files under src/ came to be invisible to every

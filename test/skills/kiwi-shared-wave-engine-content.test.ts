@@ -118,28 +118,26 @@ describe("FR-FLOW-106..109 AC-1 — each module ships at v1.0.0 in all four copi
 describe("FR-FLOW-106 — verify-loop.md carries the cross-verification engine", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-2: carries the evidence-bundle rule, both stances and the closing paths", () => {
+      // FR-FLOW-106 AC-2 as rewritten for 5.3.0: the identical bundle, the two stances, the add-only
+      // cross-refutation and the three closing paths are gone with the two-verifier model (FR-FLOW-220).
+      it("AC-2: carries the machine checks first, a new verifier per round given only facts, and red-test findings", () => {
         const m = readVariantModule(variant, "verify-loop");
-        expect(/동일한?\s*\*\*증거 번들\*\*|\*\*동일한 증거 번들\*\*/.test(m), `${variant}: identical bundle`).toBe(true);
-        expect(/나눠\*\* 주는 것은 \*\*금지\*\*/.test(m), `${variant}: splitting the evidence is forbidden`).toBe(true);
-        expect(/`ALL_MATCH` \/ `GAPS`/.test(m), `${variant}: verifier 1's roll-up`).toBe(true);
-        expect(/`substantive_clean`/.test(m), `${variant}: verifier 2's roll-up`).toBe(true);
-        expect(/`add-only`/.test(m), `${variant}: add-only cross-refutation`).toBe(true);
-        expect(/기계적\s*합집합/.test(m), `${variant}: mechanical union`).toBe(true);
-        expect(/두 번째 라운드부터는 검증자를 \*\*새로 spawn\*\*/.test(m), `${variant}: re-spawn from round 2`).toBe(true);
-        expect(/finding 을 닫는 경로는 셋뿐이다/.test(m), `${variant}: the three closing paths`).toBe(true);
-        expect(/연속 clean 스트릭에 \*\*산입하지 않는다\*\*/.test(m), `${variant}: the streak cost of reclassification`).toBe(true);
+        expect(m, `${variant}: machine checks before any verifier round`).toContain(
+          "병합 뒤 `complete` 줄 앞에서, 검증자를 띄우기 전에 호스트가 아래 검사를 차례로 돈다"
+        );
+        expect(m, `${variant}: a new verifier each round`).toContain("라운드마다 검증자를 **새로** 하나 띄운다 — `--max` 면 서로 다른 관점의 둘이다");
+        expect(m, `${variant}: given only stated facts`).toContain("호스트의 결론도 앞 검증자의 산출도 주지 않는다");
+        expect(m, `${variant}: findings kept only from red tests`).toContain("호스트가 그 테스트를 돌려 red 인 것만 finding 으로 남기고(kept)");
+        for (const retired of ["`ALL_MATCH` / `GAPS`", "`substantive_clean`", "`add-only`"]) {
+          expect(m.includes(retired), `${variant}: the retired two-verifier vocabulary ${retired}`).toBe(false);
+        }
       });
 
-      it("AC-2: a reclassified or fix-applied round cannot be the passing round", () => {
-        // Mutation-driven (FR-FLOW-110 AC-4): both carriers below survived a hedge with every other
-        // assertion green, so each gets its own. They are the two clauses that stop a PASS being
-        // stamped on a state no verifier read.
+      it("AC-2: a fix-applied round cannot be the passing round", () => {
+        // Mutation-driven (FR-FLOW-110 AC-4): this carrier survived a hedge with every other assertion
+        // green. It is the clause that stops a PASS being stamped on a state no verifier read. The
+        // reclassification clause beside it expired with the severity classes (FR-FLOW-221).
         const m = readVariantModule(variant, "verify-loop");
-        expect(
-          /재분류가 일어난 라운드는 \*\*모드와 무관하게\*\* 반드시 검증 \*\*라운드를 더\*\* 돌고 나서야 PASS/.test(m),
-          `${variant}: a reclassification must cost an extra round in EVERY mode, not only where a streak exists`
-        ).toBe(true);
         expect(
           /수정이 있었다면 반드시 재검증 라운드가 돌게 한다/.test(m),
           `${variant}: a round in which a fix was applied must force a re-verification round`
@@ -156,9 +154,11 @@ describe("FR-FLOW-106 — verify-loop.md carries the cross-verification engine",
           /기존 \*\*테스트를 약화하거나 삭제\*\*하지 않는다/.test(routing),
           `${variant}: weakening or deleting a test must be forbidden, not discouraged`
         ).toBe(true);
+        // FR-FLOW-045 AC-7 (5.3.0): with no severity class left, the third shortcut is editing the
+        // verifier's red test instead of the code.
         expect(
-          /`severity_class` 는 그 finding 을 제기한 검증자만 작성하며/.test(routing),
-          `${variant}: severity_class must stay with the verifier that raised the finding`
+          /검증자가 쓴 red 테스트를 지우거나 고쳐 green 으로 만들지 않는다/.test(routing),
+          `${variant}: the verifier's red test must not be deleted or edited to go green`
         ).toBe(true);
       });
 
@@ -175,14 +175,16 @@ describe("FR-FLOW-106 — verify-loop.md carries the cross-verification engine",
       });
 
       it("AC-2: distinguishes pass+residual from fail-residual", () => {
+        // 5.3.0: the Normal early exit (a pass with MEDIUM/LOW left) went with the severities; the two
+        // outcomes are now told apart in one paragraph of §5.
         const m = readVariantModule(variant, "verify-loop");
-        const line = m.split("\n").find((l) => /\*\*Normal 조기 종료\*\*/.test(l)) ?? "";
-        expect(line, `${variant}: the early-exit sentence must exist`).not.toBe("");
-        expect(/`pass` \+ `residual`/.test(line), `${variant}: the early exit is pass + residual`).toBe(true);
-        expect(/`fail-residual`/.test(line), `${variant}: and is distinguished from fail-residual`).toBe(true);
+        const line = m.split("\n").find((l) => /`pass` \+ `residual`/.test(l)) ?? "";
+        expect(line, `${variant}: the pass + residual sentence must exist`).not.toBe("");
+        expect(/kept finding 을 남긴 채 상한 전에 끝난 경우[^\n]*`fail-residual` 이고/.test(line), `${variant}: fail-residual is the kept-finding stop before the cap`).toBe(true);
+        expect(/`fail-residual` 게이트로 중단해 사용자 결정을 받는다/.test(line), `${variant}: fail-residual halts for a user decision`).toBe(true);
         expect(
-          /사용자 결정을 받지 않는다/.test(line),
-          `${variant}: the early exit must NOT take a user decision, or unattended runs stop on every one`
+          /`pass` \+ `residual` 이며 사용자 결정을 받지 않는다/.test(line),
+          `${variant}: pass + residual must NOT take a user decision, or unattended runs stop on every one`
         ).toBe(true);
       });
 
@@ -220,15 +222,16 @@ describe("FR-FLOW-106 — verify-loop.md carries the cross-verification engine",
         ).toBe(true);
       });
 
-      it("AC-3: takes the frozen denominator as an input and names no denominator of its own", () => {
+      it("AC-3: takes the verification scope as an input and names no denominator of its own", () => {
         const m = readVariantModule(variant, "verify-loop");
         expect(
           /본 엔진은 분모-불가지\(denominator-agnostic\)\*\* 하다/.test(m),
           `${variant}: the module must declare itself denominator-agnostic`
         ).toBe(true);
+        // FR-FLOW-106 AC-3 as rewritten for 5.3.0: the input is the verification scope, not a frozen denominator.
         expect(
-          /고정 분모를 \*\*입력으로 받으며\*\*/.test(m),
-          `${variant}: the frozen denominator must be stated as an input`
+          /검증 범위를 \*\*입력으로 받으며\*\*/.test(m),
+          `${variant}: the verification scope must be stated as an input`
         ).toBe(true);
         // Old FR-FLOW-106 AC-3 named wave-, lane- and handoff-specific denominators. The handoff
         // documents are removed in 4.0.0 (FR-FLOW-187 AC-4), so the disclaimer names wave and lane.
@@ -284,17 +287,20 @@ describe("FR-FLOW-106 — verify-loop.md carries the cross-verification engine",
         }
       });
 
-      it("AC-5: §5.5 keeps its own denominator table rather than the engine", () => {
+      // FR-FLOW-106 AC-5 as rewritten for 5.3.0: what wave-master supplies is its verifier inputs, its
+      // verification scope and its journal record, not a denominator table.
+      it("AC-5: §5.5 supplies the engine its verifier inputs, its verification scope and its journal record", () => {
         const body = skillBody(readWaveMasterRaw(variant));
-        const denominator = sectionUnder(body, /^###\s*5\.5\.2/);
-        expect(denominator, `${variant}: §5.5.2 must remain as the caller's denominator section`).not.toBe("");
-        expect(/`list_requirements`/.test(denominator), `${variant}: the REQ/AC layer's external source`).toBe(true);
-        expect(/`design_layer\.expected`/.test(denominator), `${variant}: the design layer`).toBe(true);
-        expect(/`constraint_layer\.expected`/.test(denominator), `${variant}: the constraint layer`).toBe(true);
-        expect(
-          /검증자 2 의 \*\*분모\*\*[^\n]*기계적으로 도출한다/.test(denominator) && /\*\*네 부류\*\*/.test(denominator),
-          `${variant}: the preservation layer — four mechanically derived classes`
-        ).toBe(true);
+        const inputs = sectionUnder(body, /^###\s*5\.5\.1\s/);
+        expect(inputs, `${variant}: §5.5.1 verifier inputs`).toContain("검증자에게 주는 것은 `verify-loop.md §3` 의 목록뿐이다");
+        const scope = sectionUnder(body, /^###\s*5\.5\.2\s/);
+        expect(scope, `${variant}: §5.5.2 verification scope`).toContain("**검증자가 스스로 정하지 않는다**");
+        expect(scope, `${variant}: preservation is a machine check`).toContain("`orchestrate preservation check`");
+        const record = sectionUnder(body, /^###\s*5\.5\.6\s/);
+        expect(record, `${variant}: §5.5.6 journal record`).toContain("라운드 줄은 `orchestrate round record` 가 짓는다");
+        for (const retired of ["`design_layer.expected`", "`constraint_layer.expected`", "검증자 2 의 **분모**"]) {
+          expect(scope.includes(retired), `${variant}: the retired denominator ${retired}`).toBe(false);
+        }
       });
     });
   }
@@ -306,30 +312,10 @@ describe("FR-FLOW-106 — verify-loop.md carries the cross-verification engine",
 describe("FR-FLOW-107 — wave-decomposition.md carries splitting, the baseline and the gate", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-2: carries the two-branch split heuristic with its 3-8 bound and both splitter inputs", () => {
-        const m = readVariantModule(variant, "wave-decomposition");
-        expect(/\*\*두 갈래 wave-split 휴리스틱\*\*/.test(m), `${variant}: the two-branch heuristic`).toBe(true);
-        expect(/3~8 개의 하위 목표/.test(m), `${variant}: the 3-8 sub-goal bound`).toBe(true);
-        expect(
-          /\*\*기존 모듈\*\*과 그 \*\*의존\*\* 방향의 구조 요약을 함께 전달한다/.test(m),
-          `${variant}: existing modules and dependency direction are splitter inputs`
-        ).toBe(true);
-        expect(/`existing_modules`/.test(m), `${variant}: each wave records existing_modules`).toBe(true);
-      });
-
-      it("AC-2: carries the one-normative-sentence granularity rule and integration_items", () => {
-        const m = readVariantModule(variant, "wave-decomposition");
-        expect(
-          /최하위 헤딩 아래 규범 문장 1건 = 1 항목/.test(m),
-          `${variant}: the design-item granularity rule`
-        ).toBe(true);
-        expect(
-          /예시·근거 문장은 \*\*항목이 아니다\*\*/.test(m),
-          `${variant}: coarsening the unit is what makes unmapped=0 free`
-        ).toBe(true);
-        expect(/`integration_items`/.test(m), `${variant}: integration items are fixed at baseline time`).toBe(true);
-      });
-
+      // FR-FLOW-107 AC-2, the split heuristic and its 3-8 bound: expired with FR-FLOW-212 AC-2 (no heading split; the
+      // tool proposes the graph, pinned in wave-srs-first.fr-flow-212.test.ts). The splitter inputs moved to
+      // FR-FLOW-212 AC-5 there: the impact analysis reads `existing_modules` and the node map is written.
+      // FR-FLOW-107 AC-2, design-item granularity and `integration_items`: expired with FR-FLOW-212 AC-2.
       it("AC-2: carries the closed exclusion_class vocabulary with all five values", () => {
         const m = readVariantModule(variant, "wave-decomposition");
         for (const value of [
@@ -344,23 +330,17 @@ describe("FR-FLOW-107 — wave-decomposition.md carries splitting, the baseline 
         expect(/다섯 값의 \*\*closed\*\* 목록/.test(m), `${variant}: the vocabulary must be closed`).toBe(true);
       });
 
-      it("AC-2: carries always-write-empty-constraints, append-new and carry-forward conversion", () => {
+      // Rewritten 2026-11-05: the carry-forward conversion and the journal-only baseline expired with the design
+      // baseline (FR-FLOW-212 AC-2); the constraint rules stay.
+      it("AC-2: carries always-write-empty-constraints and append-new", () => {
         const m = readVariantModule(variant, "wave-decomposition");
         expect(
-          /\*\*제약이 없어도 빈 배열\*\* 아티팩트를 반드시 만들어/.test(m),
+          /\*\*제약이 없어도 빈 배열\*\* 아티팩트를 반드시 만들고 그 경로를 항상 기록한다/.test(m),
           `${variant}: the empty-array artifact is always written`
         ).toBe(true);
         expect(
           /앞선 아티팩트를 제자리에서 고치지 않고 새 아티팩트로 쓰고/.test(m),
           `${variant}: late constraints append a new artifact instead of editing in place`
-        ).toBe(true);
-        expect(
-          /\*\*이월 finding 1건 = `design_items` 1 항목\*\*/.test(m),
-          `${variant}: a carry-forward wave converts findings into design items`
-        ).toBe(true);
-        expect(
-          /`waves\.jsonl` 만으로 해소한다/.test(m),
-          `${variant}: the baseline artifact must be resolvable from the journal alone`
         ).toBe(true);
       });
 
@@ -381,23 +361,14 @@ describe("FR-FLOW-107 — wave-decomposition.md carries splitting, the baseline 
           /docs\/analysis\/kiwi-wave-master-\{run_id\}\//.test(rules),
           `${variant}: no rule may hard-code the wave-master artifact root`
         ).toBe(false);
-        expect(/\{artifact_root\}design-baseline\.json/.test(rules), `${variant}: the map path is parameterised`).toBe(true);
-        expect(/\{artifact_root\}design-baseline\/wave-\{n\}\.md/.test(rules), `${variant}: the excerpt path is parameterised`).toBe(true);
+        // Rewritten 2026-11-05 with FR-FLOW-212 AC-5: the design-baseline paths left; the artifacts the rules write
+        // now is the impact-analysis map.
+        expect(/\{artifact_root\}waves\/expected-files\.json/.test(rules), `${variant}: the map path is parameterised`).toBe(true);
       });
 
-      it("AC-4: the coverage gate compares the full design_items set and requires consent", () => {
-        const gate = sectionUnder(readVariantModule(variant, "wave-decomposition"), /^##\s*4\./);
-        expect(gate, `${variant}: the coverage-gate section must exist`).not.toBe("");
-        expect(
-          /\*\*대조 단위\*\*는 최상위 섹션 \*\*한 겹이 아니라\*\*[^\n]*`design_items` \*\*전량\*\*/.test(gate),
-          `${variant}: the comparison unit must be the full design_items set, not a top-level sample`
-        ).toBe(true);
-        expect(
-          /`out_of_scope` 에 항목이 하나라도 있으면[^\n]*\*\*`--auto` 라도 중단\*\*/.test(gate),
-          `${variant}: any non-empty out_of_scope set must take user consent even under --auto`
-        ).toBe(true);
-      });
-
+      // FR-FLOW-107 AC-4 is replaced by FR-FLOW-219 AC-2 (coverage by `speckiwi prd coverage`,
+      // prd-items-computed.fr-flow-219.test.ts) and FR-FLOW-212 AC-4 (the narrowing consent, `out-of-scope-user-consent`,
+      // wave-srs-first.fr-flow-212.test.ts).
       it("AC-5: kiwi-wave-master references the module and no longer inlines the splitter", () => {
         const zero = sectionZeroOf(variant, "kiwi-wave-master");
         expect(
@@ -429,35 +400,18 @@ describe("FR-FLOW-107 — wave-decomposition.md carries splitting, the baseline 
 describe("FR-FLOW-108 — wave-srs-registration.md carries the registration contract", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-2: carries the excerpt, the constraints path, existing_modules and full residual collection", () => {
+      // Rewritten 2026-11-05: the per-wave excerpt expired with FR-FLOW-212 AC-2, and carried residuals reach the
+      // receiving wave through the incremental call's `residual` row (FR-FLOW-218 AC-4, srs-deltas.fr-flow-218).
+      it("AC-2: carries the constraints path and existing_modules as authoring inputs", () => {
         const m = readVariantModule(variant, "wave-srs-registration");
-        expect(/`--research-doc`/.test(m) && /`excerpt_path`/.test(m), `${variant}: the excerpt is the research doc`).toBe(true);
         expect(/`--constraints-doc`/.test(m) && /`constraints_path`/.test(m), `${variant}: the constraints doc`).toBe(true);
         expect(
           /`existing_modules` 도 같은 호출의 \*\*저작 입력\*\*/.test(m),
           `${variant}: existing_modules must be an authoring input, not a verifier-only list`
         ).toBe(true);
-        expect(
-          /`carried_into` 가 이 wave 인 residual 을 \*\*전량\*\* 수집/.test(m),
-          `${variant}: carried residuals must be collected in full`
-        ).toBe(true);
       });
 
-      it("AC-2: carries the srs_authored marker together with its unmarked-line clause", () => {
-        const m = readVariantModule(variant, "wave-srs-registration");
-        const rule = m.split("\n").find((l) => /`srs_authored` = `true`/.test(l)) ?? "";
-        expect(rule, `${variant}: the idempotency rule must exist`).not.toBe("");
-        expect(/\*\*하나라도\*\*/.test(rule), `${variant}: any marked event suppresses re-authoring`).toBe(true);
-        expect(
-          /\*\*표식 없는 줄\*\*은 `srs-authoring` 줄만 저작 진행 중으로 읽는다/.test(rule),
-          `${variant}: only unmarked srs-authoring lines read as in-progress`
-        ).toBe(true);
-        expect(
-          /최신 줄 하나로 판정하면/.test(rule),
-          `${variant}: the companion clause must name the latest-line reading it rejects`
-        ).toBe(true);
-      });
-
+      // FR-FLOW-108 AC-2, the `srs_authored` marker: expired with FR-FLOW-212 AC-3, which pins its absence.
       it("AC-3: kiwi-wave-master references the module from its §0 table", () => {
         const zero = sectionZeroOf(variant, "kiwi-wave-master");
         expect(
@@ -481,15 +435,12 @@ describe("FR-FLOW-108 — wave-srs-registration.md carries the registration cont
         }
       });
 
-      it("AC-4: §4's own target registration stays in the skill", () => {
+      // Rewritten 2026-11-05: the per-wave target and its registration expired with FR-FLOW-212 AC-2 and AC-3
+      // (registering the product target is the initial call's normal path, pinned there); §4 still cites the contract.
+      it("AC-4: §4 stays in the skill and points at the shared contract", () => {
         const body = skillBody(readWaveMasterRaw(variant));
         const four = sectionUnder(body, /^##\s*4\./);
         expect(four, `${variant}: §4 must still exist`).not.toBe("");
-        expect(/wave-\{n\}/.test(four), `${variant}: the per-wave target naming stays`).toBe(true);
-        expect(
-          /미등록 wave target 을 생성 옵션과 함께 등록하는 것은 이 단계의 \*\*정상 경로\*\*/.test(four),
-          `${variant}: the create-on-registration rule stays in the skill`
-        ).toBe(true);
         expect(/wave-srs-registration\.md/.test(four), `${variant}: §4 must point at the shared contract`).toBe(true);
       });
     });

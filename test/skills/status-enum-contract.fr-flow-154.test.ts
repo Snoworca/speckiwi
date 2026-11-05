@@ -761,7 +761,6 @@ const TOOL_AXIS_NON_VALUES = [
   "conflict_reqs_deferred",
   "conflicts_with",
   "demote",
-  "expected",
   "fence",
   "finding",
   "freeze-route",
@@ -795,7 +794,6 @@ const TOOL_AXIS_NON_VALUES = [
   "sha1",
   "skip",
   "speckiwi",
-  "srs_authored",
   "state",
   "string",
   "t_final_dryrun_only",
@@ -1013,7 +1011,16 @@ const TOOL_AXIS_FLOOR: Record<string, number> = {
   // 324 → 323 (4.0.0, 2026-09-28). kiwi-pm's plan/Task text (FR-FLOW-185), the commit skills' sidecar
   // text (FR-FLOW-184 AC-6) and kiwi-planner (FR-FLOW-184 AC-2) left; the SDS text that replaced them
   // writes one position fewer beside a lifecycle call. The value-site golden names every site that left.
-  "skills/claude": 323,
+  //
+  // 323 → 320 (5.3.0, 2026-11-05, FR-FLOW-212 · FR-FLOW-215). The per-wave SRS authoring left: the
+  // `register-wave-srs` recovery of `run-ledger.md` and of kiwi-orchestrator §V no longer reads
+  // `list_requirements --target wave-{n}` beside the `srs_authored` mark, and kiwi-wave-master §5.5.2
+  // no longer reads the wave target's `list_requirements` beside a projection and a `get_requirement`
+  // call. Measured against HEAD over the whole claude rendering, six positions left and two came back
+  // (`target`, twice); every one that left is a non-value — `kiwi-srs`, `srs_authored` (twice),
+  // `expected`, `get_requirement`, `projection` — so not one requirement status or stability value
+  // left the corpus. `expected` and `srs_authored` claim nothing any more and leave the residue.
+  "skills/claude": 320,
   "skills/codex": 301,
   "skills/etc": 297,
   ".agents/skills": 297
@@ -3410,7 +3417,6 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       "conflict_reqs_deferred",
       "conflicts_with",
       "demote",
-      "expected",
       "fence",
       "finding",
       "freeze-route",
@@ -3437,7 +3443,6 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       "sha1",
       "skip",
       "speckiwi",
-      "srs_authored",
       "state",
       "string",
       "t_final_dryrun_only",
@@ -3477,7 +3482,7 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       "tool-axis residue entries that are a misspelling of a lifecycle value"
     ).toEqual(["state"]);
     expect(TOOL_AXIS_FLOOR, "the tool-axis value-position floor").toEqual({
-      "skills/claude": 323,
+      "skills/claude": 320,
       "skills/codex": 301,
       "skills/etc": 297,
       ".agents/skills": 297

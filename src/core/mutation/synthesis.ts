@@ -2,6 +2,7 @@ import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { MutationResult, ProjectRoot } from "../types.js";
 import { mutationOk } from "./guards.js";
+import { redactSecrets } from "../secret-patterns.js";
 
 // @req FR-NODE-056
 /**
@@ -32,59 +33,6 @@ export interface SynthesizeStepSrsValue {
 // truncated to fit within this budget minus the fixed scaffolding around it. This caps the diff,
 // not the whole SRS — intent/trace/comment sections are not counted against this budget.
 const MAX_SRS_BYTES = 64 * 1024;
-
-// @req FR-NODE-056
-/**
- * Recognized secret patterns. Each match is replaced by REDACTION_MARKER before any input
- * reaches the committed SRS. Patterns are intentionally specific to avoid over-redaction; the
- * `-` is placed last in each character class so it is a literal range delimiter, not an escape.
- */
-const SECRET_PATTERNS: readonly RegExp[] = [
-  /AKIA[0-9A-Z]{16}/g, // AWS access key id
-  /ghp_[0-9A-Za-z]{36}/g, // GitHub personal access token
-  /github_pat_[0-9A-Za-z_]+/g, // GitHub fine-grained personal access token
-  /Bearer\s+[0-9A-Za-z._~+/-]{16,}=*/g, // Bearer authorization token
-  // Full PEM private key block: redact the BEGIN...END envelope and the base64 body between
-  // them so the key material never reaches the committed SRS (not just the header line). The `i`
-  // flag also catches lowercase headers (e.g. `-----begin private key-----`).
-  /-----BEGIN[^-]*PRIVATE KEY-----[\s\S]*?-----END[^-]*PRIVATE KEY-----/gi,
-  // Bare PEM private key header/footer (e.g. an unterminated block) — defense in depth so a
-  // lone BEGIN/END line is still redacted even when its counterpart is absent (any case).
-  /-----(?:BEGIN|END)[^-]*PRIVATE KEY-----/gi,
-  // key=value / key: value credential assignments (case-insensitive key names). A leading word
-  // boundary keeps an identifier like `KEEP_TOKEN` (no boundary before `TOKEN`) from matching
-  // while still catching a standalone `token=` / `api_key:` assignment. The value side is
-  // narrowed to a plausible literal credential so normal code/prose is preserved: either a
-  // quoted token, or a bare credential token (charset, length >= 6) that contains a digit. This
-  // excludes code expressions like `= computeToken();`, `=== storedHash`, and `: design uses ...`
-  // (no digit, or value too short / not in the charset) while still redacting real secrets such
-  // as `password=hunter2` and `api_key: sk_live_abc123XYZ`.
-  /\b(?:password|passwd|pwd|secret|token|api[_-]?key)\s*[:=]\s*(?:["'][A-Za-z0-9+/=_.-]{6,}["']|(?=[A-Za-z0-9+/=_.-]*[0-9])[A-Za-z0-9+/=_.-]{6,})/gi,
-  /eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, // JWT (header.payload.signature)
-  /xox[baprs]-[A-Za-z0-9-]+/g, // Slack token
-  /sk-[A-Za-z0-9_-]{20,}/g // OpenAI-style secret key
-];
-
-const REDACTION_MARKER = "[REDACTED]";
-
-interface RedactionResult {
-  text: string;
-  count: number;
-}
-
-// @req FR-NODE-056
-/** Replace every recognized secret with REDACTION_MARKER, counting each replacement. */
-function redactSecrets(input: string): RedactionResult {
-  let count = 0;
-  let text = input;
-  for (const pattern of SECRET_PATTERNS) {
-    text = text.replace(pattern, () => {
-      count += 1;
-      return REDACTION_MARKER;
-    });
-  }
-  return { text, count };
-}
 
 // @req FR-NODE-056
 interface IgnoreRule {

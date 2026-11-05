@@ -70,9 +70,6 @@ function withModule(body: string, headingRe: RegExp, moduleName: string): string
   return `${sectionUnder(body, headingRe)}\n${moduleRegion(body, moduleName)}`;
 }
 
-const BASELINE_SECTION = /^#{2,4}\s.*설계 기준선/;
-const COVERAGE_SECTION = /^#{2,4}\s.*분해 커버리지 게이트/;
-
 /** The single line containing the first match of `re`. "" when absent. */
 function lineWith(text: string, re: RegExp): string {
   return text.split("\n").find((l) => re.test(l)) ?? "";
@@ -105,7 +102,7 @@ function gateSection(body: string): string {
 function verifySection(body: string): string {
   // @req FR-FLOW-110 — the skill's own §5.5 plus the verify-loop.md engine region its §0 table
   // references. Two bounded regions, not the whole body: §2.1 and §7 stay out of scope.
-  return `${sectionUnder(body, /^#{2,3}\s.*(?:상호검증|cross-verif)/i)}\n${moduleRegion(body, "verify-loop")}`;
+  return `${sectionUnder(body, /^#{2,3}\s.*(?:상호검증|종료 검증|cross-verif)/i)}\n${moduleRegion(body, "verify-loop")}`;
 }
 
 /** The declared gate ids of a skill, read from the FIRST cell of each gate-table row. */
@@ -142,11 +139,11 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     // @req FR-NODE-188 — the run-close refusal. Declared here because a gate id absent from the
     // skill's own table falls to a committee-decidable class under --auto.
     "terminal-review-loop-missing",
-    "wave-verify-residual-critical",
+    "wave-verify-kept-finding",
     "wave-verify-cross-wave-fix-required",
     "wave-decomposition-coverage-gap",
     "decomposition-input-missing",
-    "final-verify-residual-critical",
+    "final-verify-kept-finding",
     "unsafe-option-refused",
     "integration-test-user-consent",
     "cost-warning-large-task",
@@ -171,9 +168,8 @@ const CANONICAL_GATE_IDS: Record<string, readonly string[]> = {
     "schedule-cycle",
     // @req FR-FLOW-187 AC-3 — the SDS Files paths are grounded before the stage is planned.
     "files-not-grounded",
-    // @req FR-FLOW-187 AC-3 — parallel-waves.md PW-2's allocation check is a contract gate, so the
-    // caller without the orchestrator's 3.c′ hook declares it too.
-    "unallocated-req-id",
+    // `unallocated-req-id` left with FR-FLOW-212 AC-4: the `orchestrate wave check` partition replaced the
+    // allocation gate, and the SDS half of PW-2 stops at `child-pipeline-needs-user-or-failed`.
     // @req FR-FLOW-195 — `schedule waves --waves` refuses a wave whose requirements[] holds a requirement that is
     // missing, draft, deprecated or discarded; parallel-waves.md §4 raises it, so the caller declares it.
     "requirement-not-ready",
@@ -393,31 +389,32 @@ describe("R2-C1 — wave resume is scoped to the current run", () => {
 describe("R2-C2 — an unapproved damage row blocks the passing verdict", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("FR-FLOW-057 AC-1: adds the preservation condition to the Normal PASS row itself", () => {
-        const exit = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.4/);
-        expect(exit, `${variant}: the termination-condition section must exist`).not.toBe("");
-        const normalRow = tableRows(exit, /^\|\s*Normal\s*\|/)[0] ?? "";
-        expect(normalRow, `${variant}: the Normal PASS row must exist`).not.toBe("");
+      // FR-FLOW-057 AC-1 as rewritten for 5.3.0: the preservation condition is a machine check the
+      // verifier rounds wait on, not a cell of the retired Normal PASS row.
+      it("FR-FLOW-057 AC-1: enters the verifier rounds only after the preservation check leaves no row unresolved", () => {
+        const engine = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
+        const row = lineWith(engine, /^\| 보존 \|/);
+        expect(row, `${variant}: verify-loop §2 must carry the preservation row`).not.toBe("");
+        expect(row).toContain("`speckiwi orchestrate preservation check --base <wave 의 base_sha> --head <wave head> --json`");
         expect(
-          /unapproved-damage/.test(normalRow),
-          `${variant}: the Normal PASS row itself must require zero unapproved-damage rows`
+          /보고된 행마다 그 변경을 요구하는 AC 가 없거나 테스트 약화면 재진입으로 되돌린다/.test(row),
+          `${variant}: an unresolved row must go back through re-entry`
         ).toBe(true);
-        // Quantifier: "주요 unapproved-damage 가 없을 것" would keep the token and gut the gate.
         expect(
-          /`?unapproved-damage`?[^|]*0\s*건/.test(normalRow),
-          `${variant}: the preservation condition must be zero rows, not "few" or "major" rows`
+          /실패는 그 행의 경로로 먼저 고치고, 모두 통과한 뒤에야 §4 의 라운드에 들어간다/.test(engine),
+          `${variant}: the verifier rounds must wait for the machine checks, preservation included`
         ).toBe(true);
-        expect(HEDGE.test(normalRow), `${variant}: the Normal PASS row must not hedge its conditions`).toBe(false);
+        expect(HEDGE.test(row), `${variant}: the preservation row must not hedge its condition`).toBe(false);
       });
 
       it("FR-FLOW-057 AC-1: applies the same preservation condition to the final run-scope pass", () => {
         const final = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.6/);
         expect(final, `${variant}: the final-verification section must exist`).not.toBe("");
-        const rule = lineWith(final, /unapproved-damage/);
+        const rule = lineWith(final, /최종 패스도 보존 검사가/);
         expect(rule, `${variant}: the final pass must restate the preservation condition`).not.toBe("");
         expect(
-          /0\s*건/.test(rule),
-          `${variant}: the final pass must also require zero unapproved-damage rows`
+          /승인되지 않은 행을 하나도 남기지 않을 것/.test(rule),
+          `${variant}: the final pass must also leave zero unresolved preservation rows`
         ).toBe(true);
         expect(HEDGE.test(rule), `${variant}: the final preservation condition must be absolute, not hedged`).toBe(
           false
@@ -430,85 +427,10 @@ describe("R2-C2 — an unapproved damage row blocks the passing verdict", () => 
 // =============================================================================================
 // R2-C3 / R2-M10 — the design layer needs an externally fixed denominator.
 // =============================================================================================
-describe("R2-C3 — design items are materialised as the design-layer denominator", () => {
-  for (const variant of VARIANTS) {
-    describe(`${variant} variant`, () => {
-      it("materialises design_items with per-item coordinates at baseline time", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
-        expect(baseline, `${variant}: the design-baseline section must exist`).not.toBe("");
-        expect(
-          /`design_items`/.test(baseline),
-          `${variant}: the baseline must materialise a design_items array, not only a wave-to-range map`
-        ).toBe(true);
-        const rule = lineWith(baseline, /`design_items`/);
-        for (const key of ["id", "heading_path", "line_start", "line_end", "statement"]) {
-          expect(
-            new RegExp("`" + key + "`").test(rule),
-            `${variant}: each design item must record ${key} on the line that declares design_items`
-          ).toBe(true);
-        }
-      });
-
-      it("defines the counting unit so a verifier cannot widen items to reach unmapped=0", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
-        const unit = lineWith(baseline, /1\s*항목/);
-        expect(unit, `${variant}: the item-counting unit must be defined`).not.toBe("");
-        expect(
-          /규범 문장 1건\s*=\s*1\s*항목/.test(unit),
-          `${variant}: one normative sentence must equal exactly one design item`
-        ).toBe(true);
-        expect(
-          /예시[^\n]*근거[^\n]*(?:제외|항목이 아니다)/.test(unit),
-          `${variant}: example and rationale sentences must be excluded from the denominator`
-        ).toBe(true);
-        expect(HEDGE.test(unit), `${variant}: the counting unit must be absolute, not hedged`).toBe(false);
-      });
-
-      it("fixes design_layer.expected to the recorded item count instead of verifier judgement", () => {
-        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
-        expect(stance, `${variant}: the verifier-stance section must exist`).not.toBe("");
-        const rule = lineWith(stance, /`design_layer\.expected`/);
-        expect(rule, `${variant}: the design denominator must be pinned to the recorded items`).not.toBe("");
-        expect(
-          /`design_items`/.test(rule),
-          `${variant}: design_layer.expected must be the length of the recorded design_items`
-        ).toBe(true);
-        expect(
-          /검증자가 (?:스스로 )?(?:정하지|산정하지) 않는다/.test(rule),
-          `${variant}: the design denominator must be externally fixed like the REQ/AC one`
-        ).toBe(true);
-        expect(HEDGE.test(rule), `${variant}: the external-denominator rule must be absolute, not hedged`).toBe(false);
-      });
-
-      it("uses design_items — not top-level sections — as the coverage-gate denominator", () => {
-        const gate = sectionUnder(skillBody(readWave(variant)), COVERAGE_SECTION);
-        expect(gate, `${variant}: the decomposition coverage gate must exist`).not.toBe("");
-        const rule = lineWith(gate, /대조 단위/);
-        expect(rule, `${variant}: the coverage gate must state its comparison unit`).not.toBe("");
-        expect(
-          /`design_items`[^\n]*\*\*전량\*\*/.test(rule),
-          `${variant}: the coverage gate must compare against every design item, not only the top-level sections`
-        ).toBe(true);
-        expect(
-          /최상위 섹션[^\n]*(?:아니라|한 겹)/.test(rule),
-          `${variant}: the gate must say explicitly that a single top-level layer is not the unit`
-        ).toBe(true);
-      });
-
-      it("fixes the final pass denominator the same way", () => {
-        const final = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.6/);
-        const rule = lineWith(final, /`design_items`/);
-        expect(rule, `${variant}: the final pass must reuse the recorded design items as its denominator`).not.toBe(
-          ""
-        );
-        expect(
-          /전체|합집합|모든 wave/.test(rule),
-          `${variant}: the final denominator must be the whole recorded item set, not a per-wave slice`
-        ).toBe(true);
-      });
-    });
-  }
-});
+// R2-C3 (FR-FLOW-047 AC-2 · FR-FLOW-048 · FR-FLOW-050 design_items) expired with FR-FLOW-212 AC-2: there is no
+// design baseline and no `design_items` any more — wave-master forbids the token (wave-srs-first.fr-flow-212).
+// The externally fixed denominator it guarded is now the PRD items: `prd_items` is enumerated in full and
+// `expected` is its length (prd-items-computed.fr-flow-219.test.ts, FR-FLOW-219 AC-1).
 
 // =============================================================================================
 // R2-H1 — --auto alone must not silently grant the two kiwi-coder consent gates.
@@ -831,17 +753,19 @@ describe("R2-H5 — wave regression is judged against a pinned baseline", () => 
       });
 
       it("FR-FLOW-057 AC-6 · FR-FLOW-066 AC-7: passes on new failures only, and degrades to exit_code=0 only when capture failed", () => {
-        const exit = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.4/);
-        const normalRow = tableRows(exit, /^\|\s*Normal\s*\|/)[0] ?? "";
+        // 5.3.0: the Normal PASS row left with the severities (FR-FLOW-221 AC-1); the regression clause
+        // is verify-loop §5's pass sentence.
+        const exit = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
+        const pass = lineWith(exit, /통과 조건은 kept finding 0/);
         expect(
-          /신규 실패 0\s*건/.test(normalRow),
-          `${variant}: the Normal PASS row must require zero NEW failures rather than an absolutely green suite`
+          /회귀의 신규 실패 0/.test(pass),
+          `${variant}: the pass condition must require zero NEW failures rather than an absolutely green suite`
         ).toBe(true);
         expect(
-          /failing_tests\s*⊆\s*baseline_failing_tests/.test(normalRow),
+          /failing_tests\s*⊆\s*baseline_failing_tests/.test(pass),
           `${variant}: the pass condition must be stated as the subset relation`
         ).toBe(true);
-        const fallback = lineWith(exit, /캡처(?:에)? 실패/);
+        const fallback = lineWith(exit, /\*\*캡처에 실패\*\*/);
         expect(fallback, `${variant}: the capture-failure fallback must be stated`).not.toBe("");
         expect(
           /`exit_code`\s*=?\s*0/.test(fallback),
@@ -901,22 +825,9 @@ describe("R2-H6 — test weakening is an unconditional halt at the pm layer", ()
 describe("R2-H7 — the receiving wave collects what was carried into it", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("FR-FLOW-060 AC-5: collects carried_into residuals when a wave is entered", () => {
-        const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
-        expect(target, `${variant}: the target-registration section must exist`).not.toBe("");
-        const rule = lineWith(target, /`carried_into`/);
-        expect(rule, `${variant}: entering a wave must read the residuals carried into it`).not.toBe("");
-        expect(
-          /\*\*전량\*\*/.test(rule),
-          `${variant}: every carried residual must be collected, not a selection`
-        ).toBe(true);
-        expect(
-          /저작 입력|증분 저작/.test(rule),
-          `${variant}: the carried findings must enter the authoring input, otherwise they are never re-detected`
-        ).toBe(true);
-        expect(HEDGE.test(rule), `${variant}: the collection rule must be absolute, not hedged`).toBe(false);
-      });
-
+      // FR-FLOW-060 AC-5 "carried residuals enter the authoring input": with no per-wave authoring, a carried
+      // residual reaches the receiving wave through the incremental call's `residual` row (FR-FLOW-218 AC-4,
+      // srs-deltas.fr-flow-218.test.ts). The re-entry half stays pinned below.
       it("FR-FLOW-060 AC-5: also folds them into the pipeline re-entry scope", () => {
         const run = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.\s/);
         expect(run, `${variant}: the per-wave pipeline section must exist`).not.toBe("");
@@ -926,15 +837,7 @@ describe("R2-H7 — the receiving wave collects what was carried into it", () =>
         ).toBe(true);
       });
 
-      it("FR-FLOW-060 AC-6: gives an appended carry-forward wave a substitute design denominator", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
-        const rule = lineWith(baseline, /이월/);
-        expect(rule, `${variant}: an appended carry-forward wave must have a stated denominator`).not.toBe("");
-        expect(
-          /이월 finding 목록/.test(rule),
-          `${variant}: the carried finding list must replace the design baseline for a wave with no source section`
-        ).toBe(true);
-      });
+      // FR-FLOW-060 AC-6 (a substitute design denominator) expired with the design baseline (FR-FLOW-212 AC-2).
     });
   }
 });
@@ -942,77 +845,14 @@ describe("R2-H7 — the receiving wave collects what was carried into it", () =>
 // =============================================================================================
 // R2-H8 — the design prose, not only the pointer, must reach the authoring input.
 // =============================================================================================
-describe("R2-H8 — the design excerpt is materialised and handed to authoring", () => {
-  for (const variant of VARIANTS) {
-    describe(`${variant} variant`, () => {
-      it("materialises a per-wave markdown excerpt beside the coordinate map", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
-        const rule = lineWith(baseline, /design-baseline\/wave-\{n\}\.md/);
-        expect(rule, `${variant}: the per-wave design excerpt must be materialised`).not.toBe("");
-        expect(
-          /`excerpt_path`/.test(baseline),
-          `${variant}: the excerpt must be recorded on design_baseline.excerpt_path so the bundle and the authoring input point at one artifact`
-        ).toBe(true);
-      });
-
-      it("passes the excerpt — not the coordinate JSON — as the research document", () => {
-        const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
-        const rule = lineWith(target, /`excerpt_path`/);
-        expect(rule, `${variant}: the authoring call must receive the excerpt`).not.toBe("");
-        expect(
-          /--research-doc|리서치 문서/.test(rule),
-          `${variant}: the excerpt must be passed as the research document argument`
-        ).toBe(true);
-        // The defect being closed: handing over a pointer file that carries no prose to compare against.
-        expect(
-          /좌표|매핑 JSON|design-baseline\.json/.test(rule),
-          `${variant}: the sentence must distinguish the excerpt from the coordinate map it replaces`
-        ).toBe(true);
-      });
-    });
-  }
-});
+// R2-H8 (the per-wave design excerpt) expired with FR-FLOW-212 AC-2: the one authoring call receives the input
+// document itself as `--research-doc` (wave-srs-first.fr-flow-212.test.ts, FR-FLOW-212 AC-1).
 
 // =============================================================================================
 // R2-H9 — the authoring-finished mark must be any-line, not latest-line.
 // =============================================================================================
-describe("R2-H9 — a wave-verify crash does not re-author the SRS", () => {
-  for (const variant of VARIANTS) {
-    describe(`${variant} variant`, () => {
-      it("keys the skip on any srs_authored=true event of that wave", () => {
-        const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
-        const rule = lineWith(target, /`srs_authored`/);
-        expect(rule, `${variant}: the authoring-skip rule must exist`).not.toBe("");
-        expect(
-          /\*\*하나라도\*\*/.test(rule),
-          `${variant}: a single srs_authored=true event anywhere in the wave must suppress re-authoring`
-        ).toBe(true);
-        // The defect: keying on the LATEST event, which a wave-verify record always displaces.
-        expect(
-          /최신 이벤트/.test(rule),
-          `${variant}: keying the skip on the latest event re-authors after any wave-verify record`
-        ).toBe(false);
-      });
-
-      it("limits the unmarked-line reading to the srs-authoring phase", () => {
-        const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
-        const rule = lineWith(target, /표식 없는 줄/);
-        expect(rule, `${variant}: the unmarked-line rule must exist`).not.toBe("");
-        // Merely naming the phase in the same sentence is what the current text already does; the
-        // reading has to be RESTRICTED to that phase, otherwise a wave-verify line without the mark
-        // still reads as "authoring in progress" and re-authors.
-        expect(
-          /표식 없는 줄[^\n]*(?:`?srs-authoring`? 줄만|`?srs-authoring`? 이벤트만|한정한다)/.test(rule),
-          `${variant}: the unmarked-line reading must be restricted to srs-authoring lines, not merely mention the phase`
-        ).toBe(true);
-        expect(
-          /`?srs-authoring`?/.test(rule),
-          `${variant}: only an srs-authoring line without the mark may read as authoring-in-progress`
-        ).toBe(true);
-      });
-    });
-  }
-});
+// R2-H9 (the any-line `srs_authored` skip) expired with FR-FLOW-212 AC-3: the SRS is authored once and resume
+// never re-runs that call; the marker's absence is pinned in wave-srs-first.fr-flow-212.test.ts.
 
 // =============================================================================================
 // R2-H10 — user constraints need collection, a denominator and a gate.
@@ -1021,8 +861,10 @@ describe("R2-H10 — declared user constraints are a verified layer", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
       it("collects constraints in Phase 1 and always writes the artifact", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
-        const rule = lineWith(baseline, /`constraints_path`/);
+        // Rewritten 2026-11-05 with FR-FLOW-212 AC-2: the design baseline left; the constraint row moved to the
+        // inputs table of `wave-decomposition.md §1`, which wave-master §3 runs.
+        const inputs = withModule(skillBody(readWave(variant)), /^##\s*3\./, "wave-decomposition");
+        const rule = lineWith(inputs, /^\| `constraints_path` \|/);
         expect(rule, `${variant}: the constraint artifact rule must exist`).not.toBe("");
         expect(
           /제약이 없어도[^\n]*빈 배열/.test(rule),
@@ -1035,30 +877,9 @@ describe("R2-H10 — declared user constraints are a verified layer", () => {
         expect(HEDGE.test(rule), `${variant}: the always-record rule must be absolute, not hedged`).toBe(false);
       });
 
-      it("declares a constraint layer with a roll-up consequence", () => {
-        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
-        const rule = lineWith(stance, /`constraint_layer`/);
-        expect(rule, `${variant}: the constraint layer must be declared alongside the other denominators`).not.toBe(
-          ""
-        );
-        for (const key of ["expected", "checked", "violations"]) {
-          expect(
-            new RegExp("`" + key + "`").test(rule),
-            `${variant}: constraint_layer must record ${key}`
-          ).toBe(true);
-        }
-        const gate = lineWith(stance, /violations/);
-        expect(
-          /\*\*1건이라도\*\*/.test(gate) || /violations[^\n]*≥\s*1/.test(gate),
-          `${variant}: a single violation must be enough to block the roll-up`
-        ).toBe(true);
-        expect(
-          /`ALL_MATCH`[^\n]*(?:불가|기록할 수 없다|기록하지 않는다|금지)/.test(gate),
-          `${variant}: a constraint violation must forbid the ALL_MATCH roll-up`
-        ).toBe(true);
-        expect(HEDGE.test(gate), `${variant}: the constraint gate must be absolute, not hedged`).toBe(false);
-      });
-
+      // FR-FLOW-058 AC-7 (the constraint layer's counts and its ALL_MATCH block on the verification
+      // record) expired 2026-11-05 → FR-FLOW-220: the verifier gets `constraints_path` and a violation is
+      // a kept red test citing that constraint (machine-checks-first.fr-flow-220.test.ts AC-2 · AC-3).
       it("passes the constraint artifact to authoring as well as to verification", () => {
         const target = withModule(skillBody(readWave(variant)), /^##\s*4\./, "wave-srs-registration");
         expect(
@@ -1095,7 +916,8 @@ describe("R2-M1 — the wave diff window is journalled", () => {
       it("FR-FLOW-060 AC-7: records base and head SHAs and resolves the window from the journal", () => {
         const bundle = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.1/, "verify-loop");
         expect(bundle, `${variant}: the evidence-bundle section must exist`).not.toBe("");
-        const rule = lineWith(bundle, /`diff_window`/);
+        // FR-FLOW-060 AC-7 as rewritten for 5.3.0: the window is part of the verifier's input sentence.
+        const rule = lineWith(bundle, /검증자에게 주는 것은[^\n]*`diff_window`/);
         expect(rule, `${variant}: the diff window must be resolved from a recorded field`).not.toBe("");
         expect(
           /`base_sha`/.test(rule) && /`head_sha`/.test(rule),
@@ -1289,14 +1111,11 @@ describe("R2-M5 — the round denominator is frozen at round entry", () => {
     describe(`${variant} variant`, () => {
       it("freezes the denominator and records the frozen counts", () => {
         const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
-        const rule = lineWith(stance, /`frozen_denominator`/);
+        // 5.3.0 (FR-FLOW-220 AC-3): a round's rows are the verifier's tests, so the declared freeze point
+        // is the moment the host receives the test file, and the record is `{ round, req_ac }`.
+        const rule = lineWith(stance, /`frozenDenominator` 는/);
         expect(rule, `${variant}: the frozen denominator must be recorded`).not.toBe("");
-        for (const key of ["round", "req_ac", "design_items", "preservation"]) {
-          expect(
-            new RegExp("`" + key + "`").test(rule),
-            `${variant}: frozen_denominator must record ${key}`
-          ).toBe(true);
-        }
+        expect(rule).toContain("`frozenDenominator` 는 호스트가 검증자의 테스트 파일을 받은 시점에 센 테스트 수다");
       });
 
       it("says a mid-round increase does not invalidate the round", () => {
@@ -1466,21 +1285,8 @@ describe("R2-M9 — critical_gates sets are identical across variants", () => {
 describe("R2-M11 — the wave-start event is labelled srs-authoring", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("labels the wave-start in_progress as srs-authoring", () => {
-        const record = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.6/);
-        expect(record, `${variant}: the recording section must exist`).not.toBe("");
-        const rule = lineWith(record, /wave 시작 시의 첫 `in_progress`/);
-        expect(rule, `${variant}: the wave-start label must be stated`).not.toBe("");
-        expect(
-          /`?"?srs-authoring"?`?/.test(rule),
-          `${variant}: the wave-start event precedes the pipeline (§4 runs before §5), so it must be labelled srs-authoring`
-        ).toBe(true);
-        expect(
-          /phase="pipeline"|`phase` 를 `pipeline`/.test(rule),
-          `${variant}: labelling the authoring-stage event as the pipeline phase is the mislabel being fixed`
-        ).toBe(false);
-      });
-
+      // The `srs-authoring` wave-start label expired with FR-FLOW-212 AC-3 (FR-FLOW-056 AC-4): a wave has no
+      // authoring stage; its absence is pinned in wave-srs-first.fr-flow-212.test.ts.
       // @req FR-FLOW-056 AC-4 — as revised for 4.0.0 SRS authoring is followed by SDS authoring and
       // worker execution (FR-FLOW-188 AC-1), so the stages after srs-authoring are the new `sds` and
       // `worker` phases of waves-event 2.0.0 rather than a per-wave `pipeline` cycle.
@@ -1515,10 +1321,11 @@ describe("R2-M13 — the recorded existing modules are consumed", () => {
         ).toBe(true);
       });
 
-      it("FR-FLOW-060 AC-8: binds it to verifier 2's cross-wave regression judgement", () => {
-        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
-        const rule = lineWith(stance, /`existing_modules`/);
-        expect(rule, `${variant}: verifier 2 must be told to use the recorded module list`).not.toBe("");
+      it("FR-FLOW-060 AC-8: binds it to the host's cross-wave carry-forward judgement", () => {
+        // 5.3.0: verifier 2 is gone (FR-FLOW-220 AC-2); the declared consumer is the host's carry-forward.
+        const bundle = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.1/, "verify-loop");
+        const rule = lineWith(bundle, /`existing_modules`/);
+        expect(rule, `${variant}: the recorded module list must have a declared consumer`).not.toBe("");
         expect(
           /교차 wave/.test(rule),
           `${variant}: the module list must feed the cross-wave regression judgement`
@@ -1537,26 +1344,20 @@ describe("R2-M16 — an intended-improvement verdict must cite its authority", (
       // FR-FLOW-057 AC-3 (not revised) requires the decision rule. The authority it may cite moved in
       // 4.0.0 from a plan Task to the agreed SDS (FR-FLOW-063 AC-1, revised). This checks AC-3 only; the
       // AC-1 symmetry with kiwi-coder §0.20.4 is not asserted here.
-      it("FR-FLOW-057 AC-3: requires a REQ or SDS-AC citation for intended-improvement", () => {
-        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
-        const rule = lineWith(stance, /`intended-improvement` 는/);
-        expect(rule, `${variant}: the improvement verdict must have a decision rule`).not.toBe("");
+      it("FR-FLOW-057 AC-3: admits a reported row only when an AC of the wave requires it and it is no test weakening", () => {
+        // FR-FLOW-057 AC-3 as rewritten for 5.3.0: the verdict follows from the tool output and the
+        // recorded ACs; the intended-improvement / unapproved-damage enum left with verifier 2.
+        const engine = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
+        const row = lineWith(engine, /^\| 보존 \|/);
+        expect(row, `${variant}: the resolution rule must be stated`).not.toBe("");
         expect(
-          /REQ[^\n]*SDS-AC/.test(rule),
-          `${variant}: the verdict must be backed by a requirement or a wave SDS acceptance contract that asked for the change`
+          /그 변경을 요구하는 AC 가 없거나/.test(row),
+          `${variant}: a row is admitted only when an AC of the wave asked for the change`
         ).toBe(true);
-        expect(/Task/.test(rule), `${variant}: a retired plan Task must not remain an authority`).toBe(false);
-        expect(HEDGE.test(rule), `${variant}: the evidence requirement must be absolute, not hedged`).toBe(false);
-      });
-
-      it("defaults an uncited row to unapproved-damage", () => {
-        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
-        const rule = lineWith(stance, /근거를 대지 못한|근거가 없는/);
-        expect(rule, `${variant}: the default for an uncited row must be stated`).not.toBe("");
-        expect(
-          /`unapproved-damage`/.test(rule),
-          `${variant}: an uncited row must default to unapproved-damage, otherwise discretion decides the gate`
-        ).toBe(true);
+        expect(/테스트 약화면/.test(row), `${variant}: a test weakening is never admitted`).toBe(true);
+        expect(/재진입으로 되돌린다/.test(row), `${variant}: an unadmitted row goes back through re-entry`).toBe(true);
+        expect(/Task/.test(row), `${variant}: a retired plan Task must not remain an authority`).toBe(false);
+        expect(HEDGE.test(row), `${variant}: the resolution rule must be absolute, not hedged`).toBe(false);
       });
 
       it("records the citation on the preservation row", () => {

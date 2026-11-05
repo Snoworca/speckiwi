@@ -10,20 +10,27 @@
 // applied per line would refuse the very first write of every verb.
 import type { Diagnostic, DiagnosticSeverity } from "../types.js";
 import { GATE_IDS, GATE_IDS_RETIRED_IN_4_0_0 } from "./auto-gate.js";
-import { isRoundRecord, type WavesJournalView } from "./waves-journal.js";
+import { firstGraphLineIndex, isRoundRecord, type WavesJournalView } from "./waves-journal.js";
 import {
   COMPLETION_STATUS,
+  DONE_WHEN_ID,
   EVENT_STATUSES,
   EXCLUSION_CLASSES,
   EXTERNAL_PROOF_KINDS,
   LANE_DISPOSITION_KINDS_RETIRED_IN_4_0_0,
+  NODE_COMPLETE_ACTION_REQUIRED,
+  NODE_COMPLETE_ACTION_RESULTS,
+  NODE_COMPLETE_ACTION_VERB,
   REASON_CLASSES,
+  REDECOMPOSE_PHASE,
   VERBS_RETIRED_IN_4_0_0,
   VERIFICATION_VERDICTS,
   WAVE_PHASES_RETIRED_IN_4_0_0,
   WRITER_REQUIRED_FROM,
   compareSchemaVersions,
+  graphReferenceOf,
   schemaVersionOf,
+  sameWave,
   waveNumber,
   writtenBefore400,
   type EventStatus,
@@ -249,6 +256,15 @@ function checkRoundInvariants(event: WavesEvent, diagnostics: WavesDiagnostic[])
     const openTotal = ["critical", "high", "medium", "low"].reduce((sum, key) => sum + (count(open[key]) ?? 0), 0);
     if (residual.length !== openTotal) truncated.push("residual");
   }
+  // @req FR-NODE-254 AC-2, AC-3 — the keep/drop rule runs whenever `findings` is present, beside the
+  // `axis_b` rule rather than instead of it, so a zero `axis_b` cannot hide a kept finding. Its open
+  // findings are its kept ones: a pass holds none, whatever its residual (the carried list) says, and
+  // every other terminal verdict lists exactly its kept findings, as `axis_b.open` was listed.
+  const kept = count(record(verification.findings)?.kept ?? null);
+  if (terminal && kept !== null) {
+    if (verdict === "pass" && kept !== 0) truncated.push("findings.kept");
+    if (verdict !== "pass" && residual !== null && residual.length !== kept && !truncated.includes("residual")) truncated.push("residual");
+  }
   if (truncated.length > 0) {
     diagnostics.push(
       diagnosticFor("truncated-residual", "error", "an enumeration the contract requires in full was truncated", event, { truncated })
@@ -292,7 +308,8 @@ function latestWaveVerify(view: WavesJournalView, wave: string, beforeIndex: num
     const candidate = view.lines[index];
     if (!candidate) continue;
     if (candidate.phase !== "wave-verify") continue;
-    if (candidate.wave !== wave) continue;
+    // @req FR-NODE-142 — the record belongs to the wave by the one wave-name rule (`sameWave`).
+    if (!sameWave(candidate.wave, wave)) continue;
     return candidate;
   }
   return null;
@@ -676,11 +693,58 @@ function checkRetiredVocabulary(view: WavesJournalView, diagnostics: WavesDiagno
   }
 }
 
+/**
+ * @req FR-NODE-250 AC-1, AC-2, AC-3 — the work-graph lines. Positional for the reason
+ * `checkAbortGate` gives: during an append the newest line is the candidate.
+ */
+function checkWorkGraphLines(view: WavesJournalView, diagnostics: WavesDiagnostic[]): void {
+  const firstGraphLine = firstGraphLineIndex(view);
+  view.lines.forEach((event, index) => {
+    const severity = positionalSeverity(view, event);
+    const redecompose = event.phase === REDECOMPOSE_PHASE;
+    if (event.graph !== undefined || redecompose) {
+      if (graphReferenceOf(event.graph) === null) {
+        diagnostics.push(
+          diagnosticFor("journal-graph-malformed", severity, redecompose && event.graph === undefined
+            ? "a redecompose line needs the graph {path, digest} of the version it wrote"
+            : "a graph must be {path, digest} with a non-empty path and a sha256 hex digest", event)
+        );
+      } else if (index !== firstGraphLine && !redecompose) {
+        diagnostics.push(
+          diagnosticFor("journal-graph-misplaced", severity, "a graph belongs only on the run's first graph line or on a redecompose line", event)
+        );
+      }
+    }
+    const confirmed = event.done_when_confirmed;
+    if (confirmed !== undefined && !(Array.isArray(confirmed) && confirmed.every((id) => typeof id === "string" && DONE_WHEN_ID.test(id)))) {
+      diagnostics.push(
+        diagnosticFor("done-when-confirmed-malformed", severity, "done_when_confirmed must be a list of DW-<n> ids", event, { done_when_confirmed: confirmed })
+      );
+    }
+    if (event.verb === NODE_COMPLETE_ACTION_VERB) {
+      const missing = NODE_COMPLETE_ACTION_REQUIRED.filter((field) => event[field] === undefined || event[field] === null);
+      const result = event.result;
+      const badResult = result !== undefined && !(NODE_COMPLETE_ACTION_RESULTS as readonly unknown[]).includes(result);
+      const badError = event.error !== undefined && typeof event.error !== "string";
+      if (missing.length > 0 || badResult || badError) {
+        diagnostics.push(
+          diagnosticFor("node-complete-action-malformed", severity, "a node-complete-action line needs wave, action_id, completion_ref and attempt, a result of sent, failed or waived, and a string error", event, {
+            missing,
+            ...(badResult ? { result } : {}),
+            ...(badError ? { error: "not a string" } : {})
+          })
+        );
+      }
+    }
+  });
+}
+
 export function validateWavesJournal(view: WavesJournalView): WavesDiagnostic[] {
   const diagnostics: WavesDiagnostic[] = [];
   for (const event of view.lines) checkRoundInvariants(event, diagnostics);
   checkAbortGate(view, diagnostics);
   checkRetiredVocabulary(view, diagnostics);
+  checkWorkGraphLines(view, diagnostics);
   checkCompletionGate(view, diagnostics);
   checkFinalVerify(view, diagnostics);
   checkTerminalReview(view, diagnostics);

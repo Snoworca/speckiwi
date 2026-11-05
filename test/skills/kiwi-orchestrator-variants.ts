@@ -97,10 +97,10 @@ export const ROUTING_GATE_IDS = ["route-proposal", "route-step-requires-mode-swi
 
 /** The thirteen wave-semantic gates FR-FLOW-100 AC-4 requires the orchestrator to declare itself. */
 export const WAVE_SEMANTIC_GATE_IDS = [
-  "wave-verify-residual-critical",
+  "wave-verify-kept-finding",
   "wave-verify-fail-residual",
   "wave-verify-cross-wave-fix-required",
-  "final-verify-residual-critical",
+  "final-verify-kept-finding",
   "wave-decomposition-coverage-gap",
   "out-of-scope-user-consent",
   "wave-append-cap-exhausted",

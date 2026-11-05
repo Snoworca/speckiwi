@@ -205,13 +205,17 @@ describe("FR-FLOW-165 — the corpus this file sweeps", () => {
 });
 
 describe("FR-FLOW-165 AC-1 — the promotion hop is stated in every rendering", () => {
-  it("calls the skill that owns the promotion judgement, scoped to the wave's target", () => {
+  // Rewritten 2026-11-05 with FR-FLOW-213 AC-1: the hop runs once for the run, scoped to the product
+  // target; a later node's draft requirements are raised just before it is scheduled (FR-FLOW-213 AC-2).
+  it("calls the skill that owns the promotion judgement, scoped to the product target", () => {
     for (const rendering of ORCHESTRATOR) {
       const body = section(rendering.body, HOP_SECTION);
       expect(body, rendering.relPath).not.toBe("");
       const call = HOP_CALL.exec(body);
       expect(call, `${rendering.relPath}: no kiwi-srs-feasibility call in the 4.5.3 call fence`).not.toBeNull();
-      expect((call as RegExpExecArray)[1], rendering.relPath).toContain("TARGET=wave-{n}");
+      expect((call as RegExpExecArray)[1], rendering.relPath).toContain("TARGET=<제품 target>");
+      expect(hopParagraph(rendering), rendering.relPath).toContain("wave 마다 부르지 않는다");
+      expect(hopParagraph(rendering), rendering.relPath).toContain("`--req-filter <그 draft 요구>`");
     }
   });
 
@@ -245,8 +249,10 @@ describe("FR-FLOW-165 AC-1 — the promotion hop is stated in every rendering", 
   });
 });
 
-describe("FR-FLOW-165 AC-2 — the hop sits between Phase 3.b and Phase 3.c-prime", () => {
-  it("FR-FLOW-165 AC-2 — orders the phase map 3.b, then the hop, then 3.c and 3.c-prime", () => {
+// Rewritten 2026-11-05 with FR-FLOW-215 AC-1 and FR-FLOW-213: the one authoring is 2.a and the hop 2.a′,
+// both ahead of the stage steps 3.c and 3.c′.
+describe("FR-FLOW-165 AC-2 — the hop sits between Phase 2.a and Phase 3.c-prime", () => {
+  it("FR-FLOW-165 AC-2 — orders the phase map 2.a, then the hop, then 3.c and 3.c-prime", () => {
     for (const rendering of ORCHESTRATOR) {
       const map = section(rendering.body, PHASE_MAP);
       expect(map, rendering.relPath).not.toBe("");
@@ -254,7 +260,7 @@ describe("FR-FLOW-165 AC-2 — the hop sits between Phase 3.b and Phase 3.c-prim
       // map looser than the fence: with 3.c′ as the last needle the hop can be dropped below 3.c and
       // stay green, and the map then names a different place than the fence and the prose do. The
       // fence pins the hop between `kiwi-srs` and `kiwi-sds`; this pins the same span in the map.
-      const offsets = orderedOffsets(map, [/^\s+3\.b\s/mu, /^\s+3\.b′\s/mu, /^\s+3\.c\s/mu, /^\s+3\.c′\s/mu]);
+      const offsets = orderedOffsets(map, [/^\s+2\.a\s/mu, /^\s+2\.a′\s/mu, /^\s+3\.c\s/mu, /^\s+3\.c′\s/mu]);
       expect(offsets.every((offset) => offset >= 0), `${rendering.relPath}: ${JSON.stringify(offsets)}`).toBe(true);
       expect([...offsets].sort((left, right) => left - right), rendering.relPath).toEqual(offsets);
     }

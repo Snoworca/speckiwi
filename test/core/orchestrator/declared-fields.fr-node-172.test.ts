@@ -43,7 +43,8 @@ async function writtenLine(): Promise<Record<string, unknown>> {
     cap: 5,
     streakBefore: 0,
     frozenDenominator: 1,
-    rows: [{ id: "R-1", verdict: "pass", severity: "MEDIUM" }],
+    verifiers: ["verifier-1"],
+    rows: [{ id: "R-1", verdict: "pass", kept: false, verifier: "verifier-1" }],
     fixAppliedThisRound: false,
     regression: { failingTests: [], baselineFailingTests: [], exitCode: 0 },
     residual: []

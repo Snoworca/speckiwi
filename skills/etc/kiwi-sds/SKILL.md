@@ -61,12 +61,12 @@ Each gate below halts **regardless of** `--auto` for a user decision and is neve
 | `--req-filter <REQ-ID,...>` | narrows the scope to these requirements | every open requirement of the target |
 | `--sds-id <id>` | the SDS identifier — the file is `docs/sds/<sds-id>.sds.md`; lowercase letters, digits, `.` and `-` only, 4 to 128 characters — the same rule as `kiwi-pm` §0.14's session id | `<target>-<slug>` (the slug is the work's gist in kebab-case) |
 | `--convergence-registry <path>` | for a wave SDS: paths whose recipe in this registry is `regenerate` or `orchestrator-only` are not written into Files or the Test Plan (§2.3) | none — no path is excluded |
-| `--existing-modules <path>` | the wave design-baseline JSON — the `existing_modules` of the entry of the wave `TARGET` names (`wave-{n}`) are read; the baseline is keyed per wave, so no other wave's modules are read (§2.2, FR-FLOW-063 AC-7) | none |
+| `--existing-modules <path>` | the per-node `existing-modules.json` the decomposition writes (node to module list, `wave-decomposition.md §1`) — the `existing_modules` of the node `wave-{n}` read from the `{run_id}-wave-{n}` of `--sds-id` are read; `TARGET` is the product target every wave shares, so it cannot be the key; the map is keyed per node, so no other wave's modules are read (§2.2, FR-FLOW-063 AC-7) | none |
 | `--close <sds-id>` | close-out mode (§3) | off |
 | `--auto` · `--max` · `--mini` / `--loops N` · `--model <name>` | §0.8 · §0.3 · §0.9 · the verifier subagent's model | off / current session model |
 | `--no-pipeline-emit` | delegated-run marker — no pipeline event is appended (§2.6) | off |
 
-R-ORCH and kiwi-wave-master pass, for every wave, `--sds-id {run_id}-wave-{n}`, that wave's `--req-filter`, the run's `--convergence-registry`, and that wave's design baseline as `--existing-modules`.
+R-ORCH and kiwi-wave-master pass, for every wave, `--sds-id {run_id}-wave-{n}`, that wave's `--req-filter`, the run's `--convergence-registry`, and the run's `existing-modules.json` as `--existing-modules`.
 
 ### 1.2 Output
 
@@ -105,7 +105,7 @@ When split files carry mixed Status values (for example `closed` and `agreed`), 
 
 ### 2.2 Phase 1 — Read
 
-Read every in-scope requirement's ACs with `get_requirement`. Read the relevant code so the paths and symbols the SDS names match the repository's real modules — never re-create a module that already exists. With `--existing-modules`, read the `existing_modules` of the entry of the wave `TARGET` names in that JSON; the Interfaces never re-create or rename a module listed there — that list is what the wave verification holds the result to.
+Read every in-scope requirement's ACs with `get_requirement`. Read the relevant code so the paths and symbols the SDS names match the repository's real modules — never re-create a module that already exists. With `--existing-modules`, read the `existing_modules` of the entry of the node its `--sds-id` names (the `wave-{n}` of `{run_id}-wave-{n}`) in that JSON; the Interfaces never re-create or rename a module listed there — that list is what the wave verification holds the result to.
 
 ### 2.3 Phase 2 — Write
 

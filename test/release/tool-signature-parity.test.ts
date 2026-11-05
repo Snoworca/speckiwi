@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { PassThrough } from "node:stream";
 import type { Command } from "commander";
 import { describe, expect, it } from "vitest";
 import { attachInheritedOptionsHelp, buildCommand } from "../../src/cli/command.js";
+import { main } from "../../src/cli/index.js";
 import { registerDoctorCommand } from "../../src/cli/commands/doctor.js";
 import { registerMcpCommand } from "../../src/cli/commands/mcp.js";
 import { registerMutationCommands } from "../../src/cli/commands/mutations.js";
@@ -112,11 +114,13 @@ describe("REL-FLOW-002 tool signature parity", () => {
     expect(toolSchemas.list_requirements).not.toHaveProperty("include-content");
   });
 
-  it("documents every registered MCP tool name in the appendix", async () => {
-    const appendix = await readFile("docs/spec/90.appendix.md", "utf8");
-    for (const toolName of Object.keys(toolSchemas).sort()) {
-      expect(appendix).toContain(`\`${toolName}\``);
-    }
+  // @req FR-NODE-253 AC-3 — the appendix Tool Summary is generated, so the check is the generator's
+  // own check mode: a new MCP tool without a regenerated table turns this red, and
+  // `speckiwi sync-appendix --write` turns it green.
+  it("keeps the appendix Tool Summary table equal to the rows sync-appendix generates", async () => {
+    const stdout = new PassThrough();
+    const code = await main(["--root", REPO_ROOT, "sync-appendix", "--json"], { stdout, stderr: new PassThrough() });
+    expect(code, stdout.read()?.toString() ?? "").toBe(0);
   });
 
   it("keeps workflow, repair, skills, and doctor CLI docs aligned with runtime commands", async () => {
@@ -290,10 +294,10 @@ const INHERITED_FROM_WAVE_MASTER = [
   "wave-decomposition-coverage-gap",
   "out-of-scope-user-consent",
   "wave-append-cap-exhausted",
-  "wave-verify-residual-critical",
+  "wave-verify-kept-finding",
   "wave-verify-fail-residual",
   "wave-verify-cross-wave-fix-required",
-  "final-verify-residual-critical",
+  "final-verify-kept-finding",
   "child-pipeline-needs-user-or-failed",
   "child-srs-needs-user-or-failed",
   "invalid-loop-option"
@@ -333,8 +337,10 @@ describe("FR-NODE-122 gate-id parity", () => {
     // 68 with `bug-input-dirty-tree`, the stop before a bug is reproduced in a run root holding
     // uncommitted changes; 70 with `bug-test-unskippable` and `bug-repro-test-unresolved`, the stops
     // that keep a wave-route reproduction test from being committed red or left skipped.
-    expect(GATE_IDS).toHaveLength(70);
-    expect(new Set(GATE_IDS).size).toBe(70);
+    // @req FR-NODE-247 AC-4, AC-12 — 72 in 5.3.0: `requirement-cycle-over-cap` and
+    // `requirement-without-live-ac`, the two refusals `wave propose` computes, joined.
+    expect(GATE_IDS).toHaveLength(72);
+    expect(new Set(GATE_IDS).size).toBe(72);
   });
 
   it("AC-1 — extracts gate ids from the three-column critical_gates[] table and from the severity rows", () => {

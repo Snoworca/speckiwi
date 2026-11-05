@@ -1,94 +1,60 @@
 # kiwi wave-decomposition v1.0.0
 
-wave 분해(wave splitting) · 설계 기준선(design baseline) 물질화 · 분해 커버리지 게이트의 **공용 계약** SSOT. `kiwi-wave-master` §3 · §3.1 · §3.2 에서 **텍스트를 이동**해 만들었으며, 본 문서를 참조하는 모든 스킬은 아래 규칙을 read-time 에 동일하게 적용한다.
+요구 분해의 **공용 계약** SSOT. `kiwi-wave-master` 와 `kiwi-orchestrator`(`R-ORCH`)가 이 문서를 고치지 않고 그대로 인용한다 — 분해 방식은 하나뿐이고 그 곁에 wave 마다 저작하는 두 번째 방식은 없다. 분해하는 것은 문서의 머리글이 아니라 run 앞에서 **한 번** 저작한 제품 target 의 요구 집합이다.
 
-본 계약 안의 `§n` 은 이 파일의 절을 가리킨다. 아래 이동된 본문이 `§0.G` · `§0.5` · `§4` · `§5.5` · `§5.6` 를 가리킬 때 그것은 **호출자의** 절이다 — 이동 전 문장을 그대로 옮겼기 때문이며, 호출자가 그 절들을 자기 본문에 갖는다.
+본 계약 안의 `§n` 은 이 파일의 절을 가리킨다.
 
 ---
 
-## 1. 입력 파라미터 — `artifact_root` 는 하드코딩하지 않는다
+## 1. 입력 — 호출자가 넘기는 것
 
 | 파라미터 | 의미 |
 |---|---|
-| `artifact_root` | 아래 모든 아티팩트가 쓰이는 **루트 디렉터리**. **호출자가 인자로 전달하며 본 문서는 하드코딩하지 않는다** |
-| `source_document` | 분해할 연구·계획·설계 문서 (경로) |
-| `existing_modules_summary` | 기존 모듈과 그 의존 방향의 구조 요약 |
-| `declared_constraints` | 사용자 프롬프트 · 대화 로그 · `--constraint` 인자에서 수집한 선언 제약 |
+| `artifact_root` | 아래 아티팩트의 루트. **호출자가 인자로 전달하며 본 문서는 하드코딩하지 않는다** — `kiwi-wave-master` 는 `docs/analysis/kiwi-wave-master-{run_id}/`, `kiwi-orchestrator` 는 `docs/research/{work}/` 를 넘긴다 |
+| PRD | 승인된 PRD 경로 — 없으면 `kiwi-prd` 가 먼저 만든다 |
+| 제품 target | 이 run 이 구현하는 target — 요구는 모두 여기에 저작한다 |
+| `existing_modules` | 기존 모듈과 그 의존 방향의 요약 — 영향 분석의 입력. 분해가 끝나면 노드마다 건드릴 것으로 예상되는 기존 모듈을 `{artifact_root}existing-modules.json`(노드 → 모듈 목록)에 적는다 — 교차 wave 회귀 판정과 `kiwi-sds --existing-modules` 가 읽는다 |
+| `constraints_path` | 선언 제약 아티팩트 경로. 사용자 프롬프트 · 대화 로그 · `--constraint` 에서 제약을 수집한다 — 제약 문장 1건 = 1 항목(`id` · `statement` · `source`)으로 모은다. **제약이 없어도 빈 배열** 아티팩트를 반드시 만들고 그 경로를 항상 기록한다 — 빈 배열은 반증 가능한 주장이고 필드 부재는 침묵이다. **후발 제약** — run 도중 새로 선언된 제약 — 은 앞선 아티팩트를 제자리에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 `in_progress` 줄을 append 하며, 해소는 언제나 **최신** `constraints_path` 를 읽는다 |
 
-`artifact_root` 를 파라미터로 두는 것이 **하나의 기준선 구현이 두 호출자를 섬기게 하는 장치**다 — 호출자는 아래 둘이며 각자 자기 루트를 전달한다.
+아래 `orchestrate` 도구 호출에는 호출자가 자기 스킬에 적은 엔진 인자를 더한다 — 그 도구들은 호출자 자신의 run 저널을 읽는다.
 
-| 호출자 | 전달하는 `artifact_root` |
-|---|---|
-| `kiwi-wave-master` | `docs/analysis/kiwi-wave-master-{run_id}/` |
-| `kiwi-orchestrator` | `docs/research/{work}/` |
+## 2. 순서 — run 당 한 번
 
-아래 본문의 `{artifact_root}` 는 모두 이 인자로 치환한다. 본 문서에는 어느 호출자의 루트도 하드코딩되어 있지 않다.
+1. **PRD** — 요청에 PRD 경로가 없으면 `kiwi-prd` 를 먼저 부른다.
+2. **처음 저작** — `wave-srs-registration.md §1` 의 호출 하나로 제품 target 의 SRS 를 쓴다.
+3. **feasibility 한 번** — `Skill({ skill: "kiwi-srs-feasibility", args: "TARGET=<제품 target> [--auto] [--max] [--mini|--loops N]" })` 을 처음 저작 뒤, 첫 dispatch 앞에 한 번 부른다. wave 마다 부르지 않는다. 뒤 wave 의 요구는 `draft` 로 남겨도 되고, 그 노드를 스케줄하기 직전에 올린다(`parallel-waves.md` PW-4).
+4. **PRD 커버리지** — §5.
+5. **영향 분석** — 서브에이전트 하나가 요구마다 바꿀 것으로 예상되는 파일을 `{artifact_root}waves/expected-files.json`(요구 ID → 경로 목록)으로 쓴다. 입력은 요구 ID 와 AC, `existing_modules`, 저장소다. 수렴 레지스트리(`run-ledger.md`)가 `orchestrator-only` · `regenerate` 로 표시한 경로는 넣지 않는다 — 그 경로는 호스트가 병합 뒤에 처리한다(`parallel-waves.md` PW-12). 이 지도는 다음 단계의 `--files` 로만 넘기고 어느 SRS 필드에도 쓰지 않는다.
+6. **초안** — `speckiwi orchestrate wave propose --target <제품 target> --files {artifact_root}waves/expected-files.json --run-id {run_id} --json`. 도구가 노드(`wave-1`, `wave-2`, …) · `acs` · `edges` · `files` 를 정한다. run 이 target 의 요구 일부만 구현하면 `--target` 대신 `--requirements <남기는 요구 ID>` 를 주어 그래프의 `scope.requirements` 에 남기는 요구를 적고, 그 좁힘에 대한 사용자 동의를 run 당 한 번 받아 기록한다(`out-of-scope-user-consent`, `--auto` 도 멈춘다).
+7. **메타데이터** — 에이전트가 그래프 최상위 `prd` 에 run 의 PRD 경로(1단계의 PRD)를 적고, 노드마다 `title` · `purpose` · `description` · `cautions` · `done_when` · `on_complete` · `github_issues` 를 채운다. `wave show` 는 그 `prd` 로 노드의 PRD 항목(§4)을 푼다 — 없으면 `prd_items` 가 비어 검증자가 받을 PRD 항목도 빈다.
+8. **확정** — `{artifact_root}waves/waves.json` 에 `schema_version` 2.0.0 으로 쓰고 `speckiwi orchestrate wave check --waves {artifact_root}waves/waves.json --run-id {run_id} --json` 을 통과시킨 뒤 명시 pathspec 으로 커밋한다. error 진단이 하나라도 있으면 dispatch 하지 않고 그래프를 고쳐 다시 check 한다. 커밋한 그래프의 `graph {path, digest}`(digest 는 그래프 파일 바이트의 sha256)를 run 의 첫 graph 줄(그래프를 커밋한 뒤 처음 쓰는 저널 줄)에 싣는다 — 도구가 run 의 최신 그래프를 그 줄과 `redecompose` 줄에서 찾는다.
 
----
+## 3. 배정은 그래프의 `acs` 다
 
-## 2. Wave 분해 — kiwi-wave-master §3 에서 이동
+범위의 살아 있는 AC 는 정확히 한 노드의 `acs` 에 든다 — 그것이 배정이다. 판정은 `orchestrate wave check` 의 분할 검사(`ac-unassigned` · `ac-assigned-twice` · `ac-out-of-scope`)가 하고, 저작 전후 요구 스냅샷의 차집합도 손으로 채우는 요구 목록도 없다. 한 요구의 AC 가 여러 노드로 나뉘면 같은 검사가 `ac-split` 경고를 낸다 — 요구 하나는 한 노드에 통째로 든다. 노드의 요구 집합은 `acs` 에서 계산되며 `speckiwi orchestrate wave show --wave <id> --json` 의 요구 집합으로 읽는다.
 
-입력 연구·계획 문서를 **순서(order)가 있는 여러 wave 로 분해(decompose)** 한다. 각 wave 는 서로 정렬된(ordered) 작업 묶음이며, 한 wave 가 다른 wave 의 결과를 딛고 서면 그 wave 가 토대가 된다 — 그 관계는 아래 `depends_on[]` 으로 선언한다.
+## 4. 노드의 PRD 항목
 
-**두 갈래 wave-split 휴리스틱**:
+노드의 PRD 항목은 그 노드 요구들의 Rationale 이 인용한 PRD 항목의 합집합이고 `orchestrate wave show` 의 `prd_items` 로 읽는다. 노드마다 PRD 항목을 적는 발췌는 쓰지 않는다.
 
-1. **헤더 우선(headers-first)**: 문서에 **명시적 wave 구조**(헤더·제목·섹션, document structure)가 있으면 그 헤더/섹션 경계를 그대로 wave 경계로 채택한다. 예: `## Phase 1`, `## 1단계`, 최상위 섹션 제목 등이 자연스러운 wave 경계다.
-2. **그렇지 않으면(otherwise)**: 명시적 wave 구조가 **없으면**(when absent) **서브에이전트**가 문서의 **전체 흐름(overall flow)** 을 **분석(analyze)** 하여, 서로 응집된 3~8 개의 하위 목표(coherent sub-goals)로 wave 를 나눈다. 각 하위 목표가 하나의 wave 가 된다.
+## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`
 
-분해 결과는 순서가 확정된 `wave-1, wave-2, …, wave-N` 목록과 wave 마다의 `depends_on[]` 이며, 순서가 이후 target 등록 순서를, 의존이 병렬 실행의 stage 를 결정한다(`parallel-waves.md §3`).
+처음 저작 뒤와 증분 저작(`wave-srs-registration.md §2`) 뒤마다 `speckiwi prd coverage <PRD> --target <제품 target> --json` 을 돌린다. 그 `uncitedItems` 의 항목은 `speckiwi targets --json` 이 나열하는 다른 target `t` 마다 `speckiwi prd coverage <PRD> --target <t> --json` 의 `uncitedItems` 에도 있을 때만 이 run 에서 빠진 항목으로 센다. 빠진 항목이 하나라도 있으면 다음 dispatch 전에 `wave-decomposition-coverage-gap` 으로 멈춘다. 다른 target 의 요구가 인용한 항목(그 target 의 `uncitedItems` 에 없는 항목)은 멈추지 않고 그 target 에 배정되었다고 보고한다.
 
-**wave 의존 선언** — wave 마다 `depends_on[]`(자기보다 앞 wave 의 id 목록)을 선언한다. **선언이 없는 wave 는 앞 wave 전부에 의존한다** — 모든 wave 가 하나씩 도는 안전한 기본값이다. 분해 서브에이전트는 한 wave 가 앞 wave 의 결과를 하나도 딛지 않는다고 확인할 수 있을 때에만 그 의존을 뺀다. 두 wave 가 같은 기존 모듈을 건드리면(`existing_modules`) 의존을 선언한다 — 선언하지 않아도 쓰기 집합(`files[]`)이 겹치면 stage 계산이 둘을 가르지만, 의미상의 선후는 쓰기 집합이 보지 못한다. 선언은 설계 기준선(§3)의 wave 항목에 함께 적는다.
+## 6. 재분해 — 아직 dispatch 하지 않은 노드만
 
-**wave 선언 파일** — 분해 결과를 `{artifact_root}waves/waves.json` 에 FR-NODE-216 스키마로 쓴다: `{ "schema_version": "1.0.0", "waves": [ { "wave", "depends_on", "files", "requirements", "sds"? } ] }`. 항목 이름은 wave 순서대로 `wave-1`, `wave-2`, … 이다 — 저널이 해석하는 유일한 형태이고, 단위 id `{run_id}-wave-{n}` 과 lane id 가 여기서 나온다. `schema_version` · `waves` · `wave` · `depends_on` · `files` · `requirements` · `sds` 밖의 키는 쓰지 않는다. 스케줄과 준비 집합은 이 파일을 읽는 도구가 계산한다(`parallel-waves.md §3`).
+**남은 노드**는 `speckiwi orchestrate wave status --waves <그래프> --run-id {run_id} --json` 의 행이 `dispatched: false` 이고 저널 줄이 없는(`ts` 가 null) 노드다 — 저널을 손으로 읽지 않는다. 그 밖의 노드 — dispatch 했거나, `--sds` 의 SDS 줄처럼 이미 저널 줄에 이름이 오른 노드 — 의 순서 · 범위 · 의존은 바꾸지 않는다.
 
-`files[]` 는 분해 시점에 그 wave 의 기존 모듈(`existing_modules`)과 새로 만들 것으로 예상되는 경로로 채운다. 수렴 레지스트리(`run-ledger.md`)가 `orchestrator-only` 또는 `regenerate` 로 표시한 경로는 넣지 않는다 — 그 경로는 호스트가 병합 뒤에 처리한다(`parallel-waves.md` PW-12). `files[]` 가 빈 wave 는 혼자 stage 에 든다.
+run 도중 새 요구가 생기면(`wave-srs-registration.md §2`) 영향 분석으로 그 요구의 예상 파일 F 를 정하고 아래 규칙으로만 배치한다.
 
-`requirements[]` 는 분해 시점에는 비워 두고, 그 wave 의 SRS 가 저작된 뒤 스케줄 전에 3.b 배정 집합(`register-wave-srs` result 줄의 `allocation.requirement_ids[]`)으로 채운다(`parallel-waves.md` PW-1). `sds[]` 는 `--sds` 일 때만 그 wave 의 SDS 파일로 채운다.
+- **R1** — F 가 남은 노드 하나와만 겹치면 그 노드에 넣는다.
+- **R2** — F 가 남은 노드 여럿과 겹치면 위상 순서로 마지막인 노드에 넣고, 나머지 노드에서 그 노드로 간선을 더하며, 그 결과 사이클을 이루는 노드는 합친다.
+- **R3** — F 가 남은 노드가 아닌 노드와만 겹치면 새 노드를 만든다. run 당 추가 wave 상한 3 에 센다(`wave-append-cap-exhausted`).
+- **R4** — F 가 어느 노드와도 겹치지 않으면 간선 없는 새 노드를 만들거나, 그 요구가 의존하는 요구를 가진 노드에 넣는다.
+- **R5** — 그 결과 노드가 `wave propose` 의 크기 상한을 넘으면, 남은 노드일 때만 둘로 나눈다.
 
-wave-split **서브에이전트**에는 **기존 모듈**과 그 **의존** 방향의 구조 요약을 함께 전달한다 — 기존 구조를 모르는 분해는 한 모듈을 여러 wave 가 동시에 건드리도록 잘라 교차 wave 회귀를 만든다. 각 wave 는 건드릴 것으로 예상되는 기존 모듈을 `existing_modules` 에 기록한다.
+변경마다 그래프의 새 판을 늘 같은 경로 `{artifact_root}waves/waves.json` 에 덮어쓰고, 그 판의 `graph {path, digest}` 를 실은 `phase="redecompose"` 줄을 `speckiwi orchestrate journal append --run-id {run_id} --payload-file <그 줄>` 로 덧붙인 뒤, 다음 dispatch 전에 `orchestrate wave check` 와 `orchestrate schedule waves` 를 다시 통과시킨다.
 
----
+## 7. 제외 분류
 
-## 3. 설계 기준선(design baseline) 물질화 — kiwi-wave-master §3.1 에서 이동
-
-분해 결과를 **설계 기준선(design baseline)** 으로 물질화한다. wave id 마다 그 wave 를 고정한 입력 문서의 `source_file` · `heading_path` · `line_start` · `line_end` 매핑을 만들고, 어느 wave 에도 배정하지 않은 최상위 섹션은 `out_of_scope` 에 `{ heading, reason }` 로, 그 wave 가 건드릴 것으로 예상되는 기존 모듈은 `existing_modules` 에 적는다.
-
-`out_of_scope` 의 각 항목은 `{ heading, reason, exclusion_class }` 이며, `exclusion_class` 는 `already-implemented` / `superseded` / `external-ownership` / `user-excluded` / `non-normative` 다섯 값의 **closed** 목록이다 — 목록 밖의 값을 쓰지 않는다. 자유 텍스트 `reason` 한 줄로 분모를 줄이는 경로를 닫는다.
-
-이 매핑을 `{artifact_root}design-baseline.json` 로 영속하고, 그 경로를 각 wave 의 **첫 `in_progress`** 이벤트의 `design_baseline` 필드에 실어 `waves.jsonl` 에 기록한다.
-
-같은 시점에 그 wave 범위의 설계 항목을 `design_items` 로 **전량** 고정한다 — 각 항목은 `id` · `heading_path` · `line_start` · `line_end` · `statement` 를 갖는다.
-
-항목 단위는 **최하위 헤딩 아래 규범 문장 1건 = 1 항목**이며, 예시·근거 문장은 **항목이 아니다** — 단위를 굵게 잡으면 `unmapped=0` 이 공짜가 된다.
-
-어느 한 wave 의 scope 에도 속하지 않는 **통합 항목**은 같은 시점에 `integration_items` 로 전량 고정한다 — 각 항목은 `design_items` 와 같은 `id` · `heading_path` · `line_start` · `line_end` · `statement` 를 갖는다. 최종 패스(§5.6)의 분모가 여기서 나온다.
-
-wave 별 설계 **본문 발췌**를 `{artifact_root}design-baseline/wave-{n}.md` 로 함께 물질화하고, 그 경로를 `design_baseline` 의 `excerpt_path` 에 기록한다 — 증거 번들과 저작 입력이 같은 아티팩트를 가리키게 한다.
-
-PRD 가 있는 run 이면 각 wave 발췌의 맨 위에 `PRD items: PRD-<n>, …` 한 줄로 그 wave 가 맡는 PRD 항목 ID 를 적는다 — 모든 `intent` · `goal` · `in-scope` 항목이 어느 한 wave 의 이 줄에 나와야 wave 분해가 끝난다(FR-FLOW-204 AC-9). `Effect` 가 in-scope 인 확정 proposal 도 in-scope 항목으로 이 줄에 나와야 한다.
-
-사용자 제약은 판정하기 전에 **수집한다** — wave 분해 입력(사용자 프롬프트 · 대화 로그 · `--constraint` 인자)에서 선언된 **제약을 추출**해 호명 단위로 아티팩트에 적는다. 수집 단계가 없으면 배열은 언제나 비고, 그때 `constraint_layer.expected=0` 이라 어떤 판정도 실패시키지 못한다.
-
-추출 단위는 선언된 **제약 문장 1건 = 1 항목**이며, 각 항목은 `id` · `statement` · `source` 를 갖는다 — `source` 는 그 제약이 선언된 위치(프롬프트 / 대화 / `--constraint`)다.
-
-사용자 제약은 **제약이 없어도 빈 배열** 아티팩트를 반드시 만들어 그 경로를 `constraints_path` 에 **항상 기록**한다 — 빈 배열은 반증 가능한 주장이고, 필드 부재는 침묵이다.
-
-**후발 제약** — 뒤 wave 실행 도중 새로 선언된 제약 — 은 앞선 아티팩트를 제자리에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 `in_progress` 이벤트를 1줄 append 하며, 해소는 언제나 **최신** `constraints_path` 를 읽는다 — append-only 저널에서 제자리 수정은 앞 라운드가 무엇을 근거로 판정했는지를 사후에 바꾼다.
-
-이월(carry-forward)로 신설된 wave 는 입력 문서의 어느 구간에도 대응하지 않으므로, 설계 기준선 대신 **이월 finding 목록**을 그 wave 의 설계 계층 분모로 삼는다 — **이월 finding 1건 = `design_items` 1 항목**으로 변환하며(`id` 는 그 finding id, `statement` 는 그 finding 요약, `heading_path` 는 `carried-forward`, 줄 좌표는 `0`), 그 목록을 markdown 으로 물질화해 `excerpt_path` 에 기록한다. 변환하지 않으면 §5.5.2 의 `design_layer.expected` 규칙과 §4 의 발췌 전달 의무가 이 wave 에서 동시에 성립 불가능해진다.
-
-설계 기준선 아티팩트는 `waves.jsonl` 만으로 해소한다. 해소는 대화 상태에 의존하지 않는다 — 재개 세션에는 분해 대화가 남아 있지 않으므로, 저널의 `design_baseline.path` 하나로 도달하지 못하면 §5.5 의 설계 계층 분모가 통째로 사라진다.
-
----
-
-## 4. 분해 커버리지 게이트 — kiwi-wave-master §3.2 에서 이동
-
-설계 기준선 매핑을 입력의 **모든** 최상위 섹션 집합과 대조한다. 어느 wave 에도 배정되지 않은 미배정 섹션을 **전량** 보고한다 — 상위 N 건만 보고하면 남은 갭이 이미 덮인 것으로 읽힌다.
-
-**대조 단위**는 최상위 섹션 **한 겹이 아니라** §3.1 이 고정한 `design_items` **전량**이다 — 하위 절에만 있는 미배정 설계는 최상위 대조를 그대로 통과한다.
-
-미배정 섹션이 남아 있고 그에 대한 out-of-scope 사유가 기록되지 않았으면 §4 target 등록에 **진입하지 않는다**.
-
-out-of-scope 는 판단이 아니라 기록이다 — 사유는 설계 기준선의 `out_of_scope` 에 `{ heading, reason }` 로 남기며, 기록되지 않은 배제는 커버리지 갭과 구분되지 않는다(§0.G `wave-decomposition-coverage-gap`, §0.5 예외).
-
-기록만으로는 부족하다 — `out_of_scope` 에 항목이 하나라도 있으면 §0.G `out-of-scope-user-consent` 로 **`--auto` 라도 중단**하고 사용자 확인을 받는다. 배제는 그 항목을 REQ·설계·제약·보존 어느 분모에도 넣지 않으므로, run 전체에서 한 번도 검증되지 않는 유일한 경로다.
+제외는 판단이 아니라 기록이다. PRD 의 exclusion 항목과 §2 의 범위 좁힘 기록은 `exclusion_class` 를 `already-implemented` / `superseded` / `external-ownership` / `user-excluded` / `non-normative` 다섯 값의 **closed** 목록에서 고른다 — 목록 밖의 값을 쓰지 않는다. 자유 텍스트 사유 한 줄로 범위를 줄이는 경로를 닫는다.

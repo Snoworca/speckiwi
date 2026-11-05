@@ -9,7 +9,6 @@ import { REPO_ROOT, section, tableRows } from "./kiwi-orchestrator-variants.js";
 // @req FR-FLOW-035  kiwi-wave-master forwards --mini / --loops N to every per-wave call
 // @req FR-FLOW-123  the worktree procedure cites the join, the verdict and the merge instead of restating them
 // @req FR-FLOW-134  the --auto safety gate names the directly-spawned review child beside the per-wave children
-// @req FR-FLOW-029  a wave's target is registered with a scope bounded to that wave
 //
 // The contract ships in Korean (claude) and English (codex, etc and the .agents mirror), so every
 // contract assertion carries both spellings of the one clause — and is held to the `**PW-n` step or
@@ -75,7 +74,7 @@ describe("FR-FLOW-188 AC-4 — a mismatch with the SRS, the SDS or the recorded 
     );
     const waveVerify = section(waveMaster(bundle), /^## 5\.5 /m).split(/^### /m)[0] as string;
     expect(lineOf(waveVerify, /원래 워커가 아닌/), `${bundle}: kiwi-wave-master §5.5`).toMatch(
-      /병합된 결과가 SRS · SDS · 기록된 결정과 다르다고 판정하면 원래 워커가 아닌 독립 서브에이전트가 고치고 두 검증자가 다시 검증한다/
+      /병합된 결과가 SRS · SDS · 기록된 결정과 다르다고 판정하면 원래 워커가 아닌 독립 서브에이전트가 고치고 새 검증자가 다시 검증한다/
     );
   });
 });
@@ -102,25 +101,26 @@ describe("FR-FLOW-188 AC-8 — the host reviews only its own post-merge commits,
   });
 });
 
-describe("FR-FLOW-187 AC-3 — the allocation check is a non-empty union equal to the allocated set", () => {
-  it.each(CONTRACTS)("FR-FLOW-187 AC-3 %s: PW-2 checks the union is non-empty and equal, and the gate row names all three failures", (copy) => {
+describe("FR-FLOW-187 AC-3 — under --sds the SDS @req union is non-empty and equals the node's requirement set", () => {
+  // Rewritten 2026-11-05: the `unallocated-req-id` gate over `requirements[]` expired with FR-FLOW-212 AC-4 —
+  // the `orchestrate wave check` partition (FR-NODE-246) replaced it, and its absence is pinned in
+  // wave-srs-first.fr-flow-212.test.ts. The SDS half of the check stays and stops at
+  // `child-pipeline-needs-user-or-failed`; `files-not-grounded` still covers the SDS Files.
+  it.each(CONTRACTS)("FR-FLOW-187 AC-3 %s: PW-2 checks the union is non-empty and equal, and the gate row names the SDS case", (copy) => {
     const text = read(copy);
-    expect(step(text, 2), `${copy}: PW-2`).toMatch(/그 합집합이 비어 있지 않고 배정 집합과 같은지 확인한다|checks that the union is not empty and equals the allocated set/);
-    const predicate = gatePredicate(text, "unallocated-req-id");
-    // FR-FLOW-187 AC-3 (4.1.0): the gate reads the wave entry's requirements[], and the SDS @req union only under --sds.
-    expect(predicate, `${copy}: gate row`).toMatch(/`requirements\[\]` (가 비었거나|is empty)/);
-    expect(predicate).toMatch(/배정 집합과 다름|differs from the wave's allocated set/);
-    expect(predicate).toMatch(/`--sds` 면 wave SDS 들의 `@req` 합집합|under `--sds` the union of the wave SDS files' `@req` sets/);
+    expect(step(text, 2), `${copy}: PW-2`).toMatch(/그 합집합이 비어 있지 않고 노드의 요구 집합\(`orchestrate wave show`\)과 같은지 확인한다|checks that the union is not empty and equals the node's requirement set \(`orchestrate wave show`\)/);
+    expect(step(text, 2), `${copy}: PW-2 stop`).toContain("`child-pipeline-needs-user-or-failed`");
+    expect(gatePredicate(text, "child-pipeline-needs-user-or-failed")).toMatch(/`--sds` 면 wave SDS 들의 `@req` 합집합이 노드의 요구 집합과 다름|under `--sds` the union of the wave SDS files' `@req` sets differs from the node's requirement set/);
   });
 
-  it.each(BUNDLES)("FR-FLOW-187 AC-3 %s: the orchestrator's 3.c′ check spans every part and requires a non-empty union", (bundle) => {
-    const check = lineOf(orchestrator(bundle), /^\*\*3\.c′ 배정 검사\*\*/);
+  it.each(BUNDLES)("FR-FLOW-187 AC-3 %s: the orchestrator's 3.c′ check spans every part and requires equality with the node's set", (bundle) => {
+    const check = lineOf(orchestrator(bundle), /^\*\*3\.c′ readiness 와 승급\*\*/);
     expect(check).toMatch(/wave 의 SDS 파일마다\(조각으로 나뉘었으면 조각 전부\)/);
-    // FR-FLOW-187 AC-3 (4.1.0): requirements[] equals the allocation; under --sds the SDS union must equal it too.
-    expect(check).toMatch(/`requirements\[\]` 가 비어 있지 않고 그 wave 의 3\.b 배정 집합과 같아야 한다/);
-    expect(check).toMatch(/합집합도 그 배정 집합과 같아야 한다/);
-    expect(gatePredicate(orchestrator(bundle), "unallocated-req-id")).toMatch(/`requirements\[\]` 가 비었거나/);
-    expect(gatePredicate(waveMaster(bundle), "unallocated-req-id")).toMatch(/`requirements\[\]` 가 비었거나/);
+    expect(check).toMatch(/합집합이 그 노드의 요구 집합과 같아야 한다/);
+    expect(check).toContain("`child-pipeline-needs-user-or-failed`");
+    for (const skill of [orchestrator(bundle), waveMaster(bundle)]) {
+      expect(gatePredicate(skill, "child-pipeline-needs-user-or-failed")).toMatch(/`--sds` 면 wave SDS 들의 `@req` 합집합이 노드의 요구 집합과 다름/);
+    }
     expect(gatePredicate(orchestrator(bundle), "files-not-grounded")).toMatch(/`files\[\]`\(`--sds` 면 SDS 의 Files · Test Plan 경로도\)/);
   });
 });
@@ -128,16 +128,22 @@ describe("FR-FLOW-187 AC-3 — the allocation check is a non-empty union equal t
 describe("FR-FLOW-035 AC-3 — kiwi-wave-master forwards the loop flags to every per-wave call", () => {
   const LOOP = /\[--mini ?\| ?--loops N\]/;
 
-  it.each(BUNDLES)("FR-FLOW-035 AC-3 %s: the per-wave /kiwi-srs and /kiwi-srs-feasibility calls carry the loop flags", (bundle) => {
-    const register = section(waveMaster(bundle), /^## 4\. /m);
-    const calls = fences(register).join("\n").split(/\n(?=Skill\()/);
-    for (const skill of ["kiwi-srs", "kiwi-srs-feasibility"]) {
-      const call = calls.find((c) => c.includes(`skill: "${skill}"`)) ?? "";
-      expect(call, `${bundle}: §4 ${skill} call`).not.toBe("");
-      expect(LOOP.test(call), `${bundle}: §4 ${skill} call must carry the loop flags`).toBe(true);
-    }
+  // Rewritten 2026-11-05 with FR-FLOW-212 AC-3 and FR-FLOW-213 AC-1: wave-master no longer writes its own
+  // per-wave kiwi-srs calls; the initial and incremental kiwi-srs calls and the run's feasibility call live
+  // in the shared contracts the skill cites, and each carries the loop flags there.
+  it.each(BUNDLES)("FR-FLOW-035 AC-3 %s: the kiwi-srs and kiwi-srs-feasibility calls the skill cites carry the loop flags", (bundle) => {
+    const registration = read(`skills/${bundle}/_shared/kiwi/wave-srs-registration.md`);
+    const decomposition = read(`skills/${bundle}/_shared/kiwi/wave-decomposition.md`);
+    const srsCalls = fences(registration).filter((f) => f.includes('skill: "kiwi-srs"'));
+    expect(srsCalls, `${bundle}: the two kiwi-srs calls`).toHaveLength(2);
+    for (const call of srsCalls) expect(LOOP.test(call), `${bundle}: ${call}`).toBe(true);
+    const feasibility = decomposition.split("\n").find((line) => line.includes('Skill({ skill: "kiwi-srs-feasibility"')) ?? "";
+    expect(LOOP.test(feasibility), `${bundle}: the run's feasibility call must carry the loop flags`).toBe(true);
+    const zero = section(waveMaster(bundle), /^## 0\. /m);
+    expect(zero).toContain("wave-srs-registration.md");
+    expect(zero).toContain("wave-decomposition.md");
     const propagate = section(waveMaster(bundle), /^### 7\.3 /m);
-    expect(propagate).toMatch(/per-wave `kiwi-srs` 와 `parallel-waves\.md` 가 wave 마다 부르는 호출에 해당 플래그를 그대로 \*\*전파\(propagate\)\*\* 한다/);
+    expect(propagate).toMatch(/`kiwi-srs` · `kiwi-srs-feasibility` 호출과 `parallel-waves\.md` 가 wave 마다 부르는 호출에 해당 플래그를 그대로 \*\*전파\(propagate\)\*\* 한다/);
   });
 
   // PW-15 / PW-17 (`kiwi-sds --close`) are left out: close-out runs no loop, so it has no round cap.
@@ -202,17 +208,6 @@ describe("FR-FLOW-134 AC-8 — the --auto safety gate enumerates the review chil
   });
 });
 
-describe("FR-FLOW-029 AC-2 — each wave's target is registered with a scope bounded to that wave", () => {
-  it.each(BUNDLES)("FR-FLOW-029 AC-2 %s: §4 registers wave-{n} with an explicit scope and bounds every later stage to it", (bundle) => {
-    const register = section(waveMaster(bundle), /^## 4\. /m);
-    expect(lineOf(register, /^각 wave 마다/)).toMatch(
-      /^각 wave 마다 `[/$]kiwi-srs` 를 호출하여 전용 `wave-\{n\}` \*\*target\(타깃\)\*\* 을 등록하되, 그 wave 의 \*\*작업 범위\(work scope\)\*\* 를 명시적으로 지정한다/
-    );
-    expect(lineOf(register, /^이때 지정한/)).toMatch(
-      /\*\*범위\(scope\)\*\* 는 \*\*해당 wave 로 한정\(bounded\)\*\* 되어야 한다 — 뒤따르는 feasibility·SDS 작성·review 단계가 그 wave 의 범위를 \*\*넘어서지\(beyond\)\*\* 않고/
-    );
-    const call = fences(register).join("\n");
-    expect(call).toMatch(/skill: "kiwi-srs", args: "REQ_PATH=<그 wave 의 excerpt_path>[^"]*TARGET=wave-\{n\}/);
-    expect(call).toMatch(/skill: "kiwi-srs-feasibility", args: "TARGET=wave-\{n\}/);
-  });
-});
+// FR-FLOW-029 AC-2 (a per-wave target with a bounded scope) expired 2026-11-05 naming FR-FLOW-212;
+// the replacement (one product-target authoring, no wave-{n} targets) is pinned in
+// wave-srs-first.fr-flow-212.test.ts.

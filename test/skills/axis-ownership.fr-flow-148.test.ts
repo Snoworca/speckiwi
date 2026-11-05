@@ -54,8 +54,10 @@ describe("FR-FLOW-148 AC-1 — the mock prohibition has one owner", () => {
   it.each(COPIES)("%s keeps it blocking under its remaining owner", (_label, relPath) => {
     // Ownership moves; severity does not. A narrowing that quietly stopped a defect from blocking
     // would be a different change than the one this requirement asks for.
-    const critical = severityLine(body(relPath), "CRITICAL");
-    expect(critical, "§4.2 declares no CRITICAL line").not.toBe("");
+    // FR-FLOW-221 AC-3 (5.3.0): §4.2 keeps a finding by a run's proof instead of a CRITICAL line, so the
+    // blocking line is the keep rule, and the mock prohibition stays attributed to S2 on it.
+    const critical = severityLine(body(relPath), "finding 은 실패하는 테스트 · 재현 · 명령 출력이 입증할 때만 남는다(kept).");
+    expect(critical, "§4.2 declares no keep rule").not.toBe("");
     expect(critical, "the mock prohibition stopped blocking").toMatch(/Mock/i);
     // And it must be attributed to the axis that now owns it, not left unowned.
     expect(critical, "the mock prohibition no longer names its owner").toMatch(/Mock 사용 \(S2\)/);

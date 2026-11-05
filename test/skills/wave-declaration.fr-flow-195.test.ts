@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { section, tableRows } from "./kiwi-orchestrator-variants.js";
-import { RENDERINGS, flat, readRepoFile, scanUnits, skillDirs, skillFiles } from "./kiwi-renderings.js";
+import { RENDERINGS, flat, readRepoFile, scanUnits, skillDirs } from "./kiwi-renderings.js";
 
 // @req FR-FLOW-195 — waves are declared in a wave declaration file (`{artifact_root}waves/waves.json`,
 // FR-NODE-216 schema), scheduled with `orchestrate schedule waves --waves` and read back with
@@ -32,19 +32,22 @@ function gateRow(text: string, gate: string): string {
   return tableRows(text).find((row) => (row.cells[0] ?? "").replace(/`/g, "") === gate)?.cells.join(" | ") ?? "";
 }
 
-describe("FR-FLOW-195 AC-1 — the decomposition writes waves.json with files[] and requirements[]", () => {
+describe("FR-FLOW-195 AC-1 — the decomposition writes waves.json as a 2.0.0 graph with files and acs", () => {
+  // Rewritten 2026-11-05 with FR-FLOW-212 AC-1 and AC-4: the decomposition drafts a schema 2.0.0 work
+  // graph through `orchestrate wave propose`; a node's requirement set is computed from its `acs`
+  // instead of a requirements[] list filled from an allocation after authoring.
   it.each(RENDERINGS)("%s/_shared/kiwi/wave-decomposition.md", (rendering) => {
     const text = flat(shared(rendering, "wave-decomposition.md"));
     expect(text).toContain("{artifact_root}waves/waves.json");
-    for (const key of ["`schema_version`", "`wave`", "`depends_on`", "`files`", "`requirements`", "`sds`"]) expect(text, `${rendering}: the schema lost ${key}`).toContain(key);
+    for (const key of ["`schema_version` 2.0.0", "`acs`", "`edges`", "`files`"]) expect(text, `${rendering}: the schema lost ${key}`).toContain(key);
     expect(text).toMatch(/`wave-1`, `wave-2`/);
-    const files = paragraph(shared(rendering, "wave-decomposition.md"), /`files\[\]`[^]*(기존 모듈|existing modules)/);
-    expect(files, `${rendering}: no rule for how files[] is filled`).not.toBe("");
+    const files = paragraph(shared(rendering, "wave-decomposition.md"), /\*\*영향 분석\*\*[^]*`existing_modules`/);
+    expect(files, `${rendering}: no rule for how the expected files are filled`).not.toBe("");
     expect(files).toMatch(/`orchestrator-only`/);
     expect(files).toMatch(/`regenerate`/);
     expect(files).toMatch(/PW-12/);
-    const requirements = paragraph(shared(rendering, "wave-decomposition.md"), /`requirements\[\]`[^]*allocation\.requirement_ids\[\]/);
-    expect(requirements, `${rendering}: no rule for how requirements[] is filled`).not.toBe("");
+    const requirements = paragraph(shared(rendering, "wave-decomposition.md"), /노드의 요구 집합은 `acs` 에서 계산되며/);
+    expect(requirements, `${rendering}: no rule for how a node's requirement set is computed`).not.toBe("");
   });
 });
 
@@ -59,32 +62,17 @@ describe("FR-FLOW-195 AC-2 — readiness and stages come from the tools over wav
   });
 });
 
-describe("FR-FLOW-195 AC-3 — unallocated-req-id checks requirements[]; requirement-not-ready stops the wave before dispatch; files-not-grounded covers files[]", () => {
-  it.each(RENDERINGS)("%s/_shared/kiwi/parallel-waves.md §4", (rendering) => {
-    const gates = section(shared(rendering, "parallel-waves.md"), /^##\s*4\.\s/);
-    const unallocated = gateRow(gates, "unallocated-req-id");
-    expect(unallocated).toContain("`requirements[]`");
-    expect(unallocated).toMatch(/`--sds`/);
-    const notReady = gateRow(gates, "requirement-not-ready");
-    expect(notReady, `${rendering}: requirement-not-ready is not a gate of the contract`).not.toBe("");
-    expect(notReady).toMatch(/dispatch/);
-    expect(gateRow(gates, "files-not-grounded")).toContain("`files[]`");
-  });
+// FR-FLOW-195 AC-3 (gate unallocated-req-id over requirements[]) expired 2026-11-05 naming FR-NODE-246:
+// the partition check of `orchestrate wave check` replaced it (FR-FLOW-212 AC-4), and the absence of the
+// gate is pinned in wave-srs-first.fr-flow-212.test.ts.
 
-  for (const skill of ["kiwi-orchestrator", "kiwi-wave-master"]) {
-    it.each(RENDERINGS.filter((rendering) => skillDirs(rendering).includes(skill)))(`%s/${skill}: the unallocated-req-id row reads requirements[]`, (rendering) => {
-      const rows = skillFiles(rendering, skill).map((doc) => gateRow(doc.text, "unallocated-req-id")).filter((row) => row !== "");
-      expect(rows.length).toBeGreaterThan(0);
-      for (const row of rows) expect(row).toContain("`requirements[]`");
-    });
-  }
-});
-
-describe("FR-FLOW-195 AC-4 — the worker runs kiwi-pm on the wave's requirements[], and PW-8 judges against the lock's writeSet", () => {
+// FR-FLOW-195 AC-4 as rewritten for 5.3.0 (FR-FLOW-216 AC-1): one kiwi-pm call per requirement of the node,
+// with a run id distinct per requirement.
+describe("FR-FLOW-195 AC-4 — the worker runs kiwi-pm per requirement of the node, and PW-8 judges against the lock's writeSet", () => {
   it.each(RENDERINGS)("%s", (rendering) => {
     const worker = pw(rendering, 6);
     expect(worker).toMatch(
-      /\/kiwi-pm --req-filter <[^>]*requirements\[\][^>]*> --run-id \{run_id\}-wave-\{n\}\[-r\{m\}\] --session-suffix w\{n\}s\{s\}l\{k\} --no-final --no-pipeline-emit --commit-lane-work --defer-srs-mutation/
+      /\/kiwi-pm --req-filter <(?:요구 하나|one requirement)> --run-id \{run_id\}-wave-\{n\}\[-r\{m\}\]-<[^>]+> --session-suffix w\{n\}s\{s\}l\{k\} --no-final --no-pipeline-emit --commit-lane-work --defer-srs-mutation/
     );
     expect(worker).toMatch(/`--sds` 면[^.]*`--sds <[^>]+>`|[Uu]nder `--sds`[^.]*`--sds <[^>]+>`/);
     const verdict = pw(rendering, 8);
@@ -124,10 +112,12 @@ describe("FR-FLOW-195 AC-7 — worktree-lane, wave-srs-registration and run-ledg
     expect(flat(shared(rendering, "worktree-lane.md"))).toMatch(/`docs\/sds\/` 도 마찬가지다|nor under `docs\/sds\/`/);
   });
 
-  it.each(RENDERINGS)("%s/_shared/kiwi/wave-srs-registration.md: after SRS authoring comes the declaration update and scheduling", (rendering) => {
+  // Rewritten 2026-11-05 with FR-FLOW-212 AC-3: the contract holds the initial authoring, which precedes
+  // the decomposition, and the incremental authoring between PW-10 and PW-13.
+  it.each(RENDERINGS)("%s/_shared/kiwi/wave-srs-registration.md: the initial authoring precedes decomposition and the incremental one sits between replay and verification", (rendering) => {
     const text = flat(shared(rendering, "wave-srs-registration.md"));
-    expect(text).toMatch(/선언 갱신과 스케줄링|declaration update and scheduling/);
-    expect(text).toMatch(/PW-2[^.]*`--sds`|`--sds`[^.]*PW-2/);
+    expect(text).toContain("처음 저작 — run 당 한 번, 분해 앞");
+    expect(text).toContain("증분 저작 — stage 당 한 번, PW-10 재생 뒤 · PW-13 검증 앞");
   });
 
   it.each(RENDERINGS)("%s/_shared/kiwi/run-ledger.md: drift digest 3 covers declaration-entry digests, and the recipes keep registry paths out of files[]", (rendering) => {

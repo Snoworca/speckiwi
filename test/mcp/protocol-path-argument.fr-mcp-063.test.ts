@@ -52,7 +52,8 @@ const WORKSPACE_ROOT_KEY = "workspaceRoot";
 // 89 since 4.1.0 added `orchestrate_wave_status` (IR-CLI-104 AC-5).
 // 91 since 5.2.0 added `rename_scope` (IR-MCP-006) and `expire_acceptance_criterion` (FR-NODE-243 AC-6).
 // 97 since 5.2.0 added the six PRD tools (FR-NODE-240, FR-NODE-241, FR-NODE-242).
-const REGISTERED_TOOL_COUNT = 97;
+// 102 since 5.3.0 added the five work-graph and preservation tools (IR-MCP-008).
+const REGISTERED_TOOL_COUNT = 102;
 
 /**
  * The refusing set is held to names rather than to a size.

@@ -70,25 +70,7 @@ function sectionUnder(body: string, headingRe: RegExp): string {
 }
 
 
-/**
- * @req FR-FLOW-110 — a section whose rules moved into a `_shared/kiwi/` module is scoped to the
- * skill's own section PLUS that module's appended region. Two bounded regions, never the whole body.
- */
-function withModule(body: string, headingRe: RegExp, moduleName: string): string {
-  return `${sectionUnder(body, headingRe)}\n${moduleRegion(body, moduleName)}`;
-}
-
 /** The `verify-loop.md` stance section (moved from kiwi-wave-master §5.5.2). */
-/** The `wave-decomposition.md` sections (moved from kiwi-wave-master §3, §3.1, §3.2). */
-const SPLIT_SECTION = /^#{2,4}\s.*\[wave-decomposition\.md\].*Wave 분해/;
-const BASELINE_SECTION = /^#{2,4}\s.*설계 기준선/;
-const COVERAGE_SECTION = /^#{2,4}\s.*분해 커버리지 게이트/;
-
-/** Line index of the first heading matching `re`, or -1. */
-function headingLine(body: string, re: RegExp): number {
-  return body.split("\n").findIndex((line) => /^#{1,6}\s/.test(line) && re.test(line));
-}
-
 /** The `## 2` phase-flow fenced block (the one listing the wave-decomposition phase). */
 function phaseFlowBlock(body: string): string {
   const fences = body.split("```");
@@ -121,9 +103,6 @@ function rowCells(text: string, re: RegExp): string[] {
  */
 const HEDGE = /수 있다|해도 된다|권장|바람직|원칙적으로|원칙으로 하되|가능하면|되도록|경우에 따라|가급적/;
 
-/** Skill invocation prefix: claude ships `/kiwi-x`, codex and etc ship `$kiwi-x`. */
-const KIWI_SRS_CALL = /[/$]kiwi-srs\b/;
-
 /** The `critical_gates[]` declaration section of whichever skill is under test. */
 function gateSection(body: string): string {
   return sectionUnder(body, /^#{2,4}\s.*critical_gates/i);
@@ -133,18 +112,7 @@ function gateSection(body: string): string {
 function verifySection(body: string): string {
   // @req FR-FLOW-110 — the skill's own §5.5 plus the verify-loop.md engine region its §0 table
   // references. Two bounded regions, not the whole body: §2.1 and §7 stay out of scope.
-  return `${sectionUnder(body, /^#{2,3}\s.*(?:상호검증|cross-verif)/i)}\n${moduleRegion(body, "verify-loop")}`;
-}
-
-
-/**
- * @req FR-FLOW-110 — the two-verifier rules are split by the extraction: kiwi-wave-master keeps its
- * four denominator layers under §5.5.2 and verify-loop.md carries the layer-independent discipline
- * (the verdict enum, the row-count invalidation, the freeze rules). Both regions, nothing else.
- */
-function stanceScope(body: string): string {
-  const s = verifySection(body);
-  return `${sectionUnder(s, /^#{3,4}\s.*두 검증자/)}\n${sectionUnder(s, /^#{2,4}\s.*\[verify-loop\.md\].*두 검증자/)}`;
+  return `${sectionUnder(body, /^#{2,3}\s.*(?:상호검증|종료 검증|cross-verif)/i)}\n${moduleRegion(body, "verify-loop")}`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -154,7 +122,7 @@ function stanceScope(body: string): string {
 // ---------------------------------------------------------------------------------------------
 const NEW_WAVE_GATE_IDS = [
   "wave-decomposition-coverage-gap",
-  "final-verify-residual-critical",
+  "final-verify-kept-finding",
   "unsafe-option-refused",
 ] as const;
 
@@ -165,7 +133,7 @@ const EXISTING_WAVE_GATE_IDS = [
   "run-root-preflight-mismatch",
   "child-pipeline-needs-user-or-failed",
   "serial-unit-failed",
-  "wave-verify-residual-critical",
+  "wave-verify-kept-finding",
   "wave-verify-cross-wave-fix-required",
 ] as const;
 
@@ -174,86 +142,12 @@ const RETIRED_WAVE_GATE_IDS = ["wt-delegation-refused"] as const;
 describe("FR-FLOW-047 — design baseline and decomposition coverage gate", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-1: lists an architecture design document or SDS as a first-class entry input", () => {
-        const body = skillBody(readWave(variant));
-        const inputs = sectionUnder(body, /^#{3}\s.*필수 입력/);
-        expect(inputs, `${variant}: the required-input section must exist`).not.toBe("");
-        // It must be a bullet of the same list as research/plan/roadmap, not an aside: anchor to a
-        // list item so a passing mention inside the rationale prose cannot satisfy this.
-        const bullet = lineWith(inputs, /^-\s.*(?:설계 문서|SDS)/m);
-        expect(bullet, `${variant}: 설계 문서 / SDS must be a first-class required-input bullet`).not.toBe("");
-        expect(/SDS/.test(bullet), `${variant}: the entry-input bullet must name SDS explicitly`).toBe(true);
-        // "선택적으로 함께 줄 수 있다" would demote it back to an optional extra, which is the
-        // status quo AC-1 exists to change.
-        expect(HEDGE.test(bullet), `${variant}: the design-document entry input must not be hedged as optional`).toBe(
-          false,
-        );
-      });
-
-      it("AC-2: materialises a per-wave design baseline pinned to a source range", () => {
-        const body = skillBody(readWave(variant));
-        const baseline = sectionUnder(body, BASELINE_SECTION);
-        expect(baseline, `${variant}: a design-baseline sub-section must exist under §3`).not.toBe("");
-        for (const field of ["source_file", "heading_path", "line_start", "line_end"]) {
-          expect(baseline.includes(field), `${variant}: the baseline mapping must record ${field}`).toBe(true);
-        }
-        expect(
-          /design-baseline\.json/.test(baseline),
-          `${variant}: the baseline must be persisted as a named artifact, not held in conversation`,
-        ).toBe(true);
-        // The artifact path has to reach the journal, or AC-6's "resolvable from waves.jsonl alone"
-        // has no carrier.
-        expect(
-          /`design_baseline`/.test(baseline) && /waves\.jsonl/.test(baseline),
-          `${variant}: the artifact path must be recorded on the wave's waves.jsonl event as design_baseline`,
-        ).toBe(true);
-        expect(
-          /첫\s*`?in_progress`?/.test(baseline),
-          `${variant}: the baseline must be recorded on the wave's FIRST event, not on an arbitrary later one`,
-        ).toBe(true);
-      });
-
-      it("AC-3: blocks target registration while a top-level section is unassigned", () => {
-        const body = skillBody(readWave(variant));
-        const coverage = sectionUnder(body, COVERAGE_SECTION);
-        expect(coverage, `${variant}: a decomposition-coverage sub-section must exist`).not.toBe("");
-        // Quantifier: "주요 최상위 섹션" turns a coverage proof into a sample.
-        expect(
-          /\*\*모든\*\* 최상위 섹션/.test(coverage),
-          `${variant}: coverage must be checked against EVERY top-level section, not a selection`,
-        ).toBe(true);
-        // Reporting must be exhaustive, for the same reason residual reporting is.
-        expect(
-          /미배정 섹션을 \*\*전량\*\* 보고한다/.test(coverage),
-          `${variant}: every unassigned section must be reported, not a top-N sample`,
-        ).toBe(true);
-        // The blocking rule itself, anchored to its own line and required to be unhedged. Weakening
-        // it to "진입하기 전에 사용자에게 알린다" keeps every token while removing the gate.
-        const block = lineWith(coverage, /target 등록/);
-        expect(block, `${variant}: the coverage gate must state what it blocks`).not.toBe("");
-        expect(
-          /진입하지 않는다/.test(block),
-          `${variant}: an unassigned section with no out-of-scope reason must block target registration`,
-        ).toBe(true);
-        expect(HEDGE.test(block), `${variant}: the coverage gate must be absolute, not hedged`).toBe(false);
-        // The escape hatch is a RECORDED reason, not a judgement call.
-        expect(
-          /`out_of_scope`/.test(coverage),
-          `${variant}: the out-of-scope escape hatch must be a recorded field, not narrative`,
-        ).toBe(true);
-        // Position: the gate is worthless if it is authored after the registration phase.
-        // The gate lives in wave-decomposition.md (FR-FLOW-107); the skill's own decomposition section
-        // is what must precede the registration phase.
-        const coverageAt = headingLine(body, /Wave 분해/);
-        const registerAt = headingLine(body, /Wave 별 target 등록/);
-        expect(coverageAt, `${variant}: the coverage section must exist`).toBeGreaterThan(-1);
-        expect(registerAt, `${variant}: the target-registration section must exist`).toBeGreaterThan(-1);
-        expect(
-          coverageAt < registerAt,
-          `${variant}: the coverage gate must be authored before the target-registration phase`,
-        ).toBe(true);
-      });
-
+      // FR-FLOW-047 AC-1 (a design document or SDS as a first-class entry input) expired with FR-FLOW-219 AC-3: the
+      // entry input becomes a PRD first (`kiwi-prd`), pinned in prd-items-computed.fr-flow-219.test.ts.
+      // FR-FLOW-047 AC-2 (the per-wave design baseline) expired with FR-FLOW-212 AC-2; its absence is pinned in
+      // wave-srs-first.fr-flow-212.test.ts.
+      // FR-FLOW-047 AC-3 (heading coverage before target registration) is replaced by FR-FLOW-219 AC-2: coverage is
+      // `speckiwi prd coverage` across every target, and the same gate id still stops the run (below).
       it("AC-3: declares the coverage gap as a critical gate row", () => {
         const gates = gateSection(skillBody(readWave(variant)));
         expect(gates, `${variant}: a critical_gates declaration section must exist`).not.toBe("");
@@ -263,55 +157,12 @@ describe("FR-FLOW-047 — design baseline and decomposition coverage gate", () =
         ).toBeGreaterThan(0);
       });
 
-      it("AC-4: hands the wave-split subagent the existing module and dependency structure", () => {
-        const decompose = sectionUnder(skillBody(readWave(variant)), SPLIT_SECTION);
-        expect(decompose, `${variant}: the wave-decomposition section must exist`).not.toBe("");
-        expect(
-          /기존 모듈/.test(decompose) && /의존/.test(decompose) && /서브에이전트/.test(decompose),
-          `${variant}: the wave-split subagent must receive a summary of the existing module and dependency structure`,
-        ).toBe(true);
-        // And the result must be persisted per wave, not merely consumed during the split.
-        expect(
-          /`existing_modules`/.test(decompose),
-          `${variant}: each wave must record the existing modules it is expected to touch as existing_modules`,
-        ).toBe(true);
-      });
-
-      it("AC-5: exempts a coverage-gap wave append from the boundary-immutability rule", () => {
-        const body = skillBody(readWave(variant));
-        // Anchored to the §0.5 row itself. Stated anywhere else, §0.5 still reads as an absolute
-        // ban and an agent following the SSOT table never reaches the exception.
-        const row = lineWith(body, /wave 경계 불변/);
-        expect(row, `${variant}: the §0.5 boundary-immutability rule must exist`).not.toBe("");
-        expect(
-          /커버리지 갭/.test(row) && /추가/.test(row),
-          `${variant}: the §0.5 row itself must carry the coverage-gap wave-append exception`,
-        ).toBe(true);
-        expect(
-          /재분해가 아니다/.test(row),
-          `${variant}: appending a gap-closing wave must be declared NOT a re-decomposition`,
-        ).toBe(true);
-        // Without this, "append a wave" could be read as licence to reorder the queue, which
-        // reverses already-registered waves. FR-FLOW-047 AC-5 (order unchanged) read together with
-        // FR-FLOW-188 AC-3: waves now declare depends_on[], so the row freezes order AND dependencies.
-        expect(
-          /이미 등록된 wave 의 (?:순서는|순서와 의존은) (?:바뀌지 않는다|변경하지 않는다)/.test(row),
-          `${variant}: the order of already registered waves must stay unchanged`,
-        ).toBe(true);
-      });
-
-      it("AC-6: resolves the baseline artifact from waves.jsonl alone", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
-        expect(
-          /`waves\.jsonl` 만으로 해소한다/.test(baseline),
-          `${variant}: the baseline artifact must be resolvable from waves.jsonl alone`,
-        ).toBe(true);
-        // The negation matters: the whole point is that a resumed session has no conversation state.
-        expect(
-          /대화 상태에 의존하지 않는다/.test(baseline),
-          `${variant}: resolution must be stated as independent of conversation state`,
-        ).toBe(true);
-      });
+      // FR-FLOW-047 AC-4 moved to FR-FLOW-212 AC-5 (wave-srs-first.fr-flow-212.test.ts): the impact analysis reads
+      // `existing_modules`, and the decomposition records each node's modules in `existing-modules.json`.
+      // FR-FLOW-047 AC-5 moved to FR-FLOW-217 AC-4 (redecompose-rules.fr-flow-217.test.ts): §0.5 keeps the
+      // append exception, now R3 · R4 under the run cap.
+      // FR-FLOW-047 AC-6 expired with the baseline artifact (FR-FLOW-212 AC-2). The constraint artifact's
+      // resolution from `waves.jsonl` moved to FR-FLOW-219 AC-1 (prd-items-computed.fr-flow-219.test.ts).
     });
   }
 });
@@ -319,139 +170,18 @@ describe("FR-FLOW-047 — design baseline and decomposition coverage gate", () =
 describe("FR-FLOW-048 — verification denominator covers design baseline and constraints", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("AC-1: adds required bundle rows for the design baseline and the declared constraints", () => {
-        const bundle = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{3,4}\s.*증거 번들/);
-        expect(bundle, `${variant}: an evidence-bundle sub-section must exist`).not.toBe("");
-        const designRow = rowCells(bundle, /설계 기준선/);
-        const constraintRow = rowCells(bundle, /사용자 제약/);
-        expect(designRow.length, `${variant}: the bundle table must have a design-baseline row`).toBeGreaterThan(2);
-        expect(constraintRow.length, `${variant}: the bundle table must have a declared-constraints row`).toBeGreaterThan(
-          2,
-        );
-        // Resolved from the journal, not from what the orchestrator happens to remember.
-        expect(
-          designRow.join(" ").includes("design_baseline"),
-          `${variant}: the design-baseline row must resolve from the waves.jsonl design_baseline field`,
-        ).toBe(true);
-        expect(
-          constraintRow.join(" ").includes("constraints_path"),
-          `${variant}: the constraints row must resolve from the waves.jsonl constraints_path field`,
-        ).toBe(true);
-        // Optional rows reintroduce the very hole AC-1 closes, so the rows must be marked required.
-        expect(
-          /두 행은 \*\*필수\*\*이며 생략할 수 없다/.test(bundle),
-          `${variant}: the two new bundle rows must be declared mandatory`,
-        ).toBe(true);
-      });
-
-      it("AC-2: enumerates every design item as a verifier-1 row with a mapped requirement id", () => {
-        const stance = stanceScope(skillBody(readWave(variant)));
-        expect(stance, `${variant}: the two-verifier sub-section must exist`).not.toBe("");
-        expect(
-          /\*\*모든\*\* 설계 항목을 행으로 열거/.test(stance),
-          `${variant}: verifier 1 must enumerate EVERY design item in the baseline range as a row`,
-        ).toBe(true);
-        expect(
-          /`unmapped`/.test(stance),
-          `${variant}: each design row must carry the mapped requirement id or be marked unmapped`,
-        ).toBe(true);
-        // Sampling construction, rejected the same way the REQ/AC denominator rejects it.
-        expect(
-          /(?:표본|샘플|발췌)(?:으?로|을)\s*(?:행에\s*)?열거/.test(stance),
-          `${variant}: no sampling qualifier may weaken the design-item enumeration`,
-        ).toBe(false);
-      });
-
-      it("AC-3: forbids ALL_MATCH while any design item is unmapped", () => {
-        const stance = stanceScope(skillBody(readWave(variant)));
-        const rule = lineWith(stance, /미매핑 설계 항목/);
-        expect(rule, `${variant}: an unmapped-design-item rule must exist`).not.toBe("");
-        // Quantifier: "미매핑 항목이 다수 있으면" would let a single unmapped item roll up clean.
-        expect(
-          /\*\*1건이라도\*\*/.test(rule),
-          `${variant}: a single unmapped design item must be enough to forbid ALL_MATCH`,
-        ).toBe(true);
-        expect(
-          /`ALL_MATCH`[^\n]*(?:불가|할 수 없다|기록하지 않는다)/.test(rule),
-          `${variant}: the rule must forbid the ALL_MATCH roll-up, not merely warn about it`,
-        ).toBe(true);
-        expect(HEDGE.test(rule), `${variant}: the ALL_MATCH prohibition must be absolute, not hedged`).toBe(false);
-        // Independence is the whole point: without it, a complete REQ/AC layer is read as covering
-        // the design layer too, which is exactly the pass-by-definition this AC removes.
-        expect(
-          /REQ[·/]AC 계층이 (?:완전|완결)하더라도/.test(stance),
-          `${variant}: the prohibition must hold independently of the requirement and AC layer being complete`,
-        ).toBe(true);
-      });
-
-      it("AC-4: carries the design layer counts and unmapped items on the verification object", () => {
-        const section = verifySection(skillBody(readWave(variant)));
-        const record = sectionUnder(section, /^#{3,4}\s.*기록/);
-        expect(record, `${variant}: the verification-record sub-section must exist`).not.toBe("");
-        expect(
-          /`design_layer`/.test(record),
-          `${variant}: the verification object must carry design_layer`,
-        ).toBe(true);
-        for (const key of ["expected", "mapped", "unmapped"]) {
-          expect(
-            new RegExp(`design_layer[\\s\\S]{0,400}\`${key}\``).test(record),
-            `${variant}: design_layer must record ${key}`,
-          ).toBe(true);
-        }
-      });
-
-      it("AC-5: gives verifier 2 a mechanically derived preservation denominator", () => {
-        const stance = stanceScope(skillBody(readWave(variant)));
-        const rule = lineWith(stance, /검증자 2 의 \*\*분모\*\*/);
-        expect(rule, `${variant}: verifier 2 must have its own stated denominator`).not.toBe("");
-        expect(
-          /기계적으로 도출한다/.test(rule),
-          `${variant}: verifier 2's denominator must be mechanically derived from the wave diff, not chosen`,
-        ).toBe(true);
-        // The three classes are the denominator; dropping one silently shrinks it.
-        expect(
-          /삭제·이동된 기존 파일/.test(stance),
-          `${variant}: the denominator must include removed or moved existing files`,
-        ).toBe(true);
-        expect(
-          /삭제·변경된 기존 public 심볼/.test(stance),
-          `${variant}: the denominator must include removed or changed existing public symbols`,
-        ).toBe(true);
-        expect(
-          /삭제·수정된 기존 테스트 파일/.test(stance),
-          `${variant}: the denominator must include removed or modified existing test files`,
-        ).toBe(true);
-        // Each row gets a verdict from a two-value enum. A free-text judgement re-opens the
-        // narrative escape this AC closes.
-        expect(
-          /`intended-improvement`\s*\/\s*`unapproved-damage`/.test(stance),
-          `${variant}: each preservation row must be judged by the intended-improvement / unapproved-damage enum`,
-        ).toBe(true);
-        expect(
-          /`preservation_layer`/.test(stance),
-          `${variant}: the preservation denominator must be recorded as preservation_layer`,
-        ).toBe(true);
-      });
-
-      it("AC-6: invalidates a round whose row count misses the fixed denominator, for both verifiers", () => {
-        const stance = stanceScope(skillBody(readWave(variant)));
-        const rule = lineWith(stance, /행 수가/);
-        expect(rule, `${variant}: a row-count reconciliation rule must exist`).not.toBe("");
-        expect(
-          /\*\*무효\*\*/.test(rule),
-          `${variant}: a row-count mismatch must invalidate the round`,
-        ).toBe(true);
-        // Scoping it to verifier 1 leaves verifier 2 — the only stance that looks at damage to
-        // existing structure — with no enforced denominator at all.
-        expect(
-          /두 검증자 \*\*모두\*\*/.test(rule),
-          `${variant}: the row-count rule must bind BOTH verifiers, not only the intent axis`,
-        ).toBe(true);
-        expect(
-          /연속 clean 스트릭[^\n]*0/.test(rule),
-          `${variant}: an invalid round must not count toward a consecutive clean streak`,
-        ).toBe(true);
-        expect(HEDGE.test(rule), `${variant}: the invalidation rule must be absolute, not hedged`).toBe(false);
+      // FR-FLOW-048 AC-1 to AC-3 moved to FR-FLOW-219 AC-1 (prd-items-computed.fr-flow-219.test.ts): the design
+      // layer is the node's PRD items — the mandatory bundle rows, the full enumeration with `unmapped`, the
+      // one-unmapped-item ALL_MATCH ban independent of the REQ/AC layer, and the external `expected`.
+      // FR-FLOW-048 AC-4 (design_layer counts) expired 2026-11-05 → FR-FLOW-212: no design_items is left,
+      // and its absence is pinned under FR-FLOW-212 AC-2 (wave-srs-first.fr-flow-212.test.ts).
+      // FR-FLOW-048 AC-5 (verifier 2's preservation denominator) expired → FR-FLOW-220: preservation is the
+      // `orchestrate preservation check` row of verify-loop §2, and the classes it reports are pinned on
+      // wave-master §5.5.2 under FR-FLOW-220 AC-1 (machine-checks-first.fr-flow-220.test.ts).
+      // FR-FLOW-048 AC-6 (row-count invalidation for both verifiers) expired → FR-FLOW-220: a wave round's
+      // rows are the verifier's tests, so there is no fixed row count to miss.
+      it("AC-5 (expired): wave-master no longer gives a second verifier its own denominator", () => {
+        expect(skillBody(readWave(variant))).not.toContain("검증자 2 의 **분모**");
       });
     });
   }
@@ -482,29 +212,37 @@ describe("FR-FLOW-049 — all-wave final verification against the whole design b
         const finalSection = sectionUnder(skillBody(readWave(variant)), /^##\s.*최종 검증/);
         const rule = lineWith(finalSection, /분모/);
         expect(rule, `${variant}: the final pass must state its denominator`).not.toBe("");
+        // Rewritten 2026-11-05 with FR-FLOW-212 AC-2: the design baseline is gone, so the final pass
+        // reads every node's ACs and PRD items plus the integration items, none of them self-counted.
         expect(
-          /설계 기준선 \*\*전체\*\*/.test(rule),
-          `${variant}: the final denominator must be the WHOLE design baseline, not the last wave's slice`,
+          /\*\*모든 노드\*\* 의 `acs` 와 `prd_items` 합집합/.test(rule),
+          `${variant}: the final denominator must be every node's ACs and PRD items, not the last wave's slice`,
         ).toBe(true);
         expect(
-          /모든 wave 요구사항의 합집합/.test(rule),
-          `${variant}: the final denominator must map the baseline against the union of all wave requirements`,
+          /\*\*검증자가 스스로 산정하지 않는다\*\*/.test(rule),
+          `${variant}: the final denominator must be fixed outside the verifier`,
         ).toBe(true);
         expect(
-          /wave 경계를 가로지르는 통합 항목/.test(finalSection),
+          /wave 경계를 가로지르는 \*\*통합 항목\*\* — 서로 다른 노드의 요구 사이 `Requirement` \/ `depends_on` 링크와 그래프 간선/.test(finalSection),
           `${variant}: integration items belonging to no single wave scope must be in the denominator`,
         ).toBe(true);
       });
 
-      it("AC-3: reuses the per-wave loop's stance separation, add-only step and fix-free round", () => {
+      it("AC-3: reuses the per-wave loop's machine checks, fresh verifier, red-test findings and fix-free round", () => {
         const finalSection = sectionUnder(skillBody(readWave(variant)), /^##\s.*최종 검증/);
-        expect(
-          /정확히\s*2\s*(?:기|개)(?!\s*이상)/.test(finalSection),
-          `${variant}: the final pass must reuse the exactly-two-verifier stance separation`,
-        ).toBe(true);
-        expect(/add-only/.test(finalSection), `${variant}: the final pass must reuse the add-only cross-refutation`).toBe(
+        // Rewritten 2026-11-05 with FR-FLOW-220 AC-7: the two stance-separated verifiers and the
+        // add-only step are gone; the final pass reuses the machine checks and the one-verifier model.
+        expect(/기계 검사가 먼저/.test(finalSection), `${variant}: the final pass must run the machine checks first`).toBe(
           true,
         );
+        expect(
+          /라운드마다 검증자를 새로 띄우며\(`--max` 면 둘/.test(finalSection),
+          `${variant}: the final pass must reuse the fresh verifier per round`,
+        ).toBe(true);
+        expect(
+          /red 테스트만 kept finding 으로 남/.test(finalSection),
+          `${variant}: the final pass must keep only red tests as findings`,
+        ).toBe(true);
         expect(
           /수정이 적용되지 않았을 것/.test(finalSection),
           `${variant}: the final pass must reuse the fix-free clean round condition`,
@@ -557,8 +295,8 @@ describe("FR-FLOW-049 — all-wave final verification against the whole design b
 
       it("AC-1/AC-5: declares the final-pass halt as a critical gate row", () => {
         const gates = gateSection(skillBody(readWave(variant)));
-        const row = rowCells(gates, /final-verify-residual-critical/);
-        expect(row.length, `${variant}: critical_gates must declare final-verify-residual-critical`).toBeGreaterThan(2);
+        const row = rowCells(gates, /final-verify-kept-finding/);
+        expect(row.length, `${variant}: critical_gates must declare final-verify-kept-finding`).toBeGreaterThan(2);
         expect(
           /--auto/.test(row.join(" ")) || /--auto/.test(gates),
           `${variant}: the final-pass gate must halt even under --auto`,
@@ -571,72 +309,13 @@ describe("FR-FLOW-049 — all-wave final verification against the whole design b
 describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remediation", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("FR-FLOW-050 AC-1: passes the design baseline to kiwi-srs as a research document path", () => {
-        const register = withModule(skillBody(readWave(variant)), /^##\s.*Wave 별 target 등록/, "wave-srs-registration");
-        expect(register, `${variant}: the target-registration section must exist`).not.toBe("");
-        const rule = lineWith(register, /리서치 문서/);
-        expect(rule, `${variant}: the kiwi-srs invocation must state the research-document argument`).not.toBe("");
-        expect(
-          KIWI_SRS_CALL.test(rule) && /`design_baseline\.path`/.test(rule),
-          `${variant}: the kiwi-srs call must pass design_baseline.path as the research document argument`,
-        ).toBe(true);
-        // The reason the path is required rather than inlined content: only a path activates the
-        // research verify-and-improve loop.
-        expect(
-          /인라인[^\n]*리서치 검증·개선 루프가 (?:작동|활성화)하지 않는다/.test(register),
-          `${variant}: the text must say that inlining the wave content alone does not activate the research loop`,
-        ).toBe(true);
-      });
-
-      it("FR-FLOW-050 AC-2: uses the same artifact path recorded on waves.jsonl", () => {
-        const register = withModule(skillBody(readWave(variant)), /^##\s.*Wave 별 target 등록/, "wave-srs-registration");
-        expect(
-          /`waves\.jsonl` 에 기록한 것과 \*\*같은\*\* 경로/.test(register),
-          `${variant}: the authoring input and the evidence bundle must not diverge on the baseline path`,
-        ).toBe(true);
-      });
-
-      it("FR-FLOW-050 AC-3: routes a design-present / SRS-absent finding to incremental authoring re-entry, then wave re-entry from SDS authoring", () => {
-        const section = verifySection(skillBody(readWave(variant)));
-        const routing = sectionUnder(section, /^#{2,4}\s.*개선 위임/);
-        expect(routing, `${variant}: the remediation routing sub-section must exist`).not.toBe("");
-        const row = rowCells(routing, /설계 기준선에는 있으나/);
-        expect(row.length, `${variant}: the routing table must have a design-present / SRS-absent row`).toBeGreaterThan(2);
-        const handling = row.join(" ");
-        expect(
-          KIWI_SRS_CALL.test(handling) && /증분/.test(handling),
-          `${variant}: the row's handling must be incremental SRS authoring re-entry for that wave target`,
-        ).toBe(true);
-        // Revised in 4.0.0: no planning stage (FR-FLOW-184 AC-2) and no per-wave kiwi-pipeline
-        // (FR-FLOW-188 AC-7) — the wave re-enters the shared parallel-waves contract at SDS authoring.
-        expect(
-          /SDS 작성 단계부터[^|]*재진입/.test(handling),
-          `${variant}: the row must re-enter the wave from its SDS authoring step`,
-        ).toBe(true);
-        expect(
-          /planning|planner|계획|pipeline/.test(handling),
-          `${variant}: the row still routes through a planning stage or a per-wave pipeline`,
-        ).toBe(false);
-      });
-
-      it("FR-FLOW-050 AC-4: keeps the design-gap row distinct from the unclosable-in-code row", () => {
-        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
-        const designRow = tableRows(routing, /설계 기준선에는 있으나/);
-        const residualRow = tableRows(routing, /코드로 닫을 수 없는/);
-        expect(designRow.length, `${variant}: the design-gap row must exist`).toBe(1);
-        expect(residualRow.length, `${variant}: the unclosable-in-code row must still exist`).toBe(1);
-        expect(
-          designRow[0] !== residualRow[0],
-          `${variant}: a design-layer gap must be remediated, not merged into the report-only residual row`,
-        ).toBe(true);
-        // Merging them the other way — routing the unclosable row into authoring re-entry — would
-        // also collapse the distinction, so pin the residual row's own handling.
-        expect(
-          /residual/.test(at(residualRow, 0)),
-          `${variant}: the unclosable-in-code row must remain a residual plus user decision`,
-        ).toBe(true);
-      });
-
+      // FR-FLOW-050 AC-1 and AC-2 (the design baseline as the research document, on the journalled path) expired with
+      // FR-FLOW-212 AC-2. The one authoring call still carries `--research-doc` and `--constraints-doc`, pinned
+      // under FR-FLOW-212 AC-1 in wave-srs-first.fr-flow-212.test.ts.
+      // FR-FLOW-050 AC-3 · AC-4 (the design-present / SRS-absent routing row, kept apart from the
+      // unclosable-in-code row) expired 2026-11-05 → FR-FLOW-218: a kept requirement gap goes to the
+      // incremental authoring as a delta, pinned on verify-loop §7 under FR-FLOW-220 AC-4
+      // (machine-checks-first.fr-flow-220.test.ts) and FR-FLOW-045 AC-5 (kiwi-wave-verify-content.test.ts).
       it("FR-FLOW-050 AC-5: keeps the cross-wave halt in force for the remediation path", () => {
         const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
         expect(
@@ -645,19 +324,8 @@ describe("FR-FLOW-050 — design-to-SRS fidelity wiring and SRS-layer gap remedi
         ).toBe(true);
       });
 
-      it("FR-FLOW-050 AC-6: permits automatic remediation of a design-layer gap under --auto", () => {
-        const routing = sectionUnder(verifySection(skillBody(readWave(variant))), /^#{2,4}\s.*개선 위임/);
-        const rule = lineWith(routing, /설계 계층 갭의 자동 처리/);
-        expect(rule, `${variant}: the auto-remediation permission must be stated`).not.toBe("");
-        expect(
-          /`--auto`[^\n]*허용한다/.test(rule),
-          `${variant}: automatic remediation of a design-layer gap must be permitted under unattended operation`,
-        ).toBe(true);
-        expect(
-          /추론이 아니라 기록된 설계 기준선/.test(routing),
-          `${variant}: the permission must be justified by the recorded baseline rather than an inference`,
-        ).toBe(true);
-      });
+      // FR-FLOW-050 AC-6 (automatic remediation of a design-layer gap) expired 2026-11-05 → FR-FLOW-212:
+      // there is no design layer left to remediate.
     });
   }
 });
@@ -695,72 +363,9 @@ describe("FR-FLOW-051 — wave target registration and wave-internal resume gran
         ).toBe(true);
       });
 
-      it("FR-FLOW-051 AC-3: kiwi-wave-master calls creation-enabled registration the normal path", () => {
-        const register = withModule(skillBody(readWave(variant)), /^##\s.*Wave 별 target 등록/, "wave-srs-registration");
-        const rule = lineWith(register, /\*\*정상 경로\*\*/);
-        expect(rule, `${variant}: registration of an unregistered wave target must be called the normal path`).not.toBe(
-          "",
-        );
-        expect(
-          /예외(?:적인 경로)?가 아니다/.test(rule),
-          `${variant}: the text must say explicitly that this is not an exceptional path`,
-        ).toBe(true);
-      });
-
-      it("FR-FLOW-051 AC-5: skips registration and authoring for a wave marked srs_authored on ANY event", () => {
-        const body = skillBody(readWave(variant));
-        const register = withModule(body, /^##\s.*Wave 별 target 등록/, "wave-srs-registration");
-        const rule = lineWith(register, /`srs_authored`/);
-        expect(rule, `${variant}: the authoring-finished mark must drive a skip`).not.toBe("");
-        // The normative skip sentence is isolated from the rest of the line. The line also carries a
-        // cautionary clause that NAMES latest-event keying in order to reject it; letting that clause
-        // answer for the trigger would make both the positive and the polarity check meaningless.
-        const skipSentence = rule.split(/(?<=다\.)\s*/).find((s) => /건너뛰고|skip/.test(s)) ?? "";
-        expect(skipSentence, `${variant}: the skip rule must state its trigger in its own sentence`).not.toBe("");
-        expect(
-          /`srs_authored`/.test(skipSentence) && /하나라도/.test(skipSentence),
-          `${variant}: the skip must key on ANY event carrying the mark, not merely the latest one — a wave-verify event landing on top must not re-arm authoring`,
-        ).toBe(true);
-        // Polarity: keying the decision to the wave's latest event is the exact defect this AC
-        // removes (a crash mid-verification leaves a mark-less event on top and the SRS is authored
-        // twice), so a regression to that wording must go red.
-        expect(
-          /최신/.test(skipSentence),
-          `${variant}: the skip trigger must not be keyed to the wave's latest event`,
-        ).toBe(false);
-        // FR-FLOW-051 AC-5 (revised in 4.0.0): the stage after SRS authoring is SDS authoring and worker
-        // execution under the shared parallel-waves contract (FR-FLOW-188 AC-1), not a pipeline phase.
-        expect(
-          /(?:건너뛰고|skip하고|skip 하고)[^\n]*(?:곧바로|직접)[^\n]*SDS 작성/.test(rule),
-          `${variant}: such a wave must enter SDS authoring and worker execution directly`,
-        ).toBe(true);
-        expect(/pipeline/.test(rule), `${variant}: the skip still enters a per-wave pipeline phase`).toBe(false);
-        expect(HEDGE.test(skipSentence), `${variant}: the skip rule must be absolute, not hedged`).toBe(false);
-      });
-
-      it("FR-FLOW-051 AC-6: defines wave-internal resume at three stages", () => {
-        const progress = sectionUnder(skillBody(readWave(variant)), /^##\s.*진행 추적/);
-        expect(progress, `${variant}: the waves.jsonl progress section must exist`).not.toBe("");
-        const rule = lineWith(progress, /재개 단위/);
-        expect(rule, `${variant}: wave-internal resume granularity must be stated`).not.toBe("");
-        expect(
-          /\*\*3단계\*\*/.test(rule),
-          `${variant}: resume granularity must be the three wave-internal stages`,
-        ).toBe(true);
-        // Revised in 4.0.0: the middle stage is SDS authoring and worker execution under the shared
-        // parallel-waves contract (FR-FLOW-188 AC-1), not a per-wave pipeline run.
-        // FR-FLOW-051 AC-6 (4.1.0): the middle stage is worker execution, with SDS authoring only under --sds.
-        for (const stage of ["target 등록", "워커 실행(`--sds` 면 SDS 작성 포함)", "wave 검증"]) {
-          expect(rule.includes(stage), `${variant}: the resume granularity must name the ${stage} stage`).toBe(true);
-        }
-        expect(/pipeline/.test(rule), `${variant}: the resume granularity still names a pipeline stage`).toBe(false);
-        // Polarity: leaving whole-wave granularity as an accepted alternative reinstates the very
-        // re-authoring this requirement removes.
-        expect(
-          /wave 통째로만/.test(progress) === false || /wave 통째로만[^\n]*(?:아니다|않는다)/.test(progress),
-          `${variant}: resume must not be defined only at whole-wave granularity`,
-        ).toBe(true);
-      });
+      // FR-FLOW-051 AC-3 moved to FR-FLOW-212 AC-3 (wave-srs-first.fr-flow-212.test.ts): registering the unregistered
+      // product target is the initial call's normal path. AC-5 (`srs_authored`) and AC-6 (three resume stages)
+      // expired with FR-FLOW-212 AC-3, which pins the marker's absence and the two-stage resume.
     });
   }
 });
@@ -1024,7 +629,7 @@ describe("FR-FLOW-054 — existing-structure preservation guards across the impl
         expect(HEDGE.test(rule), `${variant}: the inviolability rule must be absolute, not hedged`).toBe(false);
       });
 
-      it("FR-FLOW-054 AC-2: detects the three in the diff at the SDS-code match gate as CRITICAL", () => {
+      it("FR-FLOW-054 AC-2: detects the three in the diff at the preservation check as a kept finding", () => {
         const impl = sectionUnder(skillBody(readCoder(variant)), /^#{3}\s.*단계 흐름/);
         expect(impl, `${variant}: the implementation-loop flow must exist`).not.toBe("");
         // Scoped to the SDS-code match gate branch of the flow block (FR-FLOW-185 AC-3, which replaced
@@ -1036,9 +641,14 @@ describe("FR-FLOW-054 — existing-structure preservation guards across the impl
           /기존 테스트/.test(gate) && /(?:삭제|제거)/.test(gate) && /약화/.test(gate),
           `${variant}: the gate must detect test-file deletion, test-case removal and assertion weakening in the diff`,
         ).toBe(true);
+        // FR-FLOW-054 AC-2 as rewritten for 5.3.0 (FR-FLOW-221 AC-3): a kept finding, the diff its evidence.
+        // Read from the consequence line under the test detection itself: the branch has three detections,
+        // and a branch-wide match stays green when only the test detection's consequence is weakened.
+        const lines = gate.split("\n");
+        const consequence = lines[lines.findIndex((l) => /기존 테스트 파일 삭제/.test(l)) + 1] ?? "";
         expect(
-          /CRITICAL/.test(gate) && /재구현|재호출/.test(gate),
-          `${variant}: a detection must be a critical finding that forces re-implementation`,
+          /검출은 kept finding\(diff 가 증거\)/.test(consequence) && /재구현/.test(consequence),
+          `${variant}: a detection must be a kept finding, with the diff as its evidence, that forces re-implementation`,
         ).toBe(true);
       });
 
@@ -1100,7 +710,7 @@ describe("FR-FLOW-054 — existing-structure preservation guards across the impl
 
       it("AC-6: requires a green full regression run at the wave head for a passing verdict", () => {
         const section = verifySection(skillBody(readWave(variant)));
-        const bundle = sectionUnder(section, /^#{3,4}\s.*증거 번들/);
+        const bundle = sectionUnder(section, /^#{3,4}\s.*검증자 입력과 호스트가 읽는 것/);
         const row = rowCells(bundle, /회귀 스위트/);
         expect(row.length, `${variant}: the evidence bundle must include a full regression suite run`).toBeGreaterThan(2);
         const cell = row.join(" ");
@@ -1111,25 +721,21 @@ describe("FR-FLOW-054 — existing-structure preservation guards across the impl
           /wave (?:head|헤드|tip)/i.test(cell),
           `${variant}: the regression run must be executed at that wave's head`,
         ).toBe(true);
-        // The pass condition, anchored to the PASS table's Normal row so a mention in the prose
-        // cannot stand in for the gate.
-        const normalRow = lineWith(section, /^\|\s*Normal\s*\|/m);
-        expect(normalRow, `${variant}: the PASS table must have a Normal row`).not.toBe("");
-        // R3-M20 — strengthened, not weakened. The row gained a fallback clause ("기준선 부재 시
-        // `exit_code`=0"), and the old alternation `/`exit_code`\s*=?\s*0|회귀 스위트 통과/` began
-        // matching THAT clause, so the assertion passed while the primary condition it is named for
-        // went unpinned. Both roles are now fixed separately: the delta is the pass condition, and
-        // exit_code=0 exists only as the degraded form used when the baseline capture failed.
+        // The pass condition. 5.3.0 dropped the Normal PASS row with the severities (FR-FLOW-221 AC-1), so
+        // it is anchored on verify-loop §5's pass sentence. R3-M20 still holds: the delta is the primary
+        // condition, and exit_code=0 appears once, only as the capture-failure fallback.
+        const passLine = lineWith(section, /통과 조건은 kept finding 0/);
+        expect(passLine, `${variant}: verify-loop §5 must state the pass condition`).not.toBe("");
         expect(
-          /failing_tests\s*⊆\s*baseline_failing_tests/.test(normalRow),
-          `${variant}: the Normal PASS row's primary condition must be the baseline delta, not a bare green suite`,
+          /failing_tests\s*⊆\s*baseline_failing_tests/.test(passLine),
+          `${variant}: the pass condition's regression clause must be the baseline delta, not a bare green suite`,
         ).toBe(true);
         expect(
-          (normalRow.match(/exit_code/g) ?? []).length,
-          `${variant}: exit_code must appear once in the Normal row — a second occurrence is an unconditional green-suite requirement smuggled back in`,
+          (passLine.match(/exit_code/g) ?? []).length,
+          `${variant}: exit_code must appear once in the pass condition — a second occurrence is an unconditional green-suite requirement smuggled back in`,
         ).toBe(1);
         expect(
-          /기준선 부재 시[^|]*`exit_code`\s*=?\s*0/.test(normalRow),
+          /\*\*캡처에 실패\*\*해 `baseline_failing_tests` 가 없으면 `exit_code`=0 으로 격하된다/.test(passLine),
           `${variant}: the single exit_code=0 occurrence must be the capture-failure fallback, not the primary condition`,
         ).toBe(true);
       });

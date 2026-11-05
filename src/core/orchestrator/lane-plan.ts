@@ -43,6 +43,9 @@ export interface LanePlan {
   conflicts: ConflictEdge[];
 }
 
+/** The per-stage lane cap `schedule waves` defaults `--lanes` to, and the stage preview uses. */
+export const DEFAULT_LANE_CAP = 4;
+
 export const LANE_PLAN_ERROR_CODES = ["schedule-cycle", "lane-plan-incomplete"] as const;
 
 export type LanePlanErrorCode = (typeof LANE_PLAN_ERROR_CODES)[number];

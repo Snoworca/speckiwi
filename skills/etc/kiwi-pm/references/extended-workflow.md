@@ -33,7 +33,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 ## 4. Lifecycle Gate (kiwi-pipeline-v1 §4.2)
 
-부팅 T0 단계 — 요구 집합(`SKILL.md` §2.2 `req_ids`)을 1회 `list_requirements` read 로 일괄 평가. `--skip-lifecycle-gate` 명시 시 SKIP (사용자 책임, worklog `lifecycle_override` 기록).
+부팅 T0 단계 — `--req-filter` 가 있으면 `--sds` 실행도 요구 집합 실행처럼 읽는다. 요구 집합(`SKILL.md` §2.2 `req_ids`)을 평가한다 — 요구 집합 실행은 요구마다 `get_requirement` 로 ID 로 읽고(`SKILL.md` §1.1), `--sds` 실행은 1회 `list_requirements` read 로 일괄 평가한다. `--skip-lifecycle-gate` 명시 시 SKIP (사용자 책임, worklog `lifecycle_override` 기록).
 
 ### 4.1 차단 분류
 
@@ -42,7 +42,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 | 진행 가능 | `evolving` / `stable` | OK |
 | 진행 불가 (정상) | `draft` | 요구 집합 실행: 요구 집합에서 빼고 보고한다. `--sds` 실행: **차단** + interactive 2지선다 / `--auto` 는 그 SDS 를 실행하지 않고 요구 필터로 돌려보낸다 (`SKILL.md` §3.6) |
 | 진행 불가 (정책) | `deprecated` / `frozen` | 요구 집합 실행: 요구 집합에서 빼고 보고한다. `--sds` 실행: **즉시 HALT** — frozen=정책 위반, deprecated=의도된 제거 |
-| target 비어있음 | — | **차단** + "speckiwi `set_active_target` 으로 활성 target 지정 후 재실행" |
+| target 비어있음 (`--req-filter` 실행은 제외) | — | **차단** + "speckiwi `set_active_target` 으로 활성 target 지정 후 재실행" |
 
 요구 집합 실행에서 남은 요구가 없으면 HALT 한다.
 
@@ -59,7 +59,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 ### 4.4 MCP 미가용
 
-1. `mcp__speckiwi__list_requirements(target, projection: "compact")` 호출 시도
+1. `mcp__speckiwi__list_requirements(target, projection: "compact")` 호출 시도 — 요구 집합 실행은 요구마다 `mcp__speckiwi__get_requirement(id)`
 2. 실패 시 HALT + worklog `lifecycle_gate_mcp_unavailable` 기록
 3. CLI 는 진단/복구 안내에만 사용하며, 사용자 승인으로 lifecycle gate 를 우회하지 않는다
 4. 평가 결과는 `state.lifecycle_gate_state.stability_snapshot` 에 저장 (REQ-ID → stability)
@@ -72,18 +72,25 @@ FUNCTION APPLY_LIFECYCLE_GATE(state, args):
         worklog.append({event: "lifecycle_override", reason: "--skip-lifecycle-gate"})
         RETURN
 
-    # 1. 활성 target 확인
-    target = MCP_CALL("get_active_target")
-    IF NOT target:
-        HALT("활성 target 없음. speckiwi set_active_target 으로 지정 후 재실행")
-    IF target != state.target_slug AND state.target_slug:
-        User clarification gate(f"SDS target={state.target_slug} vs 활성 target={target} 불일치 — 진행?")
+    IF state.sds_path OR NOT state.req_filter:    # 1. 활성 target 확인 — --sds 없는 --req-filter 실행은 요구를 ID 로 읽으므로 활성 target 에 매이지 않는다 (§1.1)
+        target = MCP_CALL("get_active_target")
+        IF NOT state.req_filter:                  # 활성 target 이 없어 멈추는 것은 --req-filter 없는 실행뿐 (§1.1)
+            IF NOT target:
+                HALT("활성 target 없음. speckiwi set_active_target 으로 지정 후 재실행")
+        IF target != state.target_slug AND state.target_slug:
+            User clarification gate(f"SDS target={state.target_slug} vs 활성 target={target} 불일치 — 진행?")
 
-    # 2. 일괄 read — 대상은 요구 집합(req_ids)
-    TRY:
-        reqs = MCP_CALL(list_requirements, target=target, projection="compact")
-    CATCH mcp_unavailable:
-        HALT("speckiwi mcp 미가용: lifecycle gate 평가 불가. CLI 는 진단/복구 안내에만 사용")
+    # 2. read — 대상은 요구 집합(req_ids). --req-filter 실행과 요구 집합 실행은 요구마다 ID 로 읽는다 (§1.1)
+    IF state.sds_path AND NOT state.req_filter:
+        TRY:
+            reqs = MCP_CALL(list_requirements, target=target, projection="compact")
+        CATCH mcp_unavailable:
+            HALT("speckiwi mcp 미가용: lifecycle gate 평가 불가. CLI 는 진단/복구 안내에만 사용")
+    ELSE:
+        TRY:
+            reqs = [MCP_CALL(get_requirement, id=id) FOR id IN state.req_ids]   # --req-filter 실행과 요구 집합 실행 — 요구마다 ID 로 읽는다 (§1.1)
+        CATCH mcp_unavailable:
+            HALT("speckiwi mcp 미가용: lifecycle gate 평가 불가. CLI 는 진단/복구 안내에만 사용")
 
     # 3. 분류
     stability_snapshot = {}
@@ -185,6 +192,10 @@ FUNCTION APPLY_LIFECYCLE_GATE(state, args):
    - (B) 중단 (멀티 PM 인스턴스 / 외부 변경 의심)
    - (C) diff 표시 후 재결정 (재귀)
 
+재개는 pm-state 의 `req_ids` · `req_filter` · `sds_path` 로 돈다 — 재개 호출이 `--req-filter` 나 `--sds` 를 다시 주지 않아도 gate · kiwi-coder · T-final 은 처음 실행과 같은 집합을 같은 방식으로 읽고, 재개 호출의 인자가 이 값을 덮어쓰지 않는다.
+
+재개할 세션은 `--run-id` 로, 없으면 재개 호출이 준 `--sds` · `--req-filter` 로 §0.14 의 공식을 다시 계산한 `run_id` 로 찾는다(`--sds` 와 `--req-filter` → `<sds-id>-<sha8>`, `--sds` 만 → sds-id, `--req-filter` 만 → `<target>-<sha8>`) — 찾으면 MAIN 은 집합을 다시 정하지 않고(열린 작업 후보 제안과 사용자 게이트 없음) 저장된 값으로 돌며, 찾지 못하면 새 실행을 시작하지 않고 멈춰 `--run-id` 를 묻는다.
+
 재개 후 이번 실행이 쓰기 집합 안에 아무 변경도 남기지 않았으면 §10 의 무동작 재진입 규칙을 적용한다 — 이미 끝난 실행을 다시 부른 재개는 완료가 아니다.
 
 `--auto + SHA mismatch` → §0.G7 critical_gates `sha-mismatch-on-resume` — `--auto` 무관 HALT.
@@ -271,7 +282,7 @@ FUNCTION VERIFY_SHA_ON_RESUME(state, args):
 
 ### 6.1 실행 결과 판정
 
-kiwi-coder 실행이 끝나면 PM 이 결과를 `run` 에 확정한다. `run.changed` 는 실행 시작 이후 쓰기 집합(`--sds` 면 SDS 쓰기 집합, 아니면 `base_sha` 이후 이 실행이 바꾼 경로 — 워커면 lane 쓰기 집합) 안에 새 commit 이 생겼거나 `git status --porcelain -- <쓰기 집합>` 이 비어 있지 않으면 `true` 다 — §10 의 무동작 판정이 이 값을 읽는다. `--commit-lane-work` 가 있고 `run.status = "done"` 이면 이 시점에 `SKILL.md` §1.5 의 commit 1개를 만든다. 그 밖에 PM 은 자동 commit 하지 않는다 — `--commit-lane-work` 를 명시한 오케스트레이션 실행이 그 유일한 예외다.
+kiwi-coder 실행이 끝나면 PM 이 결과를 `run` 에 확정한다. `run.changed` 는 실행 시작 이후 쓰기 집합(`--sds` 면 SDS 쓰기 집합, 아니면 `base_sha` 이후 이 실행이 바꾼 경로 — 워커면 lane 쓰기 집합) 안에 새 commit 이 생겼거나 `git status --porcelain -- <쓰기 집합>` 이 비어 있지 않으면 `true` 다 — §10 의 무동작 판정이 이 값을 읽는다. `--commit-lane-work` 가 있고 `run.status = "done"` 이면 이 시점에 `SKILL.md` §1.5 대로 요구마다 테스트 커밋과 그 뒤의 구현 커밋을 만든다 — `run.commit_sha` 는 그 가운데 마지막 구현 커밋이다. 그 밖에 PM 은 자동 commit 하지 않는다 — `--commit-lane-work` 를 명시한 오케스트레이션 실행이 그 유일한 예외다.
 
 ### 6.2 T-final SRS Status 마무리
 
@@ -279,14 +290,17 @@ kiwi-coder 실행이 끝나면 PM 이 결과를 `run` 에 확정한다. `run.cha
 
 **SDS 없는 실행**: `req_ids` 의 요구마다 `speckiwi coverage --tests --ids <그 요구>` (MCP `check_test_sufficiency`) 가 gap 을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 `implemented` 로 올리고, 나머지는 gap 과 함께 보고한다. `add_completed_work` 는 그 집합으로 기록하며 요약 종류는 `req-summary` 다. `--no-final` 이면 종전처럼 건너뛴다. 아래 의사코드가 두 경우를 함께 적는다 — `covered` 가 SDS 없는 실행의 coverage 조건이다.
 
-**문제**: kiwi-coder 는 `update_status(in_progress)` 만 호출한다. 한 SDS 가 여러 요구를 구현하고 한 요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 `implemented` 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 요구 집합(`--sds` 면 SDS `@req` 집합)을 일괄 마무리한다.
+**문제**: kiwi-coder 는 `update_status(in_progress)` 만 호출한다. 한 SDS 가 여러 요구를 구현하고 한 요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 `implemented` 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 요구 집합(`--sds` 면 SDS `@req` 집합, `--req-filter` 도 주면 그 ID)을 일괄 마무리한다.
 
 **의사코드**:
 
 ```
 FUNCTION T_FINAL_SRS_MUTATION(state, args):
-    # 1. read REQ 현재 status
-    reqs = MCP_CALL(list_requirements, target=state.target_slug, projection="compact")
+    # 1. read REQ 현재 status — --req-filter 실행과 요구 집합 실행은 요구마다 ID 로 읽는다 (§1.1)
+    IF state.sds_path AND NOT state.req_filter:
+        reqs = MCP_CALL(list_requirements, target=state.target_slug, projection="compact")
+    ELSE:
+        reqs = [MCP_CALL(get_requirement, id=id) FOR id IN state.req_ids]   # --req-filter 실행과 요구 집합 실행 — 요구마다 ID 로 읽는다 (§1.1)
     reqs_by_id = {r.id: r for r in reqs}
 
     # 2. proposals 생성 (forward-only) — 대상은 요구 집합(req_ids)
@@ -296,7 +310,7 @@ FUNCTION T_FINAL_SRS_MUTATION(state, args):
     proposals = []
     FOR req_id IN state.req_ids:
         req = reqs_by_id.get(req_id)
-        IF NOT req: CONTINUE   # 집합이 가리키지만 활성 target 에 없는 REQ — 무시
+        IF NOT req: CONTINUE   # --req-filter 없는 --sds 실행: SDS 가 가리키지만 활성 target 에 없는 REQ — 무시 (--req-filter 실행은 부팅에서 없는 ID 로 멈춘다)
         current_idx = STATUS_ORDER.index(req.status) IF req.status IN STATUS_ORDER ELSE -1
         target_idx = STATUS_ORDER.index("implemented")
 
@@ -474,6 +488,8 @@ Use $kiwi-sds with --close {state.run_id}{' --auto' if args.auto else ''}{' --ma
 | 실패 조건 | 동작 |
 |---|---|
 | 요구 집합이 비었음 (§1.1 · §4) | HALT |
+| `--req-filter` 의 ID 를 `get_requirement` 가 찾지 못함 — 처음 실행과 재개 모두 (§1.1) | HALT — kiwi-coder 전에 그 ID 를 적는다 |
+| `--sds` 와 함께 준 `--req-filter` 의 ID 가 SDS `@req` 집합에 없음 (§1.1) | HALT — kiwi-coder 전에 그 ID 를 적는다 |
 | `--sds <path>` 의 파일 없음 | HALT — "`$kiwi-sds` 로 SDS 를 먼저 작성·합의하십시오" |
 | 경로가 `docs/sds/*.sds.md` 가 아님 | HALT |
 | `Profile ≠ lite` | HALT — tdd step `design.md` 는 `$kiwi-tdd` 몫 |
@@ -544,10 +560,10 @@ $kiwi-pm SDS_PATH=docs/sds/4.0.0-todo-service.sds.md --auto --no-doculight
 
 `$kiwi-pm` v0.1 은 요구 ID 집합(사용자가 주면 합의된 lite SDS 한 파일)을 입력으로 받아 **그 작업을 위임 worker 위임으로 kiwi-coder 자식 실행 하나에 격리** 하는 runner. PM 책임 6항:
 
-1. **부팅 입력 확정 + lifecycle gate** — 요구 집합을 확정하고(`--sds` 면 `check_sds` 로 lite SDS 를 검사하고), speckiwi `list_requirements` read 로 그 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
+1. **부팅 입력 확정 + lifecycle gate** — 요구 집합을 확정하고(`--sds` 면 `check_sds` 로 lite SDS 를 검사하고), speckiwi `get_requirement`(요구 집합 실행) 또는 `list_requirements` read 로 그 집합의 Stability ∈ {evolving, stable} 만 진행 허용 (§4)
 2. **호출 하나 = kiwi-coder 실행 하나 + 3상태 프로토콜** — delegated worker child 결과를 TASK_DONE / NEEDS_USER / FAILED 로 분기 (`SKILL.md` §3)
 3. **`--auto` severity 가드레일** — clarification 자동 / business-decision 강제 HALT / rollback-confirmation 자동 승인 (§5.1)
-4. **T-final REQ status 마무리** — 실행이 성공으로 끝났으면 요구 집합(`--sds` 면 SDS `@req` 집합)에 `update_status(id, "implemented")` + `add_completed_work(date, summary, requirementIds, target, reportPaths)` (§6.2)
+4. **T-final REQ status 마무리** — 실행이 성공으로 끝났으면 요구 집합(`--sds` 면 SDS `@req` 집합)에 `update_status(id, "implemented")` + `add_completed_work(date, summary, requirementIds, target, reportPaths)` (§6.2) — `--sds` 와 `--req-filter` 를 함께 주면 대상은 `--req-filter` 의 ID 다
 5. **보고서 작성 + doculight MCP 표시** — 8섹션 마크다운 + (가용 시) `open_markdown` (§6.3)
 6. **리뷰 hand-off** — 단독 실행이면 끝에서 항상 `kiwi-review-fix-loop` 로 넘긴다. `--sds` 실행이 `--close-reqs` 를 붙이면 그 앞뒤로 `kiwi-sds --close` 를 부른다 (§6.4.1)
 
@@ -556,8 +572,9 @@ $kiwi-pm SDS_PATH=docs/sds/4.0.0-todo-service.sds.md --auto --no-doculight
 | 호출 | 호출자 | 시점 | 시그니처 |
 |---|---|---|---|
 | `check_sds` (read) | **kiwi-pm** | T-1 입력 검사 (`--sds`) | `{path}` |
-| `get_active_target` (read) | **kiwi-pm** | T0 lifecycle gate | `{}` |
-| `list_requirements` (read) | **kiwi-pm** | T0 / T-final | `{target?, status?, stability?, scope?, tag?, type?}` |
+| `get_active_target` (read) | **kiwi-pm** | T0 lifecycle gate (`--sds` 없는 `--req-filter` 실행은 제외) | `{}` |
+| `get_requirement` (read) | **kiwi-pm** | T-1 `--req-filter` 확인 · T0 / T-final (`--req-filter` · 요구 집합 실행) | `{id}` |
+| `list_requirements` (read) | **kiwi-pm** | T-1 열린 작업 후보 · T0 / T-final (필터 없는 `--sds` 실행) | `{target?, status?, stability?, scope?, tag?, type?}` |
 | `add_trace_link` | kiwi-coder (자식) | 실행 종료 시 (Code anchor) | `{id, type, reference, relation, [notes]}` (flat) |
 | `add_verification_evidence` | kiwi-coder (자식) | 실행 종료 시 | `{id, type, reference, [covers, notes]}` |
 | `update_status(in_progress)` | kiwi-coder (자식) | 실행 시작 시 | `{id, status: "in_progress"}` |

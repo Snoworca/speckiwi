@@ -59,6 +59,10 @@ export const GATE_IDS = [
   "requirement-not-ready",
   "schedule-cycle",
   "files-not-grounded",
+  // @req FR-NODE-247 AC-4, AC-12 — the two refusals `wave propose` computes from the SRS, raised as
+  // `files-not-grounded` is: the input is well formed and the tool declines to draw a graph from it.
+  "requirement-cycle-over-cap",
+  "requirement-without-live-ac",
   "lane-plan-drift",
   "dispatch-base-dirty",
   "lane-design-refuted",
@@ -83,10 +87,10 @@ export const GATE_IDS = [
   "wave-decomposition-coverage-gap",
   "out-of-scope-user-consent",
   "wave-append-cap-exhausted",
-  "wave-verify-residual-critical",
+  "wave-verify-kept-finding",
   "wave-verify-fail-residual",
   "wave-verify-cross-wave-fix-required",
-  "final-verify-residual-critical",
+  "final-verify-kept-finding",
   "child-pipeline-needs-user-or-failed",
   "child-srs-needs-user-or-failed",
   "invalid-loop-option",

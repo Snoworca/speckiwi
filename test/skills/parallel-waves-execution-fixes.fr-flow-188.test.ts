@@ -92,7 +92,9 @@ describe("FR-FLOW-188 AC-3 — a split wave SDS is one wave, one lane, one worke
       expect(step(text, 5), `${bundle}: PW-5 card`).toContain("`sds_paths`");
       const worker = step(text, 6);
       expect(worker, `${bundle}: PW-6`).toContain("`sds_paths`");
-      expect(/`sds_paths` 순서|in the order of `sds_paths`/.test(worker), `${bundle}: PW-6 does not run the fragments in card order`).toBe(true);
+      // FR-FLOW-188 AC-3 as rewritten for 5.3.0 (FR-FLOW-216 AC-1): the worker calls kiwi-pm per requirement and
+      // picks, from the card's `sds_paths`, the fragment whose `@req` holds that requirement.
+      expect(/`sds_paths` 의 파일마다|for each file of `sds_paths`/.test(worker), `${bundle}: PW-6 does not pick the requirement's fragment from the card`).toBe(true);
     });
 
     for (const name of ["kiwi-orchestrator", "kiwi-wave-master"]) {
@@ -151,25 +153,29 @@ describe("FR-FLOW-188 AC-1 — every sds-id of a wave is closed, re-entries incl
   }
 });
 
-describe("FR-FLOW-187 AC-3 — the allocation check is the contract's gate, so both skills declare it", () => {
+describe("FR-FLOW-187 AC-3 — the SDS union check is the contract's stop, so both skills declare it", () => {
+  // Rewritten 2026-11-05: the `unallocated-req-id` gate over `requirements[]` expired with FR-FLOW-212 AC-4 —
+  // the `orchestrate wave check` partition (FR-NODE-246) replaced it, and its absence is pinned in
+  // wave-srs-first.fr-flow-212.test.ts. The SDS half of the check stays and stops at
+  // `child-pipeline-needs-user-or-failed`; `files-not-grounded` still covers the SDS Files.
   for (const bundle of BUNDLES) {
-    it(`FR-FLOW-187 AC-3 ${bundle}: §4 raises unallocated-req-id at PW-2 and PW-2 names it`, () => {
+    it(`FR-FLOW-187 AC-3 ${bundle}: §4 raises child-pipeline-needs-user-or-failed at PW-2 and PW-2 names it`, () => {
       const text = contract(bundle);
-      const row = tableRows(numbered(text, 4)).find((r) => (r.cells[0] ?? "").includes("`unallocated-req-id`"));
-      expect(row, `${bundle}: §4 has no unallocated-req-id row`).toBeDefined();
+      const row = tableRows(numbered(text, 4)).find((r) => (r.cells[0] ?? "").includes("`child-pipeline-needs-user-or-failed`"));
+      expect(row, `${bundle}: §4 has no child-pipeline-needs-user-or-failed row`).toBeDefined();
       expect(row?.cells[2] ?? "", `${bundle}`).toContain("PW-2");
-      expect(step(text, 2), `${bundle}: PW-2`).toContain("`unallocated-req-id`");
+      expect(step(text, 2), `${bundle}: PW-2`).toContain("`child-pipeline-needs-user-or-failed`");
     });
   }
 });
 
-describe("FR-FLOW-187 AC-3 — the orchestrator's 3.c′ step runs the same allocation predicate", () => {
+describe("FR-FLOW-187 AC-3 — the orchestrator's 3.c′ step runs the same SDS union predicate", () => {
   for (const bundle of BUNDLES) {
-    it(`FR-FLOW-187 AC-3 ${bundle}: 3.c′ unions every wave SDS file and requires equality with the allocated set`, () => {
-      const line = skill(bundle, "kiwi-orchestrator").split("\n").find((l) => l.startsWith("**3.c′ 배정 검사**")) ?? "";
-      expect(line, `${bundle}: no 3.c′ allocation step`).not.toBe("");
+    it(`FR-FLOW-187 AC-3 ${bundle}: 3.c′ unions every wave SDS file and requires equality with the node's requirement set`, () => {
+      const line = skill(bundle, "kiwi-orchestrator").split("\n").find((l) => l.startsWith("**3.c′ readiness 와 승급**")) ?? "";
+      expect(line, `${bundle}: no 3.c′ step`).not.toBe("");
       expect(line, `${bundle}: 3.c′ does not union split files`).toContain("합집합");
-      expect(line, `${bundle}: 3.c′ is still a subset check`).toContain("배정 집합과 같아야");
+      expect(line, `${bundle}: 3.c′ is still a subset check`).toContain("노드의 요구 집합과 같아야");
     });
   }
 });

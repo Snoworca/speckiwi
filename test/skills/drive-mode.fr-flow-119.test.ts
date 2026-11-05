@@ -57,8 +57,8 @@ const REFUSED_GATES = [
 ] as const;
 
 const RESIDUAL_GATES = [
-  "wave-verify-residual-critical",
-  "final-verify-residual-critical",
+  "wave-verify-kept-finding",
+  "final-verify-kept-finding",
   "wave-verify-fail-residual"
 ] as const;
 

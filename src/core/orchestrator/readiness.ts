@@ -5,6 +5,7 @@ import {
   type RequirementStatus,
   type Stability
 } from "../types.js";
+import { requirementDependencyIds } from "../requirement-dependency.js";
 
 /**
  * Requirement readiness — harvest H3 from the deferred multi-root branch's
@@ -370,11 +371,7 @@ function isLifecycleReady(record: SpecRequirementRecord): boolean {
 }
 
 function hardDependencyIds(record: SpecRequirementRecord): string[] {
-  return [...new Set(record.traceLinks
-    .filter((trace) => trace.type.trim().toLowerCase() === "requirement")
-    .filter((trace) => trace.relation.trim().toLowerCase().replace(/[\s-]+/gu, "_") === "depends_on")
-    .map((trace) => trace.reference.trim())
-    .filter(Boolean))];
+  return requirementDependencyIds(record);
 }
 
 function isSubstantiveEvidence(row: SpecRequirementRecord["verificationEvidence"][number]): boolean {

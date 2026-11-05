@@ -23,19 +23,30 @@
 
 ## 2. 만들기 — 기본 HEAD 를 믿지 않는다
 
-```
-git worktree add <lane-root> -b kiwi/orch/{run_id}/{laneId} <base_sha>
-```
+**레인 브랜치 준비는 이 절 한 곳이 정한다.** `parallel-waves.md` PW-6 1단계 · PW-8 재시도와 `kiwi-orchestrator` · `kiwi-wave-master` 의 워크트리 절차는 명령을 다시 적지 않고 이 절을 따른다. `<branch>` 는 레인 브랜치 `kiwi/orch/{run_id}/{laneId}` 다.
+
+세 경우 모두 먼저 **조상 판정**을 한다 — 레인 브랜치가 있고 이번 `<base_sha>` 가 그 조상이면 `git merge-base --is-ancestor` 가 0 으로 끝난다. 0 이면 중단 뒤 재개 · PW-8 재시도이므로 **붙이고 브랜치는 움직이지 않는다**. 그 밖의 경우 — 레인 브랜치가 없거나 `<base_sha>` 가 그 조상이 아니면(첫 dispatch · 재진입 `r{m}`) — **`<base_sha>` 에서 만들거나 다시 만든다**(3 은 실패한 레인 브랜치의 끝에서). 첫 dispatch 와 재진입은 레인 id 가 같으므로 브랜치가 있다는 사실만으로는 재개가 아니다. 붙인 브랜치의 `<base_sha>..` 범위 `REQ` · `Commit-Kind` trailer 커밋이 `parallel-waves.md §6` 의 재개 커서다.
+
+1. **호스트가 워크트리를 만든다.**
+   - 판정: `git merge-base --is-ancestor <base_sha> <branch>`
+   - 붙인다: `git worktree add <lane-root> <branch>`
+   - 만들거나 다시 만든다: `git worktree add <lane-root> -B <branch> <base_sha>`
+2. **런타임이 워크트리를 이미 만들어 건넸다** — 한 줄로 만들 수 없는 곳이다.
+   - 판정: `git -C <lane-root> merge-base --is-ancestor <base_sha> <branch>`
+   - 붙인다: `git -C <lane-root> switch -C <branch> <branch>` 로 브랜치를 움직이지 않는다.
+   - 만들거나 다시 만든다: `git -C <lane-root> switch -C <branch> <base_sha>`
+3. **재시도 브랜치를 만든다**(PW-8 판정 재시도 · PW-9 병합 재시도) — `<branch>-r2` 는 base 가 아니라 실패한 레인 브랜치의 끝에서 만든다. base 에서 만들면 재개 커서가 읽을 trailer 커밋이 없다.
+   - 판정: `git merge-base --is-ancestor <base_sha> <branch>-r2`
+   - 붙인다: 이미 있는 `<branch>-r2` 를 그대로 둔다(재시도 워커의 중단 뒤 재개).
+   - 만들거나 다시 만든다: `git branch -f <branch>-r2 <branch>` — 실패한 레인 브랜치의 끝에서 만든다. PW-8 판정 재시도는 같은 `<base_sha>` 위에서 돌므로 그 끝이 base 를 조상으로 가지고, 재시도 워커는 `<branch>-r2` 를 레인 브랜치로 삼아 1 · 2 의 판정에서 붙여 `parallel-waves.md §6` 의 재개 커서대로 실패한 요구부터 이어 간다. 병합 충돌 · 병합 뒤 회귀의 재시도(PW-9)는 새 base 위에서 돌고 새 base 는 그 끝의 조상이 아니므로, 1 · 2 의 판정이 `<branch>-r2` 를 새 base 에서 다시 만든다.
+
+어느 경우든 HEAD 를 그 브랜치에 **붙인 채로** 둔다. `checkout <sha>` 는 어느 경우에도 답이 아니다.
 
 **base 를 세 번째 인자로 준다 — 두 줄로 나누지 않는다.** `add -b BR` 뒤에 `checkout <base_sha>` 를
 따로 부르면 `-b` 가 만든 브랜치는 현재 tip 에 생기고 그 다음 줄이 HEAD 를 그 브랜치에서 **떼어낸다**.
 레인의 커밋은 detached HEAD 위에 쌓이고 브랜치는 제자리에 남는다 — 재현 확인. 그러면 §1 표가 레인의
 소유라고 적은 "자기 브랜치 커밋"이 존재하지 않게 되고, §5 의 `base..head` 판정은 레인이 일했는데
 0 으로 읽으며, 워크트리를 제거하는 순간 그 커밋은 참조 없는 객체가 된다.
-
-런타임이 워크트리를 이미 만들어 건네준 경우처럼 **한 줄로 만들 수 없는 자리**에서는
-`git -C <lane-root> switch -C <branch> <base_sha>` 를 쓴다. 브랜치를 base 로 옮기면서 HEAD 를 그
-브랜치에 **붙인 채로** 둔다. `checkout <sha>` 는 어느 경우에도 답이 아니다.
 
 **base 를 명시하는 것 자체가 선택이 아니다.** 실측: 런타임이 만든 워크트리의 기본 HEAD 는 `origin/<기본 브랜치>` 였고, 작업 중인 브랜치보다 **114 커밋 뒤**였다. 그 상태로 고친 diff 는 **깨끗하게 병합된다** — 몇 달 전 코드를 고쳤다는 사실이 어디에도 드러나지 않는다.
 

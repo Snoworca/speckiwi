@@ -10,6 +10,7 @@ import {
   LANE_DISPOSITION_KINDS_RETIRED_IN_4_0_0,
   VERBS_RETIRED_IN_4_0_0,
   recoveryClassOf,
+  sameWave,
   writtenBefore400,
   type DriftOutcome,
   type LaneClassName,
@@ -203,16 +204,18 @@ function classifyLanes(
   // denominator would make a card naming a lane nothing else knows about self-consistent, and
   // `card-stale` could not fire. Phase 1 creates no lane branch, so the journal is the only source
   // that names a lane of `(wave, stage)`.
+  // @req FR-NODE-160 — a line is a line of the card's wave by the one wave-name rule every journal
+  // reader uses (`sameWave`): `wave-01` is wave 1, as `lane-state.ts` already reads it.
   const lanes = new Set<string>();
   for (const event of view.lines) {
     if (typeof event.lane !== "string") continue;
-    if (event.wave !== `wave-${wave}`) continue;
+    if (!sameWave(event.wave, `wave-${wave}`)) continue;
     if (typeof event.stage === "number" && event.stage !== stage) continue;
     lanes.add(event.lane);
   }
 
   return [...lanes].sort().map((lane) => {
-    const events = view.lines.filter((event) => event.lane === lane && event.wave === `wave-${wave}`);
+    const events = view.lines.filter((event) => event.lane === lane && sameWave(event.wave, `wave-${wave}`));
     // @req FR-NODE-107 — `D(k)` is a disposition whose `kind` is in the closed enum, not the mere
     // presence of a `lane_disposition` object. Classifying on presence let a mistyped kind read as
     // terminal, so a resumed session settled a lane on a value nothing recognised — and settling is

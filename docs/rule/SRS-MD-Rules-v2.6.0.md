@@ -1741,7 +1741,10 @@ Validation items:
 | `SRS-W074` | warning | Trace link path missing |
 | `SRS-W075` | warning | Malformed Change Notes table row |
 | `SRS-W076` | warning | SRS mutation lock left after its mutation |
+| `SRS-W077` | warning | Verification Evidence covers a range of criteria |
+| `SRS-W078` | warning | Dependency stated only in prose |
 | `SRS-W079` | warning | PRD reference names a missing file or item |
+| `SRS-W080` | warning | depends_on Trace Link row names no requirement |
 
 This table lists every code `validate-spec` can emit, and only those. A code the runtime cannot produce is not listed, because a listed code reads as an enforced check.
 

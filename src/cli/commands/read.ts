@@ -35,6 +35,7 @@ import type { Diagnostic, DiagnosticsSummary, ParsedWorkspace, RequirementRecord
 import { planCompletedWorkMigration } from "../../core/completed-work/migration.js";
 import { parseFilter } from "../options.js";
 import { writeHuman, writeJson } from "../formatters.js";
+import { exitCodeFor } from "../exit.js";
 import { readRecoveryForCommand, writeCliStructuredError } from "../errors.js";
 import {
   workflowArtifacts,
@@ -112,7 +113,8 @@ function outputRead<T extends object>(context: CliContext, options: ReadOutputOp
   else writeHuman(context.io, value);
 }
 
-function readFailure(context: CliContext, command: Command, options: { json?: boolean }, code: string, message: string, recoveryCommand: string, exitCode: number): void {
+function readFailure(context: CliContext, command: Command, options: { json?: boolean }, code: string, message: string, recoveryCommand: string): void {
+  const exitCode = exitCodeFor(code);
   if (options.json) {
     writeCliStructuredError(context.io, code, message, { recovery: readRecoveryForCommand(recoveryCommand) });
     command.setOptionValue("exitCode", exitCode);
@@ -130,21 +132,21 @@ function parseCompletedWorkFilter(raw: Record<string, unknown>, command: Command
   if (typeof raw.target === "string") filter.target = raw.target;
   if (typeof raw.scope === "string") filter.scope = raw.scope;
   if (typeof raw.since === "string") {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw.since)) command.error("date must use YYYY-MM-DD", { exitCode: 2 });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw.since)) command.error("date must use YYYY-MM-DD", { exitCode: exitCodeFor("USAGE") });
     filter.since = raw.since;
   }
   if (typeof raw.limit === "string") {
     const parsed = Number(raw.limit);
-    if (!Number.isInteger(parsed) || parsed <= 0) command.error("limit must be a positive integer", { exitCode: 2 });
+    if (!Number.isInteger(parsed) || parsed <= 0) command.error("limit must be a positive integer", { exitCode: exitCodeFor("USAGE") });
     filter.limit = parsed;
   }
   if (typeof raw.offset === "string") {
     const parsed = Number(raw.offset);
-    if (!Number.isInteger(parsed) || parsed < 0) command.error("offset must be a non-negative integer", { exitCode: 2 });
+    if (!Number.isInteger(parsed) || parsed < 0) command.error("offset must be a non-negative integer", { exitCode: exitCodeFor("USAGE") });
     filter.offset = parsed;
   }
   if (typeof raw.order === "string") {
-    if (raw.order !== "latest" && raw.order !== "file") command.error("order must be latest or file", { exitCode: 2 });
+    if (raw.order !== "latest" && raw.order !== "file") command.error("order must be latest or file", { exitCode: exitCodeFor("USAGE") });
     filter.order = raw.order;
   }
   return filter;
@@ -153,21 +155,21 @@ function parseCompletedWorkFilter(raw: Record<string, unknown>, command: Command
 function parseNonNegativeInteger(value: unknown, label: string, command: Command): number | undefined {
   if (typeof value !== "string") return undefined;
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0) command.error(`${label} must be a non-negative integer`, { exitCode: 2 });
+  if (!Number.isInteger(parsed) || parsed < 0) command.error(`${label} must be a non-negative integer`, { exitCode: exitCodeFor("USAGE") });
   return parsed;
 }
 
 function parsePositiveInteger(value: unknown, label: string, command: Command): number | undefined {
   if (typeof value !== "string") return undefined;
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) command.error(`${label} must be a positive integer`, { exitCode: 2 });
+  if (!Number.isInteger(parsed) || parsed <= 0) command.error(`${label} must be a positive integer`, { exitCode: exitCodeFor("USAGE") });
   return parsed;
 }
 
 function parseDiscoveryOptions(raw: Record<string, unknown>, command: Command): RequirementDiscoveryOptions {
   const options: RequirementDiscoveryOptions = {};
   if (typeof raw.format === "string") {
-    if (!["ids", "compact", "full"].includes(raw.format)) command.error("format must be ids, compact, or full", { exitCode: 2 });
+    if (!["ids", "compact", "full"].includes(raw.format)) command.error("format must be ids, compact, or full", { exitCode: exitCodeFor("USAGE") });
     options.projection = raw.format;
   }
   if (typeof raw.fields === "string") {
@@ -175,7 +177,7 @@ function parseDiscoveryOptions(raw: Record<string, unknown>, command: Command): 
       const fields = normalizeDiscoveryFields(raw.fields);
       if (fields !== undefined) options.fields = fields;
     } catch (error) {
-      command.error((error as Error).message, { exitCode: 2 });
+      command.error((error as Error).message, { exitCode: exitCodeFor("USAGE") });
     }
   }
   if (raw.includeMarkdown === true) options.includeMarkdown = true;
@@ -224,11 +226,11 @@ function parseWorkOrderOptions(raw: Record<string, unknown>, command: Command) {
   if (typeof raw.pipelinePath === "string") options.pipelinePath = raw.pipelinePath;
   if (raw.explain === true) options.explain = true;
   if (typeof raw.profile === "string") {
-    if (!["default", "compact", "explain"].includes(raw.profile)) command.error("profile must be default, compact, or explain", { exitCode: 2 });
+    if (!["default", "compact", "explain"].includes(raw.profile)) command.error("profile must be default, compact, or explain", { exitCode: exitCodeFor("USAGE") });
     options.profile = raw.profile as "default" | "compact" | "explain";
   }
   if (typeof raw.contextProfile === "string") {
-    if (!["default", "compact"].includes(raw.contextProfile)) command.error("context-profile must be default or compact", { exitCode: 2 });
+    if (!["default", "compact"].includes(raw.contextProfile)) command.error("context-profile must be default or compact", { exitCode: exitCodeFor("USAGE") });
     options.contextProfile = raw.contextProfile as "default" | "compact";
   }
   return options;
@@ -237,18 +239,18 @@ function parseWorkOrderOptions(raw: Record<string, unknown>, command: Command) {
 function requireStringOption(raw: Record<string, unknown>, key: string, command: Command): string {
   const value = raw[key];
   if (typeof value === "string" && value.length > 0) return value;
-  command.error(`${key} is required`, { exitCode: 2 });
+  command.error(`${key} is required`, { exitCode: exitCodeFor("USAGE") });
 }
 
 function parseJsonObjectOption(value: unknown, label: string, command: Command): Record<string, unknown> {
-  if (typeof value !== "string") command.error(`${label} is required`, { exitCode: 2 });
+  if (typeof value !== "string") command.error(`${label} is required`, { exitCode: exitCodeFor("USAGE") });
   try {
     const parsed = JSON.parse(value) as unknown;
     if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
   } catch (error) {
-    command.error(`${label} must be valid JSON: ${(error as Error).message}`, { exitCode: 2 });
+    command.error(`${label} must be valid JSON: ${(error as Error).message}`, { exitCode: exitCodeFor("USAGE") });
   }
-  command.error(`${label} must be a JSON object`, { exitCode: 2 });
+  command.error(`${label} must be a JSON object`, { exitCode: exitCodeFor("USAGE") });
 }
 
 function workflowMutationBase(kind: WorkflowMutationKind, raw: Record<string, unknown>, command: Command): WorkflowMutationInput {
@@ -378,10 +380,10 @@ function renderExplain(context: CliContext, rootCommand: Command, code: string, 
     const message = `Unknown diagnostic code: ${code}`;
     if (json) {
       writeCliStructuredError(context.io, "NOT_FOUND", message, { recovery: { command: "validate" } });
-      rootCommand.setOptionValue("exitCode", 5);
+      rootCommand.setOptionValue("exitCode", exitCodeFor("NOT_FOUND"));
       return;
     }
-    rootCommand.error(message, { exitCode: 5 });
+    rootCommand.error(message, { exitCode: exitCodeFor("NOT_FOUND") });
     return;
   }
   if (json) writeJson(context.io, definition);
@@ -439,7 +441,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       const value = { ...result, summary: diagnosticsSummary, diagnosticsSummary };
       if (json) output(context, { json: true }, value);
       else output(context, { json: false }, formatValidateHuman(value));
-      if (unfiltered.errors.length > 0 || (options.failOnWarning && unfiltered.warnings.length > 0)) command.setOptionValue("exitCode", 1);
+      if (unfiltered.errors.length > 0 || (options.failOnWarning && unfiltered.warnings.length > 0)) command.setOptionValue("exitCode", exitCodeFor("VALIDATION"));
     });
 
   command
@@ -500,7 +502,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       try {
         outputRead(context, { json, diagnosticsLimit: options.diagnosticsLimit }, workspace, getRequirement(workspace, id, { includeMarkdown: options.markdown }));
       } catch (error) {
-        readFailure(context, command, { json }, "NOT_FOUND", (error as Error).message, "show", 5);
+        readFailure(context, command, { json }, "NOT_FOUND", (error as Error).message, "show");
       }
     });
 
@@ -644,7 +646,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         dryRun: options.dryRun === true
       });
       workflowOutput(options, result);
-      if (!result.ok) command.setOptionValue("exitCode", 5);
+      if (!result.ok) command.setOptionValue("exitCode", exitCodeFor("MUTATION_DENIED"));
     });
 
   const addWorkflowMutationOptions = (target: Command): Command =>
@@ -658,7 +660,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
   const workflowMutationOutput = async (options: Record<string, unknown>, input: WorkflowMutationInput): Promise<void> => {
     const result = await applyWorkflowMutation(await workflowRoot(), input);
     workflowOutput(options, result);
-    if (!result.ok) command.setOptionValue("exitCode", 5);
+    if (!result.ok) command.setOptionValue("exitCode", exitCodeFor("MUTATION_DENIED"));
   };
 
   addWorkflowMutationOptions(workflow.command("pipeline-emit").requiredOption("--event <json>", "JSON event object")).action(async (options) => {
@@ -707,20 +709,20 @@ export function registerReadCommands(command: Command, context: CliContext): voi
   reclassifyRecord.action(async (options) => {
     const recordType = requireStringOption(options, "recordType", reclassifyRecord);
     if (recordType !== "pipeline" && recordType !== "worklog") {
-      reclassifyRecord.error("record-type must be pipeline or worklog", { exitCode: 2 });
+      reclassifyRecord.error("record-type must be pipeline or worklog", { exitCode: exitCodeFor("USAGE") });
     }
     const reason = requireStringOption(options, "reason", reclassifyRecord);
     if (reason.trim().length === 0) {
-      reclassifyRecord.error("reason must not be blank", { exitCode: 2 });
+      reclassifyRecord.error("reason must not be blank", { exitCode: exitCodeFor("USAGE") });
     }
     const repairToken = typeof options.repairToken === "string" ? options.repairToken : undefined;
     if (options.dryRun !== true && (repairToken === undefined || repairToken.trim().length === 0)) {
-      reclassifyRecord.error("repair-token is required unless --dry-run is set", { exitCode: 2 });
+      reclassifyRecord.error("repair-token is required unless --dry-run is set", { exitCode: exitCodeFor("USAGE") });
     }
     const line = parsePositiveInteger(options.line, "line", reclassifyRecord);
-    if (line === undefined) reclassifyRecord.error("line is required", { exitCode: 2 });
+    if (line === undefined) reclassifyRecord.error("line is required", { exitCode: exitCodeFor("USAGE") });
     const byteOffset = parseNonNegativeInteger(options.byteOffset, "byte-offset", reclassifyRecord);
-    if (byteOffset === undefined) reclassifyRecord.error("byte-offset is required", { exitCode: 2 });
+    if (byteOffset === undefined) reclassifyRecord.error("byte-offset is required", { exitCode: exitCodeFor("USAGE") });
     const jsonlPath = typeof options.path === "string" ? options.path : undefined;
     await workflowMutationOutput(
       options,
@@ -768,7 +770,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     const diagnostics = readDiagnostics(workspace);
     const json = options.json || command.opts().json;
     if (typeof options.target === "string" && !targetExists(workspace, options.target)) {
-      readFailure(context, command, { json }, "TARGET_NOT_FOUND", `Target is not registered: ${options.target}`, "summary", 5);
+      readFailure(context, command, { json }, "TARGET_NOT_FOUND", `Target is not registered: ${options.target}`, "summary");
       return;
     }
     outputRead(context, readOutputOptions(options, command), workspace, summarizeTarget(workspace, { target: options.target, diagnostics }), diagnostics);
@@ -800,7 +802,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       // @req IR-CLI-107 AC-2 — a task only means something beside vibe or tdd; elsewhere it would be dropped silently.
       if (task !== undefined && (task === "" || (value !== "vibe" && value !== "tdd"))) {
         output(context, { json }, mutationFail("USAGE", "--task needs a non-empty name and the mode vibe or tdd"));
-        command.setOptionValue("exitCode", 2);
+        command.setOptionValue("exitCode", exitCodeFor("USAGE"));
         return;
       }
       if (value === undefined) {
@@ -809,13 +811,13 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       }
       if (!validModes.has(value as StepStateMode)) {
         output(context, { json }, mutationFail("INVALID_MODE", `Invalid mode: ${value} (expected sdd, vibe, wait, or tdd)`));
-        command.setOptionValue("exitCode", 2);
+        command.setOptionValue("exitCode", exitCodeFor("USAGE"));
         return;
       }
       // @req IR-CLI-107 AC-1
       const result = await setWorkMode(root, { mode: value as StepStateMode, ...(task !== undefined ? { activeTask: task } : {}) });
       output(context, { json }, result);
-      if (!result.ok) command.setOptionValue("exitCode", 5);
+      if (!result.ok) command.setOptionValue("exitCode", exitCodeFor("MUTATION_DENIED"));
     });
 
   // @req IR-CLI-049 @req IR-CLI-072 — CI-wireable work-mode gate. Wire as a remote required status
@@ -840,7 +842,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
           ? mutationFail("VIBE_GATE_BLOCKED", gate.blockedReason ?? "vibe gate blocked")
           : mutationOk({ mode: gate.mode, activeTask: gate.activeTask, blocked: false })
       );
-      if (gate.blocked) command.setOptionValue("exitCode", 1);
+      if (gate.blocked) command.setOptionValue("exitCode", exitCodeFor("VALIDATION"));
     });
 
   // @req IR-CLI-062 — cross-requirement timeline: requirements whose most recent Change Notes date
@@ -854,7 +856,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     .option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit)
     .action(async (date, options) => {
       if (!isValidIsoDate(date)) {
-        changedSince.error("date must use YYYY-MM-DD", { exitCode: 2 });
+        changedSince.error("date must use YYYY-MM-DD", { exitCode: exitCodeFor("USAGE") });
         return;
       }
       const workspace = await workspaceFrom(command.opts());
@@ -912,7 +914,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       const workspace = await workspaceFrom(command.opts());
       const record = workspace.records.find((candidate) => candidate.id === id);
       if (!record) {
-        readFailure(context, command, { json }, "NOT_FOUND", `Requirement not found: ${id}`, "show", 5);
+        readFailure(context, command, { json }, "NOT_FOUND", `Requirement not found: ${id}`, "show");
         return;
       }
       const since = typeof options.since === "string" ? options.since : undefined;
@@ -990,7 +992,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       });
       const diagnosticsSummary = summarizeDiagnostics(result.diagnostics);
       output(context, { json }, { ...result, diagnosticsSummary });
-      if (result.errors.length > 0) command.setOptionValue("exitCode", 1);
+      if (result.errors.length > 0) command.setOptionValue("exitCode", exitCodeFor("VALIDATION"));
     });
 
   // @req IR-CLI-073 — expose the idempotent step SRS synthesis engine (FR-NODE-041/073) on the CLI.
@@ -1004,7 +1006,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       const root = await resolveProjectRoot(process.cwd(), command.opts().root);
       const result = await synthesizeStepSrs(root, { task, ...(options.dryRun === true ? { dryRun: true } : {}) });
       output(context, { json }, result);
-      if (!result.ok) command.setOptionValue("exitCode", 5);
+      if (!result.ok) command.setOptionValue("exitCode", exitCodeFor("MUTATION_DENIED"));
     });
 
   // @req IR-CLI-074 — CLI mirrors of the step mutations (claim/update-state/promote) so the tdd
@@ -1030,7 +1032,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         ...(options.dryRun === true ? { dryRun: true } : {})
       });
       output(context, { json }, result);
-      if (!result.ok) command.setOptionValue("exitCode", 5);
+      if (!result.ok) command.setOptionValue("exitCode", exitCodeFor("MUTATION_DENIED"));
     });
 
   step
@@ -1052,7 +1054,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         ...(options.dryRun === true ? { dryRun: true } : {})
       });
       output(context, { json }, result);
-      if (!result.ok) command.setOptionValue("exitCode", 5);
+      if (!result.ok) command.setOptionValue("exitCode", exitCodeFor("MUTATION_DENIED"));
     });
 
   // @req FR-NODE-080 — writeIfMissing intent stub scaffold, plus the SDS stub with --sds (content stays directly authored).
@@ -1073,7 +1075,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         ...(options.dryRun === true ? { dryRun: true } : {})
       });
       output(context, { json }, result);
-      if (!result.ok) command.setOptionValue("exitCode", 5);
+      if (!result.ok) command.setOptionValue("exitCode", exitCodeFor("MUTATION_DENIED"));
     });
 
   // @req FR-NODE-081 — forward-only SDS lifecycle transition (draft -> agreed -> superseded).
@@ -1092,7 +1094,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         ...(options.dryRun === true ? { dryRun: true } : {})
       });
       output(context, { json }, result);
-      if (!result.ok) command.setOptionValue("exitCode", 5);
+      if (!result.ok) command.setOptionValue("exitCode", exitCodeFor("MUTATION_DENIED"));
     });
 
   step
@@ -1114,7 +1116,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         ...(options.ignoreLock === true ? { ignoreLock: true } : {})
       });
       output(context, { json }, result);
-      if (!result.ok) command.setOptionValue("exitCode", 5);
+      if (!result.ok) command.setOptionValue("exitCode", exitCodeFor("MUTATION_DENIED"));
     });
 
   // @req IR-CLI-053 — release-readiness, coverage, and rtm read surfaces over the core release

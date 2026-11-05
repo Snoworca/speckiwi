@@ -274,15 +274,16 @@ describe("FR-FLOW-115 — kiwi-pm commit-lane-work", () => {
     );
   });
 
-  // AC-2 (4.1.0): one commit per kiwi-coder run, explicit pathspec, never the whole tree. `git add -A` inside a unit
-  // stages the orchestrator's own residue and every other unit's uncommitted work.
-  it.each(PM_COPIES)("FR-FLOW-115 AC-2: %s commits once per SDS run with an explicit pathspec", (copy) => {
+  // AC-2 as rewritten for 5.3.0 (FR-FLOW-216 AC-2): a test commit and an implementation commit per requirement,
+  // explicit pathspec, never the whole tree. `git add -A` inside a unit stages the orchestrator's own residue and
+  // every other unit's uncommitted work.
+  it.each(PM_COPIES)("FR-FLOW-115 AC-2: %s commits a test commit and an implementation commit per requirement with an explicit pathspec", (copy) => {
     const body = handoffSection(copy);
-    const rule = line(body, /commit 1개/);
+    const rule = line(body, /요구마다 커밋 두 개/);
     expect(rule, `${copy} must state the commit granularity`).not.toBe("");
     expect(
-      /kiwi-coder 실행 하나당/.test(rule),
-      `${copy} the granularity must be the one kiwi-coder run, not a plan Task`
+      /\*\*테스트 커밋\*\*/.test(rule) && /\*\*구현 커밋\*\*/.test(rule),
+      `${copy} the granularity must be the requirement's test commit and implementation commit, not a plan Task`
     ).toBe(true);
     expect(/Task/.test(rule), `${copy} the granularity still names the retired plan Task`).toBe(false);
     expect(

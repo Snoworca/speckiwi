@@ -8,6 +8,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { BILINGUAL_SEARCH_RULE } from "../../src/core/bootstrap/templates.js";
 import { EXPECTED_KIWI_SKILLS } from "../../src/doctor/package-doctor.js";
 import { COMPACTION_TOKEN_BUDGET, estimateTokens, tokensThrough } from "./skill-token-estimate.js";
+import { ORCHESTRATOR_PRD_RULE, WAVE_MASTER_PRD_RULE } from "./prd-rule-paragraphs.js";
 
 // @req FR-FLOW-204 — kiwi-prd writes the user's request verbatim and turns it into an approved,
 // structured PRD that is the input to SRS authoring. The AC numbers are the FR-FLOW-204 block in
@@ -508,57 +509,9 @@ describe("FR-FLOW-204 AC-8 — kiwi-prd survives a compaction whole and ships in
   });
 });
 
-describe("FR-FLOW-204 AC-9 — the orchestrators write the PRD first and hand its path to kiwi-srs", () => {
-  // The whole rule paragraph is pinned, not a fragment of it: the sentence that keeps wave
-  // decomposition open while an intent, goal or in-scope item is named by no wave was deletable with
-  // every assertion green while only the first two sentences were pinned.
-  const ORCHESTRATOR_RULE =
-    "intake 가 받은 요청에 PRD 경로가 없으면 조사보다 먼저 `kiwi-prd` 를 불러 승인된 PRD 를 만든다. wave 를 나눌 때 각 `waves/wave-{n}/excerpt.md` 에 그 wave 가 맡는 PRD 항목 ID 를 적어 `intent` · `goal` · `in-scope` 항목이 모두 어느 한 wave 에 지명되게 하고, 모든 `kiwi-srs` 호출에 그 PRD 경로를 `PRD_PATH` 로 넘긴다. 요청이 이미 `docs/prd/` 의 PRD 를 가리키면 그 PRD 를 쓴다. 지명되지 않은 `intent` · `goal` · `in-scope` 항목이 하나라도 남으면 wave 분해를 끝내지 않는다. `Effect` 가 in-scope 인 확정 proposal 도 in-scope 항목으로 보고 어느 한 wave 에 지명한다. `--auto` 면 `kiwi-prd` 가 `Status` 행을 `unapproved` 로 둔 채 돌려준 PRD 를 쓰고 run 보고에 미승인임을 적는다. PRD 는 `kiwi-prd` 만 고친다 — intake 기록(`01.intake.md`)이 요청을 요약하더라도 판정 기준은 PRD 다.";
-  const WAVE_MASTER_RULE =
-    "입력 문서에 PRD 경로가 없으면 wave 분해보다 먼저 `kiwi-prd` 를 불러 그 입력 문서를 `U-1` 의 원천으로 승인된 PRD 를 만든다. 요청이 이미 `docs/prd/` 의 PRD 를 가리키면 그 PRD 를 쓴다. wave 를 나눌 때 각 wave 의 `excerpt_path` 발췌에 그 wave 가 맡는 PRD 항목 ID 를 적어 `intent` · `goal` · `in-scope` 항목이 모두 어느 한 wave 에 지명되게 하고, 모든 `kiwi-srs` 호출에 그 PRD 경로를 `PRD_PATH` 로 넘긴다. 지명되지 않은 `intent` · `goal` · `in-scope` 항목이 하나라도 남으면 wave 분해를 끝내지 않는다. `Effect` 가 in-scope 인 확정 proposal 도 in-scope 항목으로 보고 어느 한 wave 에 지명한다. `--auto` 면 `kiwi-prd` 가 `Status` 행을 `unapproved` 로 둔 채 돌려준 PRD 를 쓰고 run 보고에 미승인임을 적는다. PRD 는 `kiwi-prd` 만 고친다.";
-  const CASES = [
-    ["kiwi-orchestrator", ORCHESTRATOR_RULE, "intake 가 받은 요청에", "REQ_PATH=waves/wave-{n}/excerpt.md"],
-    ["kiwi-wave-master", WAVE_MASTER_RULE, "입력 문서에 PRD 경로가 없으면", "REQ_PATH=<그 wave 의 excerpt_path>"],
-  ] as const;
-
-  // @req FR-FLOW-204 AC-9 — the shared module that materializes each wave's excerpt gives the PRD item
-  // IDs a fixed place, so the naming duty the two orchestrators state has somewhere to be written.
-  const EXCERPT_LINE =
-    "PRD 가 있는 run 이면 각 wave 발췌의 맨 위에 `PRD items: PRD-<n>, …` 한 줄로 그 wave 가 맡는 PRD 항목 ID 를 적는다 — 모든 `intent` · `goal` · `in-scope` 항목이 어느 한 wave 의 이 줄에 나와야 wave 분해가 끝난다(FR-FLOW-204 AC-9). `Effect` 가 in-scope 인 확정 proposal 도 in-scope 항목으로 이 줄에 나와야 한다.";
-  it.each(RENDERINGS.map((root) => `${root}/_shared/kiwi/wave-decomposition.md`))("%s: the wave excerpt format has a PRD item ID line", (rel) => {
-    const text = read(rel);
-    const excerpt = text.indexOf("`{artifact_root}design-baseline/wave-{n}.md`");
-    expect(excerpt, `${rel}: the excerpt materialization sentence`).toBeGreaterThan(0);
-    const at = text.indexOf(EXCERPT_LINE);
-    expect(at, `${rel}: the PRD item ID line`).toBeGreaterThan(excerpt);
-  });
-
-  for (const [skill, rule, opening, reqPath] of CASES) {
-    // kiwi-wave-master is on the mirror's exclusion list, so it ships in the three skills/ renderings only.
-    const roots = skill === "kiwi-wave-master" ? RENDERINGS.filter((root) => root !== ".agents/skills") : RENDERINGS;
-    for (const rel of roots.map((root) => `${root}/${skill}/SKILL.md`)) {
-      // @req FR-FLOW-204 AC-9
-      it(`${rel}: the PRD rule is exactly the pinned paragraph and ends within the first ${COMPACTION_TOKEN_BUDGET} estimated tokens`, () => {
-        const text = read(rel);
-        const paragraph = text.split("\n").filter((line) => line.startsWith(opening));
-        expect(paragraph, `${rel}: the PRD rule paragraph`).toEqual([rule]);
-        const at = tokensThrough(text, rule);
-        expect(at).toBeGreaterThan(0);
-        expect(at).toBeLessThanOrEqual(COMPACTION_TOKEN_BUDGET);
-      });
-
-      // @req FR-FLOW-204 AC-9 — the kiwi-srs call block itself carries the PRD path.
-      it(`${rel}: the kiwi-srs call form passes PRD_PATH`, () => {
-        const text = read(rel);
-        const call = text.indexOf('Skill({ skill: "kiwi-srs",');
-        expect(call, `${rel}: no kiwi-srs call form`).toBeGreaterThan(0);
-        const args = text.slice(call, text.indexOf('" })', call));
-        expect(args).toContain(reqPath);
-        expect(args).toContain("PRD_PATH=");
-      });
-    }
-  }
-});
+// FR-FLOW-204 AC-9 expired 2026-11-05 naming FR-FLOW-219. Its pinned PRD-first paragraphs moved, rewritten
+// for the SRS-first flow and pinned whole as before, to prd-items-computed.fr-flow-219.test.ts (AC-3);
+// the wave-excerpt PRD item line it pinned is gone with the excerpts (FR-FLOW-219 AC-1).
 
 describe("kiwi-pm names kiwi-prd as the owner of PRD authoring", () => {
   // @req FR-FLOW-160 AC-3 — the sentence that said no skill declares PRD authoring stopped being
@@ -585,14 +538,16 @@ describe("FR-FLOW-204 AC-10 AC-11 — R-STEP, the design freeze and user answers
   // never looked at the PRD, and a 1.c answer went to 01.intake.md alone. Each rule is a paragraph of
   // the core block, and the whole core block is pinned so nothing can be inserted beside it.
   const ORCH_CORE_HEADING = "## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)";
-  const ORCH_RULE =
-    "intake 가 받은 요청에 PRD 경로가 없으면 조사보다 먼저 `kiwi-prd` 를 불러 승인된 PRD 를 만든다. wave 를 나눌 때 각 `waves/wave-{n}/excerpt.md` 에 그 wave 가 맡는 PRD 항목 ID 를 적어 `intent` · `goal` · `in-scope` 항목이 모두 어느 한 wave 에 지명되게 하고, 모든 `kiwi-srs` 호출에 그 PRD 경로를 `PRD_PATH` 로 넘긴다. 요청이 이미 `docs/prd/` 의 PRD 를 가리키면 그 PRD 를 쓴다. 지명되지 않은 `intent` · `goal` · `in-scope` 항목이 하나라도 남으면 wave 분해를 끝내지 않는다. `Effect` 가 in-scope 인 확정 proposal 도 in-scope 항목으로 보고 어느 한 wave 에 지명한다. `--auto` 면 `kiwi-prd` 가 `Status` 행을 `unapproved` 로 둔 채 돌려준 PRD 를 쓰고 run 보고에 미승인임을 적는다. PRD 는 `kiwi-prd` 만 고친다 — intake 기록(`01.intake.md`)이 요청을 요약하더라도 판정 기준은 PRD 다.";
-  const WM_RULE =
-    "입력 문서에 PRD 경로가 없으면 wave 분해보다 먼저 `kiwi-prd` 를 불러 그 입력 문서를 `U-1` 의 원천으로 승인된 PRD 를 만든다. 요청이 이미 `docs/prd/` 의 PRD 를 가리키면 그 PRD 를 쓴다. wave 를 나눌 때 각 wave 의 `excerpt_path` 발췌에 그 wave 가 맡는 PRD 항목 ID 를 적어 `intent` · `goal` · `in-scope` 항목이 모두 어느 한 wave 에 지명되게 하고, 모든 `kiwi-srs` 호출에 그 PRD 경로를 `PRD_PATH` 로 넘긴다. 지명되지 않은 `intent` · `goal` · `in-scope` 항목이 하나라도 남으면 wave 분해를 끝내지 않는다. `Effect` 가 in-scope 인 확정 proposal 도 in-scope 항목으로 보고 어느 한 wave 에 지명한다. `--auto` 면 `kiwi-prd` 가 `Status` 행을 `unapproved` 로 둔 채 돌려준 PRD 를 쓰고 run 보고에 미승인임을 적는다. PRD 는 `kiwi-prd` 만 고친다.";
+  // FR-FLOW-219 AC-3 owns this paragraph since FR-FLOW-204 AC-9 expired; one copy of its text.
+  const ORCH_RULE = ORCHESTRATOR_PRD_RULE;
+  // FR-FLOW-219 AC-3 owns this paragraph since FR-FLOW-204 AC-9 expired; one copy of its text.
+  const WM_RULE = WAVE_MASTER_PRD_RULE;
   const RSTEP_RULE =
     "`R-STEP` 으로 라우팅하면 `kiwi-tdd` 호출에도 그 PRD 경로를 `PRD_PATH` 로 넘긴다 — `kiwi-tdd` 는 step 의 acceptance 줄을 그 PRD 로 판정한 뒤에야 테스트로 옮기며, 작업 개요(`01.intake.md`)는 무엇을 만들지 정하지 않는다.";
+  // Rewritten 2026-11-05: R-ORCH has no per-wave design document or loop W any more (FR-FLOW-215 AC-1),
+  // and the PRD items are checked by PRD coverage instead of wave naming (FR-FLOW-219).
   const DESIGN_RULE =
-    "설계를 동결할 때(1.d 의 run 설계와 loop D, 3.a 의 wave 설계와 loop W) 설계 항목(`[D-nnn]` · `[I-nnn]`)마다 행 끝에 근거 `← PRD-<n>` 또는 `fills: PRD-<n> / <hole|contradiction|defect> / <reason>` 을 적고, 근거가 없거나 exclusion 항목에 걸리는 설계 항목은 loop D·W 가 동결 전에 지운다. `State` 가 `rejected` 인 PRD 항목은 근거가 되지 못하므로, 거절된 항목만 가리키는 설계 항목도 지운다. 거절된 `intent` · `goal` · `in-scope` 항목은 wave 지명과 사후 검증에서도 fail 로 세지 않는다. `Effect` 가 exclusion 인 확정 proposal 은 exclusion 항목으로, `Effect` 가 in-scope 인 확정 proposal 은 in-scope 항목으로 본다 — 설계 동결과 사후 검증에서도 그렇다. 설계 항목과 PRD 판정이 어긋나면(예: 그 설계 항목에서 나온 요구를 `kiwi-srs` 가 PRD 판정으로 drop 하면) PRD 판정이 이기고, 그 설계 항목은 사후 검증(loop P · F)의 설계 항목 분모에서 빠지며 `design-gap` 으로 되돌아가지 않는다 — 빠진 id 와 그 PRD 판정은 run 보고에 적는다. 기록된 `contradiction resolved:` 해소는 `kiwi-srs` · `kiwi-tdd` 와 같은 방식으로 따른다 — 그 해소가 없앤 in-scope 항목은 wave 지명과 사후 검증에서 fail 로 세지 않고, exclusion 을 좁힌 해소가 허용한 설계 항목은 그 exclusion 항목에 걸리지 않는 것으로 보고 지우지 않는다.";
+    "설계를 동결할 때(1.d 의 run 설계와 loop D) 설계 항목(`[D-nnn]` · `[I-nnn]`)마다 행 끝에 근거 `← PRD-<n>` 또는 `fills: PRD-<n> / <hole|contradiction|defect> / <reason>` 을 적고, 근거가 없거나 exclusion 항목에 걸리는 설계 항목은 loop D 가 동결 전에 지운다. `State` 가 `rejected` 인 PRD 항목은 근거가 되지 못하므로, 거절된 항목만 가리키는 설계 항목도 지운다. 거절된 `intent` · `goal` · `in-scope` 항목은 PRD 커버리지와 사후 검증에서도 fail 로 세지 않는다. `Effect` 가 exclusion 인 확정 proposal 은 exclusion 항목으로, `Effect` 가 in-scope 인 확정 proposal 은 in-scope 항목으로 본다 — 설계 동결과 사후 검증에서도 그렇다. 설계 항목과 PRD 판정이 어긋나면(예: 그 설계 항목에서 나온 요구를 `kiwi-srs` 가 PRD 판정으로 drop 하면) PRD 판정이 이기고, 그 설계 항목은 `design-gap` 으로 되돌아가지 않는다 — 사후 검증(loop P · F)의 범위는 요구의 AC 와 통합 항목이라 설계 항목을 세지 않는다(`verify-loop.md §3`). 빠진 id 와 그 PRD 판정은 run 보고에 적는다. 기록된 `contradiction resolved:` 해소는 `kiwi-srs` · `kiwi-tdd` 와 같은 방식으로 따른다 — 그 해소가 없앤 in-scope 항목은 PRD 커버리지와 사후 검증에서 fail 로 세지 않고, exclusion 을 좁힌 해소가 허용한 설계 항목은 그 exclusion 항목에 걸리지 않는 것으로 보고 지우지 않는다.";
   const ANSWER_ORCH =
     "요청에 관한 질문에 사용자가 답하면(1.c 의 QnA, loop D 가 되돌린 `needs-decision` 질문 포함) 그 답을 쓰기 전에 `kiwi-prd` 를 통해 PRD 의 다음 `U-<n>` 으로 원문 그대로 덧붙인다 — 답이 더한 범위는 그래야 PRD 에 근거를 갖는다.";
   const ANSWER_WM =

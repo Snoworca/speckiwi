@@ -383,15 +383,31 @@ describe("FR-NODE-103 readiness harvest over a speckiwi list --json snapshot", {
   });
 
   it("AC-2: performs no I/O — the module's import graph reaches no node builtin and no MCP client", async () => {
-    const source = await readFile(READINESS_SOURCE, "utf8");
-    expect(source).toContain("deriveCanonicalRequirementReadiness");
-    expect(source).not.toMatch(/from\s+"node:/u);
-    expect(source).not.toMatch(/\brequire\(/u);
-    expect(source).not.toMatch(/\bDate\.now\(\)/u);
-    expect(source).not.toMatch(/\bfetch\(/u);
+    expect(await readFile(READINESS_SOURCE, "utf8")).toContain("deriveCanonicalRequirementReadiness");
 
-    const localImports = [...source.matchAll(/from\s+"(\.[^"]+)"/gmu)].map((match) => match[1]!);
-    expect(localImports).toEqual(["../types.js"]);
+    // The whole local import graph, not only the module's own lines: a pure helper the module imports
+    // (FR-PARSE-045's dependency rule) is held to the same bans as the module itself.
+    const reached = new Set<string>();
+    const pending = [READINESS_SOURCE];
+    while (pending.length > 0) {
+      const file = pending.pop()!;
+      if (reached.has(file)) continue;
+      reached.add(file);
+      const source = await readFile(file, "utf8");
+      const where = path.relative(REPO_ROOT, file);
+      expect(source, where).not.toMatch(/from\s+"node:/u);
+      expect(source, where).not.toMatch(/\brequire\(/u);
+      expect(source, where).not.toMatch(/\bDate\.now\(\)/u);
+      expect(source, where).not.toMatch(/\bfetch\(/u);
+      for (const match of source.matchAll(/from\s+"(\.[^"]+)"/gmu)) {
+        pending.push(path.resolve(path.dirname(file), match[1]!.replace(/\.js$/u, ".ts")));
+      }
+    }
+    expect([...reached].map((file) => path.relative(REPO_ROOT, file).replace(/\\/gu, "/")).sort()).toEqual([
+      "src/core/orchestrator/readiness.ts",
+      "src/core/requirement-dependency.ts",
+      "src/core/types.ts"
+    ]);
   });
 
   it("AC-3: carries no per-root MCP transport from wave-spec-client.ts", async () => {

@@ -74,8 +74,9 @@ const GOLDEN = {
   pipelineFourEtc:
     "사이클 밖에서 spawn 하는 `kiwi-srs-research`(§2.7.1) · `kiwi-srs-from-code`(§3) · `kiwi-commit-auto-pr`(§2.6.3) · `kiwi-commit-auto-push`(§5.1 T1)에는 `--auto` 가 함께 켜졌을 때 `--auto --max` 를 전파한다(`auto-option.md` §7) — etc 프로필에서는 넷이 이미 `--max` 로 돌므로 이것이 바꾸는 것은 결정 위원회 규모뿐이고, 그래서 여기서 `--max` 는 사용자가 명시한 것만 센다(etc 의 기본 `--max` 는 위원회를 5인으로 만들지 않는다 — `local-llm-profile.md`). `--auto` 없이 `--max` 만 켜졌으면 이 넷에는 `--max` 도 `--auto` 도 붙이지 않는다 — 사용자가 주지 않은 `--auto` 를 부모가 만들지 않는다(`auto-option.md` §7 표는 부모가 `--auto` 일 때만 자식 인자를 정한다).",
   pipelineRoutedSentence: "라우팅한 `kiwi-tdd` 호출에도 `--max` 를 전파한다(§7.1).",
+  // Rewritten 2026-11-05 with FR-FLOW-212 AC-2: the re-entry is on the product target, there is no wave target.
   waveDelegation:
-    "`--max` 는 개선 위임(§5.5.5 — 엔진 `verify-loop.md` §7, §5.5 와 §5.6 이 함께 쓴다)이 본 스킬이 직접 호출하는 세 호출에도 전파한다 — `kiwi-review-fix-loop` 위임, 그 wave target 의 `kiwi-srs` 증분 재진입, `--req-filter` 를 준 `kiwi-srs-feasibility` 재실행. 셋 다 계약의 wave 단계가 아니라 본 스킬이 spawn 하므로 위 첫 문단의 목록으로 덮이지 않는다. 같은 위임의 wave 재진입은 첫 문단이 덮고, §5.55 의 run 창 hop 은 호출 형태에 `[--max]` 를 이미 싣는다."
+    "`--max` 는 개선 위임(§5.5.5 — 엔진 `verify-loop.md` §7, §5.5 와 §5.6 이 함께 쓴다)이 본 스킬이 직접 호출하는 세 호출에도 전파한다 — `kiwi-review-fix-loop` 위임, 제품 target 의 `kiwi-srs` 증분 재진입, `--req-filter` 를 준 `kiwi-srs-feasibility` 재실행. 셋 다 계약의 wave 단계가 아니라 본 스킬이 spawn 하므로 위 첫 문단의 목록으로 덮이지 않는다. 같은 위임의 wave 재진입은 첫 문단이 덮고, §5.55 의 run 창 hop 은 호출 형태에 `[--max]` 를 이미 싣는다."
 } as const;
 
 /**
@@ -236,8 +237,8 @@ describe("FR-FLOW-181 AC-3 — kiwi-orchestrator call sites that already carried
     });
 
     it(`FR-FLOW-181 AC-3 ${rendering.id}: the R-ORCH row defers the worker kiwi-pm to §10, whose invocation block carries [--max]`, () => {
-      // FR-FLOW-194 (4.1.0): the worker runs its wave's requirement set; the wave SDS only under --sds.
-      expect(sectionOf(rendering.relPath, R_ORCH)).toMatch(/kiwi-pm --req-filter <그 wave 의 requirements\[\]> --run-id \{run_id\}-wave-\{n\} --no-final …\s*\(wave 의 워커가 — §10; --sds 면 --sds docs\/sds\/\{run_id\}-wave-\{n\}\.sds\.md\)/);
+      // FR-FLOW-216 AC-1 (5.3.0): the worker runs kiwi-pm once per requirement; under --sds with that requirement's fragment.
+      expect(sectionOf(rendering.relPath, R_ORCH)).toMatch(/kiwi-pm --req-filter <요구 하나> --run-id \{run_id\}-wave-\{n\}-<요구 ID 소문자> --no-final …\s*\(wave 의 워커가 요구마다 — §10; --sds 면 그 요구를 담은 조각을 --sds 로도\)/);
       const block = fencedBlockContaining(sectionOf(rendering.relPath, PHASE_3F), "kiwi-pm --req-filter");
       expect(block).toContain("--commit-lane-work");
       expect(block).toContain("[--max]");

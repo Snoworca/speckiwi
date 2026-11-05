@@ -39,6 +39,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 
 작성자 local-LLM max-profile 위임 worker에게 전달:
 - PRD 경로(요약 금지) — 요구마다 Rationale 에 인용한 PRD 항목(`AC-n ← PRD-m`)이나 `fills:` 근거를 적는다(SKILL.md 핵심 규칙 블록)
+- 요구 사이 의존 — `depends_on` Trace Link 로 적는다(핵심 규칙 블록 FR-FLOW-208)
 - Phase 1/2/3 산출물
 - `existing_srs_context.json` (관련 REQ 전체 내용)
 - 신규 REQ 초안 (Phase 2의 proposed_*)
@@ -88,7 +89,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
      ```
 
      CLI 는 `--github-issue` 로 같은 값을 준다. 값은 번호가 아니라 위 형식의 URL 이다 — SRS-MD 규칙 §12.3 의 `GitHub Issue` 행이 URL 을 요구하고, 그 형식을 벗어나면 `links check` 가 `SRS-W004` 를 낸다.
-2. `add_trace_link` — 관련 REQ 의존성 (`depends_on` / `extends`, 방향: NEW-ID → 기존 REQ; §0.18)
+2. `add_trace_link` — 관련 REQ 의존성. `depends_on` 은 의존하는 요구 → 의존받는 요구로 적는다(기존 REQ 가 NEW-ID 에 기대면 기존 REQ → NEW-ID). `extends` 는 NEW-ID → 기존 REQ (§0.18)
    - cross-REQ AC 재진술 시 `notes: "{base}; re_stated_from: REQ-X#ACn"` provenance 필수
 3. `validate_spec` — pre-check
 4. **Markdown sync** (§9.4)
@@ -263,7 +264,7 @@ finding 은 증거가 붙을 때만 keep 한다(핵심 규칙 블록 **종료**)
 
 | 처분 | 증거 | 예 |
 |---|---|---|
-| **keep** | 도구 진단 — `validate_spec` · `links check` 가 이번 변경으로 새로 낸 진단 | REQ-ID 중복, trace path 비존재 |
+| **keep** | 도구 진단 — `validate_spec` · `links check` 가 이번 변경으로 새로 낸 진단, 그리고 이번 실행이 추가하거나 바꾼 요구에 남은 FR-PARSE-045 경고(이미 있던 것도, 핵심 규칙 블록 FR-FLOW-208) | REQ-ID 중복, trace path 비존재 |
 | **keep** | 실패한 검사 — 입력만 있으면 답이 하나로 정해지는 대조 | 필수 MCP 호출 누락(`srs_delta.json` ↔ §9.2), 황금률 위반(axis 10), conflict 인데 `conflicts_with` 없음, update 인데 supersede·Change Notes 없음, `{{OQ-N}}` ↔ §6 불일치 |
 | **keep** | 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9 b/c/e) |
 | **drop** | 증거 없음 — 사유와 함께 보고만 한다 | 분류 rationale 약함, 모호 어휘, 제목·tag·Change Notes 형식, wording |

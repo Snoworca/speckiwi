@@ -264,8 +264,10 @@ describe.each(WAVE_COPIES)("FR-FLOW-134 — kiwi-wave-master owns a run-scope ho
   });
 
   it("AC-5: the missing-event detector survives — it is the only observer of the guarantee", () => {
+    // FR-FLOW-220 (5.3.0): the second verifier stance is gone; the absent report is raised as a kept
+    // finding, its proof being the empty `reports[]`.
     expect(
-      /검증자 2 의 finding 으로 올린다/.test(body(read(copy))),
+      /그 사실을 kept finding 으로 올린다/.test(body(read(copy))),
       `${copy}: guaranteed upstream, this row looks redundant and gets deleted`
     ).toBe(true);
   });

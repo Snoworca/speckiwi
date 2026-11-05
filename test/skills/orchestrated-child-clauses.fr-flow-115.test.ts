@@ -17,11 +17,13 @@ const ROOTS = ["skills/claude", "skills/codex", "skills/etc", ".agents/skills"];
 const read = (rel: string): string => readFileSync(path.join(REPO_ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 
 describe.each(ROOTS)("FR-FLOW-115 AC-2 — %s/kiwi-pm", (root) => {
-  it("FR-FLOW-115 AC-2: the one-commit bullet stages an explicit pathspec drawn from the write set and forbids staging the whole tree", () => {
+  // FR-FLOW-115 AC-2 as rewritten for 5.3.0 (FR-FLOW-216 AC-2): two commits per requirement, test first.
+  it("FR-FLOW-115 AC-2: the per-requirement commit bullet stages an explicit pathspec drawn from the write set and forbids staging the whole tree", () => {
     const flag = section(read(`${root}/kiwi-pm/SKILL.md`), /^####\s.*`--commit-lane-work`/m);
     expect(flag, `${root}: the --commit-lane-work subsection`).not.toBe("");
-    const rule = flag.split("\n").find((line) => line.startsWith("- ") && line.includes("commit 1개")) ?? "";
-    expect(rule, `${root}: the commit-granularity bullet`).toMatch(/^- kiwi-coder 실행 하나당 commit 1개를 만든다 — 실행이 `done` 으로 끝났을 때만\./);
+    const rule = flag.split("\n").find((line) => line.startsWith("- ") && line.includes("요구마다 커밋 두 개")) ?? "";
+    expect(rule, `${root}: the commit-granularity bullet`).toMatch(/^- 요구마다 커밋 두 개를 만든다 — 먼저 그 요구의 새 테스트와 바뀐 테스트만 stage 한 \*\*테스트 커밋\*\*/);
+    expect(rule, `${root}: commits only on a done run`).toMatch(/실행이 `done` 으로 끝났을 때만 커밋한다\./);
     expect(rule, `${root}: the staged set on the same bullet`).toMatch(/stage 대상은 그 집합에서 뽑은 \*\*명시 pathspec\*\* 이며/);
     expect(rule, `${root}: the whole-tree ban on the same bullet`).toMatch(/\*\*작업 트리 전체를 stage 하지 않는다\*\*\(`git add -A` 금지\)/);
   });

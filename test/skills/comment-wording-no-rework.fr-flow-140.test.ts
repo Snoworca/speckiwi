@@ -44,12 +44,13 @@ function severityLine(text: string, severity: string): string {
  * assertion about these skills, this one must NOT mask fences.
  */
 function budgetLines(text: string): string[] {
-  return text.split(/\r?\n/).filter((line) => /(?:CRITICAL|HIGH|MEDIUM|LOW)\s*≤\s*\d/.test(line));
+  // FR-FLOW-221 AC-3 (5.3.0): (g) holds one round cap and the dropped-finding rule, not per-severity caps.
+  return text.split(/\r?\n/).filter((line) => /라운드 상한 \d|dropped finding\(/.test(line));
 }
 
 describe("FR-FLOW-140 AC-1 — both places that decide the outcome say the same thing", () => {
   it.each(COPIES)("%s states the no-rework rule where the severity is defined", (_label, relPath) => {
-    const low = severityLine(body(relPath), "LOW");
+    const low = severityLine(body(relPath), "dropped");
     expect(low, "the lower severity is not declared at all").not.toBe("");
     expect(low, "the severity definition does not name comment wording").toContain("주석");
     expect(low, "the severity definition does not say the finding buys no rework round").toMatch(NO_REWORK);
@@ -69,7 +70,7 @@ describe("FR-FLOW-140 AC-2 — the observation stays reportable", () => {
   it.each(COPIES)("%s keeps comment wording as a nameable finding", (_label, relPath) => {
     // Deleting the subject would not remove the round, it would move it: a reviewer who cannot file
     // an observation under its own name files it under another one.
-    const low = severityLine(body(relPath), "LOW");
+    const low = severityLine(body(relPath), "dropped");
     expect(low, "comment wording is no longer a finding a reviewer can name").toMatch(/주석 표현|주석 서식|주석 표현·서식/);
   });
 });
@@ -77,9 +78,9 @@ describe("FR-FLOW-140 AC-2 — the observation stays reportable", () => {
 describe("FR-FLOW-140 AC-3 — the axis that judges facts is untouched", () => {
   it.each(COPIES)("%s still blocks on a comment claim measurement contradicts", (_label, relPath) => {
     const text = body(relPath);
-    expect(severityLine(text, "HIGH"), "a false comment claim no longer blocks").toContain("주석 주장");
+    expect(severityLine(text, "kept"), "a false comment claim no longer blocks").toContain("주석 주장");
     // And the relief this requirement grants must not have leaked onto the blocking line.
-    expect(severityLine(text, "HIGH"), "the blocking severity was given the wording exemption").not.toMatch(NO_REWORK);
+    expect(severityLine(text, "kept"), "the blocking severity was given the wording exemption").not.toMatch(NO_REWORK);
   });
 });
 

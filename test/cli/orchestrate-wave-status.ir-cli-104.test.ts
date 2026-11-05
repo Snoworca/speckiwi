@@ -138,8 +138,9 @@ describe("IR-CLI-104 AC-4 --engine reads a kiwi-wave-master journal on CLI and M
 
   it("IR-CLI-104 AC-4 reads lines without an engine under --engine kiwi-wave-master", async () => {
     const root = await rootWith([masterLine(1, "complete"), masterLine(2, "in_progress")]);
-    // Under the default engine the run has no line at all, which is an error rather than an empty report.
-    const orchestrator = await orchestrate(root, ["wave", "status", "--run-id", "m1"]);
+    // Under kiwi-orchestrator the run has no line at all, which is an error rather than an empty report.
+    // The engine is named: without --engine the leaf reads the run under its own engine (IR-CLI-113 AC-9).
+    const orchestrator = await orchestrate(root, ["wave", "status", "--run-id", "m1", "--engine", "kiwi-orchestrator"]);
     expect(orchestrator.exit).toBe(1);
     expect(String(orchestrator.payload.error)).toContain("kiwi-orchestrator");
     const master = await orchestrate(root, ["wave", "status", "--run-id", "m1", "--engine", "kiwi-wave-master"]);
@@ -170,7 +171,8 @@ describe("IR-CLI-104 AC-5 a read leaf, registered read-only", () => {
     const flags = leaf().options.map((option) => option.long);
     expect(flags).toContain("--json");
     expect(flags).not.toContain("--dry-run");
-    expect([...flags].sort()).toEqual(["--engine", "--journal", "--json", "--run-id", "--waves"]);
+    // IR-CLI-113 adds --with-tests to the same leaf.
+    expect([...flags].sort()).toEqual(["--engine", "--journal", "--json", "--run-id", "--waves", "--with-tests"]);
   });
 
   it("IR-CLI-104 AC-5 binds orchestrate_wave_status as a read tool mirroring the leaf", () => {

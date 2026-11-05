@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,6 +15,8 @@ import {
   verbSection,
   verbSectionNames
 } from "./kiwi-orchestrator-variants.js";
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 // @req FR-FLOW-077  intake: thin intent, document, or GitHub issue
 // @req FR-FLOW-078  the design document is frozen before any implementation verb
@@ -215,37 +220,21 @@ describe("FR-FLOW-079 — loop D's frozen denominator", () => {
       expect(tiedTogether(body, /design-intake-insufficient/, [/cap/, /needs-decision/, /contradicts-existing/], 300)).toBe(true);
     }
   });
-});
 
-describe("FR-FLOW-080 — the per-wave English design document and loop W", () => {
-  it("AC-1/AC-2 — the path, English, both stances and the frozen denominator", () => {
-    for (const variant of VARIANTS) {
-      const body = section(variant.body, /^##\s*8\.\s/m);
-      expect(body).toMatch(/waves\/wave-\{n\}\/design\.md/);
-      expect(body).toMatch(/\*\*영문\*\*/);
-      expect(body).toMatch(/커버리지/);
-      expect(body).toMatch(/동결된 설계 lock 에 대한 내부 정합성/);
-      expect(body).toMatch(/그 wave 의 `design_items` 조각/);
-    }
-  });
-
-  it("AC-3 — 3.a precedes 3.b, and 3.b consumes the document as its research document", () => {
-    for (const variant of VARIANTS) {
-      const body = section(variant.body, /^##\s*8\.\s/m);
-      expect(body).toMatch(/loop W 는 3\.b 의 [^\n]*kiwi-srs[^\n]* 등록 전에 통과해야 한다/);
-      expect(body).toMatch(/3\.a 가 3\.b 앞이고/);
-      expect(body).toMatch(/연구 문서로 소비한다/);
-    }
-  });
-
-  it("AC-4/AC-5 — cap exhaustion is not a pass, and the same marking rules apply at 3.a", () => {
-    for (const variant of VARIANTS) {
-      const body = section(variant.body, /^##\s*8\.\s/m);
-      expect(tiedTogether(body, /wave-design-insufficient/, [/통과로 세지 않는다/], 200)).toBe(true);
-      expect(tiedTogether(body, /같은 표시 항목 규칙/, [/unmarked-normative-prose/, /3\.a/], 400)).toBe(true);
+  // @req FR-FLOW-079 AC-10 — the shared engine holds the rule that makes "every frozen row" binding.
+  it("AC-10 — a loop D round enumerating a row count other than the frozen denominator is invalid", () => {
+    for (const root of ["skills/claude", "skills/codex", "skills/etc", ".agents/skills"]) {
+      const text = readFileSync(path.join(REPO, root, "_shared/kiwi/verify-loop.md"), "utf8").replace(/\r\n/g, "\n");
+      const paragraph = text.split("\n").find((line) => line.startsWith("**코드가 없는 루프**")) ?? "";
+      expect(paragraph, `${root}: loop D paragraph`).toMatch(/loop D/);
+      expect(tiedTogether(paragraph, /열거한 행 수가 고정 분모와 다르면/, [/고정 분모와 다르면 그 라운드는 \*\*무효\*\*이며/,/cap 은 소비하되/, /스트릭은 0 으로 되돌린다/], 200), `${root}: invalid round`).toBe(true);
     }
   });
 });
+
+// FR-FLOW-080 (the per-wave design document and loop W) is superseded by FR-FLOW-215: the
+// absence of loop W and of `waves/wave-{n}/design.md`, and the one-run-design statement of §8, are
+// pinned in orchestrator-srs-first.fr-flow-215.test.ts.
 
 
 // FR-FLOW-081 is discarded in 4.0.0, and FR-FLOW-094 AC-1, AC-2, AC-5 and AC-6 are retired with it: the
@@ -285,11 +274,14 @@ describe("FR-FLOW-102 — one worker per wave, parallel by default, the stage pl
   it("FR-FLOW-102 AC-1 — the worker's executor invocation, run in parallel by default and one at a time under --serial", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^##\s*10\.\s/m);
-      // FR-FLOW-102 AC-1 (4.1.0): the worker runs the wave's requirements[]; the wave SDS replaces it only under --sds.
+      // FR-FLOW-102 AC-1 (5.3.0, FR-FLOW-216 AC-1): the worker runs kiwi-pm once per requirement of its
+      // node in `acs` order, under --sds with that requirement's SDS fragment beside the filter.
       const fence = /```\n[/$]kiwi-pm --req-filter [^\n]*\n[\s\S]*?```/.exec(body)?.[0] ?? "";
       expect(fence, `${variant.id}: §10 carries the worker's executor invocation as a fenced block`).not.toBe("");
-      expect(fence).toContain("--req-filter <그 wave 의 requirements[]> --run-id {run_id}-wave-{n}[-r{m}]");
-      expect(body).toContain("`--sds` 면 `--req-filter` 대신 `--sds docs/sds/{run_id}-wave-{n}.sds.md` 를 준다");
+      expect(fence).toContain("--req-filter <요구 하나> --run-id {run_id}-wave-{n}[-r{m}]-<요구 ID 소문자>");
+      expect(fence).toContain("[--sds <그 조각>]");
+      expect(body).toContain("노드의 요구를 `acs` 에서 요구 ID 가 처음 나오는 순서대로 하나씩, 요구마다 이 실행자를 부른다");
+      expect(body).toContain("`--sds` 면 그 요구를 `@req` 로 담은 SDS 조각을 `--sds` 로 함께 준다");
       for (const flag of ["--session-suffix w{n}s{s}l{k}", "--no-final", "--no-pipeline-emit", "--commit-lane-work", "--defer-srs-mutation <queue>"]) {
         expect(fence, `${variant.id}: ${flag}`).toContain(flag);
       }
@@ -381,10 +373,16 @@ describe("FR-FLOW-102 — one worker per wave, parallel by default, the stage pl
         tiedTogether(
           body,
           /실행자의 재개 계약/,
-          [/`Orch-Run` · `Orch-Wave` · `Orch-Stage` · `Orch-Lane` trailer/, /\*\*워커 브랜치나 `frozen\.integration_branch`\*\*/, /kiwi-pm` 을 다시 돌리지 않는다/],
+          [
+            /`Orch-Run` · `Orch-Wave` · `Orch-Stage` · `Orch-Lane` 과 요구 ID trailer/,
+            /요구의 구현 커밋이 이번 dispatch base 이후\(`<base_sha>\.\.`\)의 \*\*워커 브랜치나 `frozen\.integration_branch`\*\*/,
+            /그 요구의 `[/$]kiwi-pm` 을 다시 돌리지 않고/,
+            /테스트 커밋만 있으면 그 구현부터 잇는다/
+          ],
           500
         ),
-        `${variant.id}: recovery reads the four trailers on either branch and does not re-run the wave`
+        // FR-FLOW-102 AC-7 (5.3.0, FR-FLOW-216 AC-3): the cursor is the requirement-ID commits.
+        `${variant.id}: recovery reads the trailers and the requirement-ID commits and re-runs no landed requirement`
       ).toBe(true);
       expect(body).toMatch(/`pm-state\.json` 이 있으면 `[/$]kiwi-pm` 에 `--resume` 을 준다/);
       expect(verbSectionNames(variant.body), `${variant.id}: the host-root executor verb is gone`).not.toContain("execute-unit");
@@ -551,25 +549,18 @@ describe("FR-FLOW-090 — the duplication audit and the recorded absence", () =>
   });
 });
 
-describe("FR-FLOW-084 — loop P over five denominators with a one-worker unit layer", () => {
-  it("FR-FLOW-084 AC-1 — five frozen denominators plus the intent layer", () => {
+// FR-FLOW-084 AC-1 · AC-2 · AC-9 (five frozen denominators, the intent layer and its pass preconditions)
+// expired 2026-11-05 → FR-FLOW-220: the machine checks and a verifier given only `verify-loop.md` §3's
+// facts replace them (machine-checks-first.fr-flow-220.test.ts AC-1 · AC-2; the preservation and
+// regression preconditions are rows of its §2 check table).
+describe("FR-FLOW-084 — loop P lands each wave by a machine verdict over its one worker", () => {
+  it("FR-FLOW-084 AC-3 AC-4 AC-5 — the host counts the landing, the wave's one worker, the two-conjunct checked", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*12\.1\b/m);
-      expect(body).toMatch(/\*\*다섯 동결 분모\*\*/);
-      for (const layer of [/REQ\/AC/, /설계 항목/, /제약/, /보존 계층/, /\*\*단위 계층\*\*/, /\*\*의도 계층\*\*/]) {
-        expect(layer.test(body), `${variant.id}: ${layer}`).toBe(true);
-      }
-      expect(body).toMatch(/네 분모만 지명하거나 의도 계층을 빠뜨린 본문은 잘못이다/);
-    }
-  });
-
-  it("FR-FLOW-084 AC-3 AC-4 AC-5 — one sub-denominator, the wave's one worker, the two-conjunct checked", () => {
-    for (const variant of VARIANTS) {
-      const body = section(variant.body, /^###\s*12\.1\b/m);
-      expect(body).toMatch(/\*\*단위 계층은 하위 분모 하나\*\*이며 둘로 쪼개지 않는다/);
+      expect(body).toContain("**착지는 기계 판정이다** — 검증자가 아니라 호스트가 센다.");
       expect(tiedTogether(body, /`expected` = `lanes\.lock\.json` 이 그 wave 에 배정한 lane/, [/그 wave 의 워커 하나/], 200)).toBe(true);
       expect(
-        tiedTogether(body, /`checked` = /, [/`Orch-Wave` 와 `Orch-Lane` trailer 를 운반하는 워커 커밋이 통합 head 에서 도달 가능/, /\*\*그리고\*\* `verification_cmd` 가 통과한/], 400),
+        tiedTogether(body, /`checked` = /, [/`Orch-Wave` 와 `Orch-Lane` trailer 를 운반하는 구현 커밋이 통합 head 에서 도달 가능/, /\*\*그리고\*\* `verification_cmd` 가 통과한/], 400),
         `${variant.id}: checked is the trailered commits reachable AND a passing verification_cmd`
       ).toBe(true);
       expect(
@@ -579,37 +570,28 @@ describe("FR-FLOW-084 — loop P over five denominators with a one-worker unit l
     }
   });
 
-  it("FR-FLOW-084 AC-7 — a worker scheduled but never landed forbids ALL_MATCH", () => {
+  it("FR-FLOW-084 AC-7 — a worker scheduled but never landed forbids the pass", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*12\.1\b/m);
-      expect(body).toMatch(/스케줄되었으나 \*\*착지하지 않은 워커 하나가 `ALL_MATCH` 를 금지한다\*\*/);
+      expect(body).toMatch(/스케줄되었으나 \*\*착지하지 않은 워커 하나가 통과를 금지한다\*\*/);
     }
   });
 
-  it("FR-FLOW-084 AC-2/AC-9/AC-10 — the intent layer's two halves, the bundle rows, and both pass preconditions", () => {
+  it("FR-FLOW-084 AC-10 — the worker's own worklog TASK_DONE is not landing evidence", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*12\.1\b/m);
-      expect(tiedTogether(body, /\*\*의도 계층\*\*:/, [/loop D 의 열린 질문 집합/, /여전히 그 해소를 지키는/], 300)).toBe(true);
-      expect(body).toContain("00.charter.md");
-      expect(body).toContain("01.intake.md");
-      expect(body).toMatch(/unapproved-damage = 0/);
-      expect(body).toMatch(/failing_tests ⊆ baseline_failing_tests/);
-      expect(body).toMatch(/worklog `TASK_DONE` 은 `checked` 의 연언으로 인정하지 않는다/);
+      expect(body).toContain("워커 자신의 **worklog `TASK_DONE` 은 착지의 증거로 인정하지 않는다** — 같은 주체가 쓴 것이므로 독립성을 더하지 않는다");
     }
   });
 
-  it("FR-FLOW-084 AC-8 — the bundle carries the trailer-keyed commit range, the worker's analysis bundle, lanes.lock.json and the SDS", () => {
+  it("FR-FLOW-084 AC-8 — the host reads the run's records for its checks, the verifier gets only verify-loop.md §3", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*12\.1\b/m);
-      expect(
-        tiedTogether(
-          body,
-          /증거 번들은/,
-          [/`lanes\.lock\.json`/, /그 wave 의 SDS/, /`Orch-Wave` 와 `Orch-Lane` trailer 로 키잉된 `frozen\.integration_branch` 위 이 wave 의 \*\*커밋 범위\*\*/, /워커의 `docs\/analysis\/kiwi-pm-…` 번들/],
-          400
-        ),
-        `${variant.id}: the four bundle rows in the bundle sentence`
-      ).toBe(true);
+      expect(body).toContain(
+        "`00.charter.md` · `01.intake.md` · 설계 문서 · `lanes.lock.json` · 워커 매니페스트는 호스트가 기계 검사와 착지 판정에 읽고 검증자에게 넘기지 않는다"
+      );
+      expect(body).toContain("SDS 가 있으면 3.n 의 close-out 이 지우기 전에 읽는다");
+      expect(body).toContain("검증자에게 주는 것은 그 문서 §3 의 목록뿐이다");
       expect(body, `${variant.id}: the handoffs are no longer a bundle row`).not.toMatch(/handoff/);
     }
   });
@@ -734,7 +716,10 @@ describe("FR-FLOW-091 — design refutation and the sanctioned mid-wave amendmen
   it("FR-FLOW-091 AC-6 AC-7 AC-8 — loops re-freeze, the SDS re-authored and re-dispatched to one worker, two per wave", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*13\.4\b/m);
-      expect(tiedTogether(body, /loop \*\*W · P · F\*\*/, [/다시 동결/, /다시 시작/], 300)).toBe(true);
+      // 5.3.0: loop W is gone (FR-FLOW-215) and loops P · F have no design denominator (FR-FLOW-220 AC-7);
+      // the amended design re-freezes loop D's denominator only.
+      expect(body).toContain("옛 설계 항목 위에 동결되었던 loop **D** 의 분모를 새 lock 에서 **다시 동결**하고 영향받은 라운드를 **다시 시작**한다.");
+      expect(body).not.toMatch(/loop\s*\**\s*W\b/);
       expect(
         // FR-FLOW-091 AC-7 (4.1.0): revise the declaration entry (re-author the SDS only under --sds).
         tiedTogether(body, /영향받은 각 wave 의 선언 항목을 고치고\(`--sds` 면 그 SDS 를 `kiwi-sds` 로 \*\*다시 저작\*\*하고\)/, [/stage 계획 lock 을 다시 동결/, /워커 하나에 \*\*다시 dispatch\*\*/], 300),
@@ -752,7 +737,8 @@ describe("FR-FLOW-087 — requirement promotion at 3.n", () => {
       const body = section(variant.body, /^##\s*14\.\s/m);
       expect(body).toMatch(/\*\*wave 당 한 번, host root 에서, Phase 3\.n 에\*\*/);
       expect(body).toMatch(/loop P 의 3\.l verdict 가 `pass` 인 뒤에만/);
-      expect(body).toMatch(/\*\*집합\*\*: 그 wave 의 한 워커가 착지했을 때 그 wave 의 Phase 3\.b 배정 집합, 착지하지 않았을 때 공집합/);
+      // Rewritten 2026-11-05 with FR-FLOW-212 AC-4: the allocation is the node's `acs`, not a 3.b snapshot difference.
+      expect(body).toMatch(/\*\*집합\*\*: 그 wave 의 한 워커가 착지했을 때 그 노드의 요구 집합, 착지하지 않았을 때 공집합/);
       expect(
         tiedTogether(body, /\*\*landed\*\*/, [/`Orch-Wave` 와 `Orch-Lane` trailer 를 운반하는 워커 커밋이 `frozen\.integration_branch` 위에/, /`verification_cmd` 가 통과한 것/, /허용 가능한 `intentionally_empty` 선언/], 500),
         `${variant.id}: landed is the trailered worker commits plus a passing verification_cmd, or an admissible empty declaration`

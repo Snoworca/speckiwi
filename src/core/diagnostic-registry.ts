@@ -838,6 +838,36 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
       "Point the reference at a PRD file under docs/prd and an item it holds, as docs/prd/<file>.prd.md#PRD-<n>, or remove it. A Trace path whose PRD file is missing is reported as SRS-W074 instead."
   },
   {
+    code: "SRS-W077",
+    severity: "warning",
+    title: "Verification Evidence covers a range of criteria",
+    messageTemplate: "Verification Evidence {evidenceId} of {requirementId} covers the range {range}",
+    sourceRule: "FR-NODE-248",
+    since: "v5.3.0",
+    remediation:
+      "Replace the row through the evidence tools with one whose Covers names `all` or each criterion, as AC-1, AC-2, AC-3; every coverage reader splits the cell into tokens, so a range counts only its two ends."
+  },
+  {
+    code: "SRS-W078",
+    severity: "warning",
+    title: "Dependency stated only in prose",
+    messageTemplate: "{requirementId} states that it depends on {dependencyId} only in prose",
+    sourceRule: "FR-PARSE-045",
+    since: "v5.3.0",
+    remediation:
+      "Add a Trace Link row `Requirement | <ID> | depends_on` with add_trace_link; readiness and the work-graph check read dependencies only from those rows."
+  },
+  {
+    code: "SRS-W080",
+    severity: "warning",
+    title: "depends_on Trace Link row names no requirement",
+    messageTemplate: "{requirementId} has a depends_on Trace Link row whose target {reference} is not a requirement",
+    sourceRule: "FR-PARSE-045",
+    since: "v5.3.0",
+    remediation:
+      "Point the row at the requirement that must land first, with Type Requirement, or change its Relation; a dependency on code, a document or a work item is not one the tools can order by."
+  },
+  {
     code: "SRS-E077",
     severity: "error",
     title: "MCP server unbound",

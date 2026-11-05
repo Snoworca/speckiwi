@@ -7,7 +7,18 @@
 // rather than a second implementation.
 import { parseWorkflowJsonl } from "../workflow/jsonl.js";
 import type { Diagnostic, ProjectRoot } from "../types.js";
-import { DEFAULT_ENGINE, EVENT_STATUSES, WAVES_SCHEMA_VERSIONS, waveNumber, type Engine, type WavesEvent } from "./journal-schema.js";
+import {
+  DEFAULT_ENGINE,
+  EVENT_STATUSES,
+  NODE_COMPLETE_ACTION_VERB,
+  REDECOMPOSE_PHASE,
+  WAVES_SCHEMA_VERSIONS,
+  graphReferenceOf,
+  waveNumber,
+  type Engine,
+  type GraphReference,
+  type WavesEvent
+} from "./journal-schema.js";
 
 /** The journal's repo-relative path (waves-event.md §1's run-root pin resolves the root, not this). */
 export const WAVES_JOURNAL_PATH = "kiwi/waves.jsonl";
@@ -50,10 +61,55 @@ export function isRoundRecord(event: WavesEvent): boolean {
   return typeof event.round === "number";
 }
 
-/** The `byVerb` index key. Absent components collapse to an empty segment rather than being dropped. */
+/**
+ * A line that records a work-graph event rather than a wave's state: a redecomposition or a node's
+ * completion action. Neither may become a wave's latest status, whatever `status` it carries.
+ * @req FR-NODE-250 AC-2, AC-4
+ */
+function recordsGraphEvent(event: WavesEvent): boolean {
+  return event.phase === REDECOMPOSE_PHASE || event.verb === NODE_COMPLETE_ACTION_VERB;
+}
+
+/**
+ * A line that asserts its wave's state: it carries a status of the closed set and is neither a round
+ * record nor a work-graph event. The one predicate `latestPerWave` and the work-graph state read.
+ * @req FR-NODE-159, FR-NODE-168, FR-NODE-249 AC-2
+ */
+export function isWaveStateLine(event: WavesEvent): boolean {
+  const assertsStatus = typeof event.status === "string" && (EVENT_STATUSES as readonly string[]).includes(event.status);
+  return assertsStatus && !isRoundRecord(event) && !recordsGraphEvent(event);
+}
+
+/**
+ * The index of the run's first graph line: its first non-`redecompose` line that carries a `graph`, or -1.
+ * It is the run's first line unless the host journaled lines (kiwi-orchestrator's intake decisions) before
+ * the graph existed. @req FR-NODE-250 AC-1
+ */
+export function firstGraphLineIndex(view: WavesJournalView): number {
+  return view.lines.findIndex((event) => event.graph !== undefined && event.phase !== REDECOMPOSE_PHASE);
+}
+
+/**
+ * The run's current work-graph reference: the `graph` of its latest `redecompose` line, or of its first
+ * graph line when it has none; `null` when that line carries no well-formed reference. @req FR-NODE-250 AC-2
+ */
+export function latestGraphReference(view: WavesJournalView): GraphReference | null {
+  const redecomposed = view.lines.filter((event) => event.phase === REDECOMPOSE_PHASE);
+  const source = redecomposed[redecomposed.length - 1] ?? view.lines[firstGraphLineIndex(view)];
+  return source === undefined ? null : graphReferenceOf(source.graph);
+}
+
+/**
+ * The `byVerb` index key. Absent components collapse to an empty segment rather than being dropped.
+ * The wave segment is the wave as `waveNumber` reads it (`wave-01` keys as `wave-1`, the one rule every
+ * journal reader follows), so an intent and its result pair up however each spells the wave; a name
+ * `waveNumber` does not read (`all`) is kept as written. @req FR-NODE-150 AC-2
+ */
 export function verbKey(event: WavesEvent): string {
   const stage = typeof event.stage === "number" ? String(event.stage) : "";
-  return [event.verb ?? "", event.wave ?? "", stage, event.lane ?? ""].join("|");
+  const number = waveNumber(event.wave);
+  const wave = number === null ? (event.wave ?? "") : `wave-${number}`;
+  return [event.verb ?? "", wave, stage, event.lane ?? ""].join("|");
 }
 
 /**
@@ -126,8 +182,7 @@ export async function parseWavesJournal(root: ProjectRoot, options: ParseWavesJo
     // @req FR-NODE-168 — and a round record is excluded even when it does assert one. That footing
     // used to be free: a round record asserted no status, so `assertsStatus` covered it. It cannot
     // be written status-free any more, so the exclusion is now explicit.
-    const assertsStatus = typeof event.status === "string" && (EVENT_STATUSES as readonly string[]).includes(event.status);
-    if (wave !== null && assertsStatus && !isRoundRecord(event)) latestPerWave.set(wave, event);
+    if (wave !== null && isWaveStateLine(event)) latestPerWave.set(wave, event);
 
     const version = typeof event.schema_version === "string" ? event.schema_version : "";
     if (version.length > 0 && !schemaVersions.includes(version)) schemaVersions.push(version);

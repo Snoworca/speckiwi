@@ -71,14 +71,15 @@ describe("FR-FLOW-096 — route classification at Phase 1.c'", () => {
   });
 
   // Revised in 4.0.0: "no plan authored" became "no SDS authored".
-  it("FR-FLOW-096 AC-4 — what has not happened at 1.c', ending at the first SRS mutation being 3.b", () => {
+  // Rewritten 2026-11-05 with FR-FLOW-215 AC-1: the one SRS authoring follows the design freeze at 2.a.
+  it("FR-FLOW-096 AC-4 — what has not happened at 1.c', ending at the first SRS mutation being 2.a", () => {
     for (const variant of VARIANTS) {
       const position = section(variant.body, /^###\s*4\.1\b/m);
       for (const call of ["add_requirement", "update_status", "update_stability"]) expect(position, `${variant.id}: ${call}`).toContain(call);
       expect(position).toMatch(/target 등록 없음/);
       expect(position).toMatch(/\*\*1\.c′ 에서 아직 일어나지 않은 것\*\*:[^\n]*SDS 저작 없음/);
       expect(position).toMatch(/라우팅 아티팩트 커밋 없음/);
-      expect(position).toMatch(/\*\*첫 SRS mutation 은 Phase 3\.b\*\*/);
+      expect(position).toMatch(/\*\*첫 SRS mutation 은 Phase 2\.a\*\*/);
     }
   });
 
@@ -358,8 +359,10 @@ describe("FR-FLOW-099 — the per-rung route table", () => {
       for (const child of ["kiwi-srs", "kiwi-srs-feasibility", "kiwi-sds", "kiwi-review-fix-loop"]) {
         expect(new RegExp(`skill: "${child}"`).test(fence), `${variant.id}: ${child} invoked by name`).toBe(true);
       }
-      // FR-FLOW-099 AC-10 (4.1.0): the worker runs the wave's requirement set; kiwi-sds only under --sds.
-      expect(fence, `${variant.id}: kiwi-pm runs in the wave's worker`).toMatch(/^[/$]kiwi-pm --req-filter <그 wave 의 requirements\[\]>/m);
+      // FR-FLOW-099 AC-10 (5.3.0, FR-FLOW-216 AC-1): the worker runs kiwi-pm once per requirement; kiwi-sds only under --sds.
+      expect(fence, `${variant.id}: kiwi-pm runs in the wave's worker, one requirement at a time`).toMatch(
+        /^[/$]kiwi-pm --req-filter <요구 하나> --run-id \{run_id\}-wave-\{n\}-<요구 ID 소문자> .*wave 의 워커가 요구마다/m
+      );
       expect(fence, `${variant.id}: kiwi-sds is called only under --sds`).toMatch(/skill: "kiwi-sds"[\s\S]*?\(--sds 일 때만\)/);
       expect(fence, `${variant.id}: kiwi-planner left R-ORCH`).not.toContain("kiwi-planner");
       expect(body).toMatch(/각 wave 의 워커는 자기 창을 `--close-reqs` 없이 스스로 리뷰한다/);
@@ -568,6 +571,9 @@ describe("FR-FLOW-089 / FR-FLOW-103 — route-downgrade-available and the four r
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^###\s*7\.3\b/m);
       expect(body).toMatch(/`design_items` 개수는 게이트 증거에 실려 나가고 어떤 술어도 구동하지 않는다/);
+      // FR-FLOW-215 AC-1: no per-wave design items remain, so the count is the run design lock's (verify r6).
+      expect(body).toContain("loop D 가 동결한 run 설계 lock(`design/00.design.lock.json`)의 **`design_items` 개수는 게이트 증거에 실려 나가고 어떤 술어도 구동하지 않는다.** wave 마다 설계 항목을 두지 않으므로(FR-FLOW-215) 이 개수는 run 의 것이다. 설계 항목 규모에 대한 네 번째 조건은 없다.");
+      expect(body).not.toContain("wave 의 **`design_items` 개수");
     }
   });
 

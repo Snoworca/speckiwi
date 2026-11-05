@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { diagnostic } from "../diagnostic.js";
+import { COVERS_ACCEPTED_FORMS, coversRangeIn } from "../evidence-covers.js";
 import { parseReportPathCell } from "../completed-work/report-paths.js";
 import { TARGET_STATUS_ACTIVE, TARGET_STATUS_RELEASED } from "../target-types.js";
 import {
@@ -16,6 +17,8 @@ import {
   type RequirementRecord
 } from "../types.js";
 import { successorProblem } from "../parser/ac-parser.js";
+import { REQUIREMENT_ID_SOURCE } from "../testing/test-citations.js";
+import { isDependsOnRelation, isRequirementDependency, requirementDependencyIds } from "../requirement-dependency.js";
 import { registerValidationRule } from "./rule-registry.js";
 import { collectSsotLiteralDrift, type SsotLiteralFinding, type SsotTextSpan } from "./ssot-literal-drift.js";
 import {
@@ -526,6 +529,54 @@ function locateInFile(lines: readonly string[], text: string, from: number): num
   return from;
 }
 
+const PROSE_DEPENDENCY = /\bdepends on\b/i;
+const REQUIREMENT_ID_PATTERN = new RegExp(`\\b${REQUIREMENT_ID_SOURCE}\\b`, "g");
+
+/**
+ * @req FR-PARSE-045 AC-1, AC-2 — every dependency is a `Requirement` / `depends_on` Trace Link row,
+ * which is the only form the readiness and work-graph readers see. A `depends on <ID>` in the prose
+ * sections with no such row, and a `depends_on` row naming something other than a requirement, are
+ * dependencies no tool can read.
+ */
+function dependencyTraceDiagnostics(record: RequirementRecord, ids: ReadonlySet<string>, fileLines: readonly string[]): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  // @req FR-PARSE-045 AC-4 — a verified or discarded block records a closed decision; the rule does not reopen it.
+  if (record.status === "verified" || record.status === "discarded") return diagnostics;
+  const traced = new Set(requirementDependencyIds(record));
+  const proseLines = [record.requirement, record.rationale, record.implementationNotes]
+    .flatMap((text) => (text ?? "").split(/\r?\n/))
+    .map((text) => ({ text, line: locateInFile(fileLines, text, record.blockStartLine ?? record.headingLine) }));
+  const criterionLines = record.acceptanceCriteria.map((criterion) => ({ text: criterion.text, line: criterion.line ?? record.headingLine }));
+  const reported = new Set<string>();
+  for (const { text, line } of [...proseLines, ...criterionLines]) {
+    const phrase = PROSE_DEPENDENCY.exec(text);
+    if (phrase === null) continue;
+    for (const match of text.slice(phrase.index + phrase[0].length).matchAll(REQUIREMENT_ID_PATTERN)) {
+      const id = match[0];
+      if (!ids.has(id) || traced.has(id) || reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(
+        diagnostic("SRS-W078", "warning", `${record.id} states that it depends on ${id} only in prose; add a Requirement / depends_on Trace Link row for ${id}`, {
+          filePath: record.filePath,
+          line,
+          requirementId: record.id
+        })
+      );
+    }
+  }
+  for (const trace of record.traceLinks) {
+    if (!isDependsOnRelation(trace) || isRequirementDependency(trace)) continue;
+    diagnostics.push(
+      diagnostic("SRS-W080", "warning", `${record.id} has a depends_on Trace Link row whose target ${trace.reference} is a ${trace.type}, not a requirement`, {
+        filePath: record.filePath,
+        ...(typeof trace.line === "number" ? { line: trace.line } : {}),
+        requirementId: record.id
+      })
+    );
+  }
+  return diagnostics;
+}
+
 export function registerDefaultRules(): void {
   registerValidationRule((workspace) => {
     const diagnostics: Diagnostic[] = [...workspace.diagnostics];
@@ -772,6 +823,20 @@ export function registerDefaultRules(): void {
         }
       }
       diagnostics.push(...acceptanceCriterionNumberDiagnostics(record, workspace.records));
+      const recordFile = workspace.files.find((entry) => entry.relativePath === record.filePath || entry.path === record.filePath);
+      diagnostics.push(...dependencyTraceDiagnostics(record, ids, recordFile?.lines ?? []));
+      // @req FR-NODE-248 AC-2 — an existing range row, written before the writer refused it.
+      for (const row of record.verificationEvidence) {
+        const range = coversRangeIn(row.covers);
+        if (range === null) continue;
+        diagnostics.push(
+          diagnostic("SRS-W077", "warning", `Verification Evidence ${row.id} of ${record.id} covers the range ${range}; name ${COVERS_ACCEPTED_FORMS}`, {
+            filePath: record.filePath,
+            ...(typeof row.line === "number" ? { line: row.line } : {}),
+            requirementId: record.id
+          })
+        );
+      }
       if (record.target && !targets.has(record.target)) {
         diagnostics.push(diagnostic("SRS-W002", "warning", `Target is not registered: ${record.target}`, { filePath: record.filePath, line: record.headingLine }));
       }

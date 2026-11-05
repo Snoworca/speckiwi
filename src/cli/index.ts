@@ -7,6 +7,7 @@ import { registerOrchestrateCommands } from "./commands/orchestrate.js";
 import { registerSkillCommands } from "./commands/skills.js";
 import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerRepairCommands } from "./commands/repair.js";
+import { registerSyncAppendixCommand } from "./commands/sync-appendix.js";
 import { readRecoveryForCommand, writeCliStructuredError } from "./errors.js";
 import { expandInputJsonArgv, tryRenderHelpJson } from "./input-json.js";
 
@@ -60,6 +61,9 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
   registerSkillCommands(command, { io });
   registerDoctorCommand(command, { io });
   registerRepairCommands(command, { io });
+  // @req FR-NODE-253 — a CLI-only maintenance command, registered outside the read and mutation
+  // registrars because it has no ToolSpec row and no MCP tool.
+  registerSyncAppendixCommand(command, { io });
   // @req IR-CLI-082 — the orchestrate namespace, registered exactly as `workflow` is.
   registerOrchestrateCommands(command, { io });
   attachInheritedOptionsHelp(command);

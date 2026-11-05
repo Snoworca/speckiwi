@@ -1,4 +1,5 @@
 import { diagnostic } from "../diagnostic.js";
+import { COVERS_ACCEPTED_FORMS, coversRangeIn } from "../evidence-covers.js";
 import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
@@ -60,6 +61,11 @@ export async function addVerificationEvidence(root: ProjectRoot, input: AddEvide
 async function addVerificationEvidenceUnlocked(root: ProjectRoot, input: AddEvidenceInput): Promise<MutationResult> {
   if (!input.reference.trim()) return mutationFail("USAGE", "Evidence reference is required");
   const covers = input.covers ?? "all";
+  // @req FR-NODE-248 AC-1 — a range reads as two criteria to every coverage reader.
+  const range = coversRangeIn(covers);
+  if (range !== null) {
+    return mutationFail("USAGE", `Verification Evidence covers holds the range ${range}; name ${COVERS_ACCEPTED_FORMS}, one criterion at a time`);
+  }
   const notes = input.notes ?? "-";
   const unsafeCell = assertSafeMarkdownTableCells({
     "Verification Evidence type": input.type,

@@ -5,18 +5,25 @@
 // file, a clock or a process: every fact the verdict rests on arrives on the `Round` argument.
 import {
   REQUIRED_CLEAN_STREAK,
+  REQUIRED_VERIFIER_COUNT,
   type LoopMode,
   type ReasonClass,
   type RoundVerdict,
   type ViolationCode
 } from "./journal-schema.js";
 
-export type RowSeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
-
+/**
+ * One verifier's finding. `kept` holds only when `evidence` names a red test or a command output;
+ * no severity is recorded, because a finding counts by what a run proved, not by a class a reader
+ * assigned. @req FR-NODE-254 AC-1
+ */
 export interface RoundRow {
   id: string;
   verdict: string;
-  severity: RowSeverity;
+  kept: boolean;
+  evidence?: string;
+  /** One of the round's `verifiers`. */
+  verifier: string;
 }
 
 export interface Round {
@@ -34,6 +41,8 @@ export interface Round {
   streakBefore: number;
   /** Externally fixed at round entry; the verifier never computes it. */
   frozenDenominator: number;
+  /** The distinct verifiers (subagent or pass names) that reviewed the round. @req FR-NODE-254 AC-1 */
+  verifiers: string[];
   rows: RoundRow[];
   fixAppliedThisRound: boolean;
   regression: { failingTests: string[]; baselineFailingTests: string[] | null; exitCode: number };
@@ -51,7 +60,7 @@ export interface RoundOutcome {
 }
 
 /**
- * The row verdicts that leave a row closed. Everything else is an open finding at the row's severity.
+ * The row verdicts that leave a row closed. Everything else is a finding, kept or dropped.
  * Declared as a module constant so a test imports it rather than re-deriving the vocabulary:
  * `pass` is the gate vocabulary, `match` is axis A's, `intended-improvement` is the preservation
  * layer's (`waves-event.md` §2.3).
@@ -67,16 +76,56 @@ function isSubset(subject: string[], of: string[]): boolean {
   return subject.every((item) => superset.has(item));
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * What keeps a `--payload` out of the keep/drop shape, one sentence per problem; empty when the round
+ * may be evaluated. Only the verifier list and the rows are checked: the fields the keep/drop model
+ * added. @req FR-NODE-254 AC-1
+ */
+export function roundPayloadProblems(payload: Record<string, unknown>): string[] {
+  const verifiers = payload.verifiers;
+  // An empty list, or a blank name, names no verifier, so it is a round without verifiers too.
+  if (!Array.isArray(verifiers) || verifiers.length === 0 || !verifiers.every((name) => typeof name === "string" && name.trim() !== "")) {
+    return ["--payload.verifiers must list the names of the verifiers that reviewed the round"];
+  }
+  if (!Array.isArray(payload.rows)) return ["--payload.rows must be an array"];
+
+  const named = new Set<string>(verifiers);
+  const problems: string[] = [];
+  payload.rows.forEach((entry: unknown, index) => {
+    const at = `--payload.rows[${index}]`;
+    if (!isRecord(entry)) {
+      problems.push(`${at} must be an object`);
+      return;
+    }
+    if ("severity" in entry) problems.push(`${at} carries severity; a finding is kept by evidence, not by severity`);
+    if (typeof entry.kept !== "boolean") problems.push(`${at}.kept must be a boolean`);
+    if (entry.kept === true && (typeof entry.evidence !== "string" || entry.evidence.trim().length === 0)) {
+      problems.push(`${at} is kept without evidence naming a red test or a command output`);
+    }
+    if (typeof entry.verifier !== "string") problems.push(`${at}.verifier is required`);
+    else if (!named.has(entry.verifier)) problems.push(`${at}.verifier '${entry.verifier}' is not one of --payload.verifiers`);
+  });
+  return problems;
+}
+
 export function evaluateRound(round: Round): RoundOutcome {
   const violations: ViolationCode[] = [];
   const capRemaining = Math.max(0, round.cap - round.roundIndex);
   const requiredStreak = REQUIRED_CLEAN_STREAK[round.mode];
 
-  // The denominator mismatch is checked first and short-circuits: the round is void for both
-  // verifiers, so nothing measured inside it is worth reporting. It consumes the cap and resets the
-  // streak, which is different from failing the round.
-  if (round.rows.length !== round.frozenDenominator) {
-    violations.push("denominator-mismatch");
+  // The denominator mismatch and a verifier count other than the mode's are checked first and
+  // short-circuit: the round is void, so nothing measured inside it is worth reporting. A void round
+  // consumes the cap and resets the streak, which is different from failing the round. The verifier
+  // count is read even on a round with no row, or a one-verifier `--max` round would pass by saying
+  // nothing. @req FR-NODE-254 AC-2
+  const denominatorMismatch = round.rows.length !== round.frozenDenominator;
+  const verifierCountMismatch = new Set(round.verifiers).size !== REQUIRED_VERIFIER_COUNT[round.mode];
+  if (denominatorMismatch || verifierCountMismatch) {
+    if (denominatorMismatch) violations.push("denominator-mismatch");
     return {
       verdict: "invalid",
       violations,
@@ -86,7 +135,6 @@ export function evaluateRound(round: Round): RoundOutcome {
     };
   }
 
-  const open = round.rows.filter(isOpen);
   if (round.rows.some((row) => row.verdict === "unapproved-damage")) violations.push("unapproved-damage");
 
   const { failingTests, baselineFailingTests, exitCode } = round.regression;
@@ -100,8 +148,8 @@ export function evaluateRound(round: Round): RoundOutcome {
   // verifier has read.
   if (round.fixAppliedThisRound) violations.push("fix-in-clean-round");
 
-  const blockingSeverities: RowSeverity[] = round.mode === "max" ? ["CRITICAL", "HIGH", "MEDIUM"] : ["CRITICAL", "HIGH"];
-  const gateMet = violations.length === 0 && !open.some((row) => blockingSeverities.includes(row.severity));
+  // One kept finding blocks the gate; a dropped one never does. @req FR-NODE-254 AC-2
+  const gateMet = violations.length === 0 && !round.rows.some((row) => row.kept);
   const streak = gateMet ? round.streakBefore + 1 : 0;
 
   if (streak >= requiredStreak) {
@@ -201,6 +249,26 @@ function journalVerdict(outcome: RoundOutcome): string {
   }
 }
 
+/**
+ * What keeps a round that ends at the cap from recording its residual in full; empty otherwise.
+ *
+ * The severity line's `truncated-residual` compared the residual with `axis_b.open`. With `axis_b`
+ * gone, the open findings of a round that ran out of cap are its kept rows, so its residual must name
+ * every kept row and nothing more. Only the journal's `fail-cap` is terminal here: a `pass` holds no
+ * kept row and carries its residual as given. @req FR-NODE-254 AC-3
+ */
+export function terminalResidualProblems(round: Round, outcome: RoundOutcome): string[] {
+  if (journalVerdict(outcome) !== "fail-cap") return [];
+  const kept = round.rows.filter((row) => row.kept).map((row) => row.id);
+  const carried = new Set(round.residual.map((item) => item.id));
+  const missing = kept.filter((id) => !carried.has(id));
+  if (missing.length === 0 && round.residual.length === kept.length) return [];
+  return [
+    `a fail-cap round's --payload.residual must list exactly its kept findings: ${round.residual.length} listed for ${kept.length} kept` +
+      (missing.length > 0 ? `, missing ${missing.join(", ")}` : "")
+  ];
+}
+
 /** The round-shaped half of a journal line. The envelope, `ts` and `proof` are the caller's. */
 export interface RoundLine {
   phase: string;
@@ -221,32 +289,25 @@ export interface RoundLine {
  *
  * `verification` is an explicit snake_case mapping and never the `Round` object: `Round` is
  * camelCase, the validator reads snake_case, and the same dishonest round validated with five
- * diagnostics under this projection and none under a whole-object dump. `residual` and
- * `axis_b.open` come from two different sources on purpose — the caller's carried list and this
- * round's own open rows — so `truncated-residual` stays live rather than comparing a value with
- * itself. @req FR-NODE-169 AC-8, @req FR-NODE-170 AC-5
+ * diagnostics under this projection and none under a whole-object dump. `findings` counts this
+ * round's own rows, kept and dropped (a finding not kept; a clean row is no finding), and `red_tests`
+ * lists the kept rows' evidence, in place of the severity-bucketed `axis_b` and the `axis_a` row
+ * count. @req FR-NODE-169 AC-8, @req FR-NODE-170 AC-5, @req FR-NODE-254 AC-3
  */
 export function projectRound(round: Round, outcome: RoundOutcome): RoundLine | null {
   const scope = parseRoundScope(round.scope);
   if (!scope || scope.loop !== round.loop) return null;
 
   const shape = LOOP_JOURNAL_SHAPE[round.loop];
-  const open = round.rows.filter(isOpen);
+  const kept = round.rows.filter((row) => row.kept);
   const verification: Record<string, unknown> = {
     verdict: journalVerdict(outcome),
     rounds: round.roundIndex,
     cap: round.cap,
     residual: round.residual.map((item) => ({ id: item.id, reason_class: item.reasonClass })),
-    axis_b: {
-      open: {
-        critical: open.filter((row) => row.severity === "CRITICAL").length,
-        high: open.filter((row) => row.severity === "HIGH").length,
-        medium: open.filter((row) => row.severity === "MEDIUM").length,
-        low: open.filter((row) => row.severity === "LOW").length
-      }
-    },
-    frozen_denominator: { round: round.roundIndex, req_ac: round.frozenDenominator },
-    axis_a: { checked: round.rows.length }
+    findings: { kept: kept.length, dropped: round.rows.filter((row) => !row.kept && isOpen(row)).length },
+    red_tests: kept.map((row) => row.evidence),
+    frozen_denominator: { round: round.roundIndex, req_ac: round.frozenDenominator }
   };
   // Declared, never inferred: the key says the round is void, and it is set from the kernel's own
   // verdict and from nothing else, so it cannot be used to launder a mismatch. @req FR-NODE-170

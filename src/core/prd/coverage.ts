@@ -71,12 +71,27 @@ function groundedCriteria(record: RequirementRecord, isBasis: (citation: PrdCita
   return grounded;
 }
 
-/** @req FR-NODE-242 AC-2, AC-3 */
-export function prdCoverage(doc: PrdDocument, records: readonly RequirementRecord[], options: { target: string }): PrdCoverageReport {
+/** Whether a citation names an item of `doc` that is not rejected: the one reading of a citation coverage makes. */
+function basisOf(doc: PrdDocument): (citation: PrdCitation) => boolean {
   const usable = new Set(doc.items.filter((item) => item.state !== "rejected").map((item) => item.id));
   // A qualified citation names this PRD when the file system would open this file for it: case only
   // matters where the file system cares, as in `links check`.
-  const isBasis = (citation: PrdCitation) => (citation.path === undefined || sameRepositoryPath(citation.path, doc.path)) && usable.has(citation.itemId);
+  return (citation: PrdCitation) => (citation.path === undefined || sameRepositoryPath(citation.path, doc.path)) && usable.has(citation.itemId);
+}
+
+/**
+ * The items of `doc` the Rationales of `records` cite, in the PRD's item order, each citation read as
+ * coverage reads it. @req IR-CLI-114 AC-2
+ */
+export function rationalePrdItems(doc: PrdDocument, records: ReadonlyArray<Pick<RequirementRecord, "rationale" | "filePath">>): string[] {
+  const isBasis = basisOf(doc);
+  const cited = new Set(records.flatMap((record) => findPrdCitations(record.rationale ?? "", documentDirectory(record.filePath)).filter(isBasis).map((citation) => citation.itemId)));
+  return doc.items.filter((item) => cited.has(item.id)).map((item) => item.id);
+}
+
+/** @req FR-NODE-242 AC-2, AC-3 */
+export function prdCoverage(doc: PrdDocument, records: readonly RequirementRecord[], options: { target: string }): PrdCoverageReport {
+  const isBasis = basisOf(doc);
   const scoped = inTarget(records, options.target);
   const citations = new Map(scoped.map((record) => [record, requirementCitations(record).filter(isBasis)]));
   const cited = new Set([...citations.values()].flatMap((found) => found.map((citation) => citation.itemId)));

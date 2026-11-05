@@ -5,7 +5,8 @@ import path from "node:path";
 import { Command, InvalidArgumentError } from "commander";
 import type { CliContext } from "../command.js";
 import { writeHuman, writeJson } from "../formatters.js";
-import type { ParsedWorkspace, ProjectRoot } from "../../core/types.js";
+import { ORCHESTRATE_EXIT_CODES } from "../exit.js";
+import type { ParsedWorkspace, ProjectRoot, RequirementRecord } from "../../core/types.js";
 import { decideAutoGate, GATE_IDS, type AutoGateInput, type GateId } from "../../core/orchestrator/auto-gate.js";
 import { planDuplicationAudit } from "../../core/orchestrator/duplication-audit.js";
 import { replayDeferredMutations, type DeferredMutation, type ReplayIndex, type ReplayPlan } from "../../core/orchestrator/replay.js";
@@ -16,7 +17,7 @@ import { updateStatus } from "../../core/mutation/update-status.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { groundFiles, isGroundingRefusal } from "../../core/orchestrator/grounding.js";
 import { closeWave, deferIssue, openIssue, planIssue, resolveIssue, type IssueRow, type ResolutionSet } from "../../core/orchestrator/issue-ledger.js";
-import { computeLanePlan, LanePlanError } from "../../core/orchestrator/lane-plan.js";
+import { computeLanePlan, DEFAULT_LANE_CAP, LanePlanError } from "../../core/orchestrator/lane-plan.js";
 import type { WaveDependencies, WaveInput } from "../../core/orchestrator/conflict.js";
 import { buildLanesLockBody, freezeLock, serializeLock, type WaveSdsDigest } from "../../core/orchestrator/freeze.js";
 import { HandoffPinError, pinHandoff } from "../../core/orchestrator/pinning.js";
@@ -51,16 +52,28 @@ import {
   type RunLockRelease,
   type RunLockState
 } from "../../core/orchestrator/run-lock.js";
-import { evaluateRound, projectRound, type Round } from "../../core/orchestrator/verification-gate.js";
-import { engineOf, listJournalRunIds, parseWavesJournal, WAVES_JOURNAL_PATH, type WavesJournalView } from "../../core/orchestrator/waves-journal.js";
+import { evaluateRound, projectRound, roundPayloadProblems, terminalResidualProblems, type Round } from "../../core/orchestrator/verification-gate.js";
+import { engineOf, latestGraphReference, listJournalRunIds, parseWavesJournal, WAVES_JOURNAL_PATH, type WavesJournalView } from "../../core/orchestrator/waves-journal.js";
 import { computeRunProgress, isRunAborted, validateWavesJournal } from "../../core/orchestrator/waves-validate.js";
 import {
   declarationEntryDigest,
   parseWaveDeclaration,
+  parseWorkGraph,
   waveReadiness,
+  WORK_GRAPH_SCHEMA_VERSION,
   type WaveDeclaration,
-  type WaveDeclarationEntry
+  type WaveDeclarationEntry,
+  type WorkGraph
 } from "../../core/orchestrator/wave-declaration.js";
+import { citedAcsOf, deriveWorkGraphState } from "../../core/orchestrator/work-graph-state.js";
+import { actionCounts, actionRows, completionActionsOf } from "../../core/orchestrator/completion-actions.js";
+import { selectNodes, waveShowNode, waveStatusRows, waveStatusSummary, WAVE_STATUS_REPORT_VERSION, type NodeSelector } from "../../core/orchestrator/wave-report.js";
+import { rationalePrdItems } from "../../core/prd/coverage.js";
+import { checkWorkGraph } from "../../core/orchestrator/wave-check.js";
+import { DEFAULT_PROPOSAL_CAPS, proposalRequirementsOf, proposeWaves, readExpectedFiles, type ProposalCaps } from "../../core/orchestrator/wave-propose.js";
+import { checkPreservation, formatPreservationReport, type PreservationReport } from "../../core/orchestrator/preservation.js";
+import { loadPrdFile } from "../../core/prd/files.js";
+import { checkTestSufficiency, type TestSufficiencyReport } from "../../core/testing/test-sufficiency.js";
 import { collectResumeFacts, filePointer, trackedPathsAtHead } from "./orchestrate-facts.js";
 import {
   CURRENT_WAVES_SCHEMA_VERSION,
@@ -73,6 +86,7 @@ import {
 import { LITE_SDS_SUFFIX, checkSdsFile } from "../../core/sds/check-sds.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
 import { PACKAGE_VERSION } from "../../core/package-version.js";
+import { redactSecrets } from "../../core/secret-patterns.js";
 
 // @req IR-CLI-082 / IR-CLI-083 / IR-CLI-084 / IR-MCP-003 / FR-NODE-127 / FR-NODE-137
 //
@@ -141,7 +155,7 @@ export const ORCHESTRATE_DEFERRED_VERB_ROWS = ["lane audit", "lane harvest", "la
  * Rows a requirement after the two phases registers. Declared apart from the phase rows so neither
  * phase's census grows when one lands. @req IR-CLI-082 AC-1, IR-CLI-104
  */
-export const ORCHESTRATE_LATER_VERB_ROWS = ["wave status"] as const;
+export const ORCHESTRATE_LATER_VERB_ROWS = ["wave status", "wave show", "wave actions", "wave check", "wave propose", "preservation check"] as const;
 
 /**
  * Every row the CLI actually registers: the phase-1 surface plus each phase-2 row already landed.
@@ -306,7 +320,8 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   // @req IR-MCP-004 AC-1 — `--proof` is mandatory on the leaf, so it has to be declared here too:
   // `orchestrateArgv` emits a flag only for a declared option, and the input schema is derived from
   // this same list, so an omission leaves the tool uncallable in every case rather than degraded.
-  { tool: "orchestrate_round_record", description: "Records one verification round with the proof it rests on, which the argument list makes mandatory. The gate it refuses at is the round scope: one outside the closed vocabulary, or one belonging to a loop other than the round declares, is turned away before anything is appended. Writes a round event into the run journal.", path: ["round", "record"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), o("--proof", "proof", "json", true), JOURNAL_OPTION, DRY_RUN_OPTION] },
+  // @req IR-CLI-113 AC-9 — `engine` is bound so the tool writes a round under the engine its leaf resolves.
+  { tool: "orchestrate_round_record", description: "Records one verification round with the proof it rests on, which the argument list makes mandatory. The gate it refuses at is the round scope: one outside the closed vocabulary, or one belonging to a loop other than the round declares, is turned away before anything is appended. Without engine the round is written under the engine the run's journal lines carry, kiwi-orchestrator when the run has no line yet, and a run with lines under both engines is refused. Writes a round event into the run journal.", path: ["round", "record"], kind: "mutation", options: [RUN_ID_OPTION, ENGINE_OPTION, o("--payload", "payload", "json"), o("--proof", "proof", "json", true), JOURNAL_OPTION, DRY_RUN_OPTION] },
   { tool: "orchestrate_issue_open", description: "Opens a new issue in the wave ledger from the payload you supply, refusing a classification outside the closed six-value list and an issue id the ledger already carries. Writes the ledger row.", path: ["issue", "open"], kind: "mutation", options: [LEDGER_OPTION, o("--payload", "payload", "json"), DRY_RUN_OPTION] },
   { tool: "orchestrate_issue_plan", description: "Assigns a classification to one issue in the wave ledger, which decides how it must be discharged. Writes the ledger row.", path: ["issue", "plan"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--class", "class", "string", true), DRY_RUN_OPTION] },
   { tool: "orchestrate_issue_resolve", description: "Closes one issue with the proof for it, which is mandatory and has to resolve against the facts you supply rather than merely be well shaped — a syntactically perfect sha naming no commit in that set is refused. Writes the ledger row.", path: ["issue", "resolve"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--proof", "proof", "json", true), o("--resolution", "resolution", "string", true), DRY_RUN_OPTION] },
@@ -314,7 +329,18 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   { tool: "orchestrate_issue_list", description: "Lists the wave issue ledger's rows, optionally for one wave, each with its classification and disposition. Read-only.", path: ["issue", "list"], kind: "read", options: [LEDGER_OPTION, o("--wave", "wave")] },
   { tool: "orchestrate_wave_close", description: "Judges whether a wave may close, by the evidence each issue's classification demands: a local defect or a missing task needs a resolution proof that resolves against the facts you supply, a design gap needs a fresh design-lock digest, an out-of-run or new-wave issue needs a recorded user decision, and a design contradiction needs a valid classification and nothing more. The supplied set is what proofs are checked against, never a list of outcomes the caller declares acceptable. Read-only.", path: ["wave", "close"], kind: "read", options: [o("--wave", "wave", "string", true), LEDGER_OPTION, o("--resolution", "resolution", "string", true)] },
   // @req IR-CLI-104 — the wave-state reader; `engine` is bound so a kiwi-wave-master journal is readable over MCP.
-  { tool: "orchestrate_wave_status", description: "Reports, for every wave of one run, its latest status, phase, sds_id, stage, lane and time by the same predicate resume uses — a round record or a statusless verb line never changes a wave's status — and whether the run is complete, needs its final verification, or was aborted. With a wave declaration file it also lists the waves schedule waves would plan now. Without run_id it reads the most recent run under the engine that is neither complete nor aborted. Read-only.", path: ["wave", "status"], kind: "read", options: [RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION, o("--waves", "waves")] },
+  // @req IR-CLI-113 — the same binding gains withTests; a 2.0.0 work graph widens the answer.
+  { tool: "orchestrate_wave_status", description: "Reports, for every wave of one run, its latest status, phase, sds_id, stage, lane and time by the same predicate resume uses — a round record or a statusless verb line never changes a wave's status — and whether the run is complete, needs its final verification, or was aborted. With a wave declaration file it also lists the waves schedule waves would plan now. With a 2.0.0 work graph — the waves file, or the graph the run's latest graph reference names — it lists every node of the graph with its derived state, depth, AC progress, action counts, times, whether it was dispatched and the base_sha of its latest dispatch, plus a summary (node counts per state, AC totals, action counts, the ready, running and attention nodes), the graph's path and digest, the journal line count and a graph-digest-mismatch warning when the file changed with no journal line recording it; withTests also scans the tests for AC citations. Without run_id it reads the most recent run under the engine that is neither complete nor aborted. Read-only.", path: ["wave", "status"], kind: "read", options: [RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION, o("--waves", "waves"), o("--with-tests", "withTests", "boolean")] },
+  // @req IR-CLI-114 — read-only; exactly one of wave, ac and req.
+  { tool: "orchestrate_wave_show", description: "Reports one work-graph node in full, chosen by exactly one of wave (the node), ac (\"<REQ-ID> AC-<n>\": every node holding that criterion) or req (every node holding a criterion of that requirement): its title, purpose, description, GitHub issues, cautions, files and SDS, its computed requirement set and the PRD items their Rationales cite, one row per acceptance criterion (checked, covered by evidence, how many test lines cite it and the first, expired, done), its done_when items with whether the latest complete line confirmed each, its completion actions in their state, its state and times, its predecessor and successor nodes with each edge's reason, and the node's latest 20 journal lines with {total, returned, limit} when cut. full returns every citation and every journal line. The tests are always scanned for citations. Without waves it reads the graph the run's latest graph reference names. Read-only.", path: ["wave", "show"], kind: "read", options: [o("--wave", "wave"), o("--ac", "ac"), o("--req", "req"), o("--waves", "waves"), RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION, o("--full", "full", "boolean")] },
+  // @req FR-NODE-251 AC-1 — read-only, and no option skips the citation scan.
+  { tool: "orchestrate_wave_actions", description: "Computes which completion actions of a run's finished work-graph nodes are due, after always scanning the tests for acceptance-criterion citations, so a node whose criteria no test cites holds its actions as held-unverified rather than announcing itself. Each action is reported in its journal state (sent, waived, failed, interrupted) or as due or held-unverified; a due action carries its idempotency key run_id:wave:action_id:L<line of the node's latest complete line>, its channel alias or instruction text, blocking, the rendered message, and the intent and result lines to append around carrying it out. An interrupted or failed action is never due again. It sends nothing, resolves no channel alias to an address and opens no connection. Without waves it reads the graph the run's latest graph reference names; a missing journal or a run with no line is an error, never an empty answer. Read-only.", path: ["wave", "actions"], kind: "read", options: [o("--waves", "waves"), RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION] },
+  // @req FR-NODE-246 AC-1 — read-only; the journal is read only with run_id.
+  { tool: "orchestrate_wave_check", description: "Checks a 2.0.0 work graph against the SRS and, with run_id, the run journal, and reports each defect under a named code: the graph's own parse refusals (duplicate node, unknown edge endpoint, self or duplicate edge, cycle), acceptance criteria that do not exist, are discarded or expired, the partition (every live criterion of the scope in exactly one node), a requirement split across nodes (warning), a dependency held by a later node, a secret or an http(s) URL in the graph, a repeated action id or an unknown message placeholder, a journal wave missing from the graph, and a draft requirement (warning). It also previews every node's stage without writing a lanes lock. Diagnostics are bounded to 50, errors first, with a per-code summary; allDiagnostics returns them all. The answer is not ok, and the command exits 1, exactly when an error diagnostic is reported. Read-only.", path: ["wave", "check"], kind: "read", options: [o("--waves", "waves", "string", true), RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION, o("--all-diagnostics", "allDiagnostics", "boolean")] },
+  // @req FR-NODE-247 AC-1 — read-only: the draft is printed, never written.
+  { tool: "orchestrate_wave_propose", description: "Computes a draft 2.0.0 work graph for a run from exactly one of target (its non-discarded requirements) or requirements (a comma-separated ID list) and files, a JSON file mapping each requirement ID to the paths it is expected to touch: whole requirements are grouped by a deterministic greedy merge under the caps (maxRequirements 5, maxAcs 25, maxFiles 25 by default), a dependency cycle stays in one node, nodes are ordered by their dependencies and edges carry the requirement IDs behind them, so the same input always yields the same graph and the agent only rewrites the descriptive fields. A named ID that is no requirement or is discarded is a usage error; a requirement with no live criterion, a cycle over a cap, and an expected path that does not exist at HEAD while a tracked path lies within Levenshtein distance 2 of it are refusals; an expected path with no such neighbour is accepted as a new file. Prints the draft and the hub paths left out of affinity, and writes no file. Read-only.", path: ["wave", "propose"], kind: "read", options: [o("--target", "target"), o("--requirements", "requirements"), o("--files", "files", "string", true), o("--run-id", "runId", "string", true), o("--max-requirements", "maxRequirements"), o("--max-acs", "maxAcs"), o("--max-files", "maxFiles")] },
+  // @req FR-NODE-252 AC-1 — read-only: git is asked, nothing is written.
+  { tool: "orchestrate_preservation_check", description: "Reports the preservation layer of the diff between two revisions (head defaulting to HEAD): every file that existed at base and is deleted or renamed, every exported name of a JavaScript or TypeScript file that is gone or whose parameter list or type text changed, and every deleted test file, removed test case, assertion removed from a case that remains, added skip or focus marker and commented-out case. A changed source file in another language is listed as unchecked and does not pass; a replaced expected value or a loosened predicate is not checked and stays the verifier's to judge. The same two revisions give the same rows. Read-only.", path: ["preservation", "check"], kind: "read", options: [o("--base", "base", "string", true), o("--head", "head")] },
   { tool: "orchestrate_duplication_plan", description: "Audits lane diffs against the lanes' declared write sets, which bound each lane's candidates to the paths it said it would touch, and proposes the duplication candidates a reviewer should look at. Which wave that is comes from how the caller assembled the diff file; this tool applies no wave filter of its own. Read-only.", path: ["duplication", "plan"], kind: "read", options: [o("--diffs", "diffs", "string", true), o("--write-sets", "writeSets", "string", true), o("--wave", "wave")] },
   { tool: "orchestrate_validate", description: "Validates a kiwi-orchestrator run journal against the waves-event contract and reports each violation by its named code; the strict flag additionally fails an unstamped 1.4.0 line and a run-scoped version downgrade. This binding declares no engine, so a journal another engine wrote is read as zero lines and answers clean without having been judged. Read-only.", path: ["validate"], kind: "read", options: [RUN_ID_OPTION, JOURNAL_OPTION, o("--strict", "strict", "boolean")] },
   { tool: "orchestrate_auto_gate", description: "Applies the --auto decision rule to one gate ballot the caller supplies and returns the verdict: adopt the recommended option, adopt the default-if-auto option, adopt a majority over the votes already in the payload, or escalate and halt for the user. It convenes nobody and gathers no votes of its own, and a critical gate, a degraded quorum and an absent majority each escalate. Read-only.", path: ["auto-gate", "decide"], kind: "read", options: [o("--payload", "payload", "json", true)] },
@@ -392,10 +418,8 @@ export function orchestrateVerbKind(segments: readonly string[]): "read" | "muta
 
 // --- outcomes and the exit-code table -------------------------------------------------------------
 
-/** 05 §10.6: 2 is gate refusal, 1 is an operational error, 0 is success. @req FR-NODE-137 */
-const EXIT_OK = 0;
-const EXIT_OPERATIONAL_ERROR = 1;
-const EXIT_GATE_REFUSAL = 2;
+/** 05 §10.6: 2 is gate refusal, 1 is an operational error, 0 is success — read from the one CLI table. @req FR-NODE-137 */
+const { OK: EXIT_OK, OPERATIONAL_ERROR: EXIT_OPERATIONAL_ERROR, GATE_REFUSAL: EXIT_GATE_REFUSAL, REPORTED_ERRORS: EXIT_REPORTED_ERRORS } = ORCHESTRATE_EXIT_CODES;
 
 interface GateRefusal {
   readonly refusedGate: string;
@@ -417,6 +441,19 @@ function isRefusal(value: unknown): value is GateRefusal {
   return typeof value === "object" && value !== null && typeof (value as GateRefusal).refusedGate === "string";
 }
 
+/** A read verb's report that holds an error finding: written in full, at its own exit code. @req FR-NODE-246 AC-1 */
+interface ErrorReport {
+  readonly errorReport: Record<string, unknown>;
+}
+
+function reportWithErrors(report: Record<string, unknown>): ErrorReport {
+  return { errorReport: report };
+}
+
+function isErrorReport(value: unknown): value is ErrorReport {
+  return typeof value === "object" && value !== null && typeof (value as ErrorReport).errorReport === "object";
+}
+
 /**
  * An operational failure — an unreadable file, malformed JSON — as distinct from a gate refusal.
  * Thrown rather than returned so a kernel's own throw lands on the same exit code.
@@ -428,7 +465,7 @@ class OperationalError extends Error {
   }
 }
 
-type VerbResult = Record<string, unknown> | GateRefusal;
+type VerbResult = Record<string, unknown> | GateRefusal | ErrorReport;
 
 interface RunVerbOptions {
   readonly program: Command;
@@ -436,6 +473,8 @@ interface RunVerbOptions {
   readonly json: boolean;
   readonly kind: "read" | "mutation";
   readonly dryRun?: boolean;
+  /** The text a successful verb writes without `--json`; the generic rendering when absent. */
+  readonly human?: (outcome: Record<string, unknown>) => string;
 }
 
 /**
@@ -466,12 +505,21 @@ async function runVerb(options: RunVerbOptions, body: () => Promise<VerbResult>)
       options.program.setOptionValue("exitCode", EXIT_GATE_REFUSAL);
       return;
     }
-    write({
-      ok: true,
-      ...(mutation ? { applied: !dryRun, dryRun } : {}),
-      violations: [],
-      ...outcome
-    });
+    // A report is not a refusal: it names no gate, and its findings are the answer.
+    if (isErrorReport(outcome)) {
+      write({ ok: false, violations: [], ...outcome.errorReport });
+      options.program.setOptionValue("exitCode", EXIT_REPORTED_ERRORS);
+      return;
+    }
+    if (!options.json && options.human !== undefined) options.context.io.stdout.write(`${options.human(outcome)}\n`);
+    else {
+      write({
+        ok: true,
+        ...(mutation ? { applied: !dryRun, dryRun } : {}),
+        violations: [],
+        ...outcome
+      });
+    }
     options.program.setOptionValue("exitCode", EXIT_OK);
   } catch (error) {
     write({ ok: false, error: (error as Error).message ?? "orchestrate command failed" });
@@ -628,6 +676,13 @@ export const MAX_LANE_CAP = 8;
  * exceptional; refusing on the first miss turned half of eight concurrent appends into hard failures.
  */
 const WAVES_LOCK_WAIT_MS = 10_000;
+
+/** A `--max-*` cap of `wave propose`: a positive whole number, or absent. @req FR-NODE-247 AC-1, AC-6 */
+function capOption(value: unknown, flag: string, cap: keyof ProposalCaps): Partial<ProposalCaps> {
+  if (value === undefined) return {};
+  if (typeof value !== "string" || !/^[1-9][0-9]*$/.test(value)) throw new OperationalError(`${flag} must be a positive whole number, not ${String(value)}`);
+  return { [cap]: Number.parseInt(value, 10) };
+}
 
 /**
  * @req IR-CLI-098 — validated where the argument arrives, not where the plan is built. Reaching
@@ -1294,7 +1349,10 @@ async function appendWavesLine(
   dryRun: boolean
 ): Promise<JournalAppendOutcome> {
   const absolute = path.resolve(root.root, relativePath);
-  const stamped = JSON.stringify({ ...payload, writer: JOURNAL_WRITER_STAMP });
+  // @req FR-NODE-245 AC-3 — a failed action's error can echo the address it was sent to, so every
+  // shared secret pattern is redacted before the line is written.
+  const redacted = typeof payload.error === "string" ? { ...payload, error: redactSecrets(payload.error).text } : payload;
+  const stamped = JSON.stringify({ ...redacted, writer: JOURNAL_WRITER_STAMP });
   // @req FR-FLOW-155 AC-2 — the candidate is read under the engine of the line being appended, and
   // the engine comes from `engineOf` because that is the resolver the parser filters with. Pinned to
   // a literal, the candidate view was empty for every `kiwi-wave-master` line, an empty view raises
@@ -1475,11 +1533,139 @@ async function selectRunId(root: ProjectRoot, runId: unknown, engine: Engine, re
   throw new OperationalError(`no resumable run: every ${engine} run in ${relativePath} is complete or aborted; pass --run-id`);
 }
 
+/** The engine a run-reading leaf uses when neither `--engine` nor a journal line of the run names one. */
+const DEFAULT_RUN_ENGINE: Engine = "kiwi-orchestrator";
+const RUN_ENGINE_HELP = `journal engine (${ENGINES.join(" | ")}); with --run-id, the engine the run's journal lines carry, else ${DEFAULT_RUN_ENGINE}`;
+
+/**
+ * The engine a leaf reads, and `round record` writes, a run under: `--engine` as given; else, with
+ * `--run-id`, the engine the run's journal lines carry (a line without `engine` is kiwi-wave-master's),
+ * the default when no line of the run exists under either engine, and a usage error when lines of the
+ * run exist under both. @req IR-CLI-113 AC-9
+ */
+async function resolveRunEngine(root: ProjectRoot, options: Record<string, unknown>, relativePath: string): Promise<Engine> {
+  if (options.engine !== undefined) return requireEngine(options.engine);
+  const runId = options.runId;
+  if (typeof runId !== "string" || runId.length === 0) return DEFAULT_RUN_ENGINE;
+  const holding: Engine[] = [];
+  for (const engine of ENGINES) {
+    const runIds = await listJournalRunIds(root, { engine, relativePath }).catch((error: unknown) => {
+      throw new OperationalError(`the run journal is unreadable at ${relativePath}: ${(error as Error).message}`, { cause: error });
+    });
+    if (runIds.includes(runId)) holding.push(engine);
+  }
+  if (holding.length > 1) {
+    throw new OperationalError(`run ${runId} has lines under both ${holding.join(" and ")} in ${relativePath}: pass --engine to choose one`);
+  }
+  return holding[0] ?? DEFAULT_RUN_ENGINE;
+}
+
 /** A wave declaration file, parsed or refused as an operational error naming what is wrong. @req FR-NODE-216 AC-1 */
 async function readWaveDeclaration(root: string, declarationPath: string): Promise<WaveDeclaration> {
   const parsed = parseWaveDeclaration(await readJsonFile(path.resolve(root, declarationPath), "--waves"));
   if (!parsed.ok) throw new OperationalError(`--waves ${declarationPath}: ${parsed.gate === null ? "" : `${parsed.gate}: `}${parsed.message}`);
   return parsed.declaration;
+}
+
+/** A 2.0.0 work graph as a reader found it: the parse, the file it came from, and what reading it raised. */
+interface WorkGraphSource {
+  readonly graph: WorkGraph;
+  readonly path: string;
+  /** sha256 of the file bytes, lowercase hex. */
+  readonly digest: string;
+  readonly warnings: ReadonlyArray<{ code: string; message: string }>;
+}
+
+/**
+ * The run's work graph: `--waves` when given, or else the file the run's latest graph reference names
+ * (FR-NODE-250 AC-2). `null` when there is neither or the file is not a 2.0.0 graph, so the reader keeps
+ * its 1.0.0 output. A file whose bytes no longer match the reference is still read, with a warning.
+ * @req IR-CLI-113 AC-5, AC-6, AC-8
+ */
+async function findWorkGraph(root: string, wavesOption: unknown, view: WavesJournalView): Promise<WorkGraphSource | null> {
+  const reference = typeof wavesOption === "string" ? null : latestGraphReference(view);
+  const graphPath = typeof wavesOption === "string" ? wavesOption : reference?.path;
+  if (graphPath === undefined) return null;
+  const absolute = path.resolve(root, graphPath);
+  let bytes: Buffer;
+  try {
+    bytes = await readFile(absolute);
+  } catch (error) {
+    throw new OperationalError(`the work graph is unreadable at ${graphPath}: ${(error as Error).message}`, { cause: error });
+  }
+  let value: unknown;
+  try {
+    value = JSON.parse(bytes.toString("utf8")) as unknown;
+  } catch (error) {
+    throw new OperationalError(`the work graph is not valid JSON at ${graphPath}: ${(error as Error).message}`, { cause: error });
+  }
+  if ((value as { schema_version?: unknown } | null)?.schema_version !== WORK_GRAPH_SCHEMA_VERSION) return null;
+  const parsed = parseWorkGraph(value);
+  if (!parsed.ok) throw new OperationalError(`the work graph ${graphPath}: ${parsed.gate === null ? "" : `${parsed.gate}: `}${parsed.message}`);
+  const digest = createHash("sha256").update(bytes).digest("hex");
+  const warnings =
+    reference !== null && reference.digest !== digest
+      ? [{ code: "graph-digest-mismatch", message: `${graphPath} changed after the run's latest graph reference, and no journal line records the change` }]
+      : [];
+  return { graph: parsed.graph, path: graphPath, digest, warnings };
+}
+
+/** The run a work-graph reader reads, its journal view, and the graph it found. */
+interface RunWithGraph {
+  readonly root: ProjectRoot;
+  readonly runId: string;
+  readonly engine: Engine;
+  readonly view: WavesJournalView;
+  readonly source: WorkGraphSource | null;
+}
+
+/** How a work-graph reader treats a named run the journal holds no line of. */
+interface RunWithGraphPolicy {
+  /**
+   * Read the run as one with no line yet when a 2.0.0 graph is found for it — which, with no line to
+   * reference one, only `--waves` can supply. Off by default: such a run is refused.
+   */
+  readonly acceptRunWithoutLines?: boolean;
+}
+
+/**
+ * The run (`--run-id`, or the most recent resumable one), its lines and its work graph. A missing
+ * journal and a run with no line are errors, never an empty report, unless the policy accepts a run
+ * with no line and a 2.0.0 graph was found for it. @req IR-CLI-113 AC-5, AC-10, IR-CLI-114 AC-5, FR-NODE-251 AC-6
+ */
+async function readRunWithGraph(command: Command, options: Record<string, unknown>, policy: RunWithGraphPolicy = {}): Promise<RunWithGraph> {
+  const root = projectRoot(command);
+  const relativePath = options.journal as string;
+  const engine = await resolveRunEngine(root, options, relativePath);
+  const runId = await selectRunId(root, options.runId, engine, relativePath);
+  const view = await readJournalView(root, runId, relativePath, engine);
+  const noLine = `run ${runId} has no ${engine} line in ${relativePath}`;
+  // A run the journal does not hold is an error, not an empty report that reads as "no waves yet".
+  if (view.lines.length === 0 && policy.acceptRunWithoutLines !== true) throw new OperationalError(noLine);
+  const source = await findWorkGraph(root.root, options.waves, view);
+  // @req IR-CLI-113 AC-10, IR-CLI-114 AC-5 — with a 2.0.0 graph a run with no line yet reads as one: nothing dispatched.
+  if (view.lines.length === 0 && source === null) throw new OperationalError(noLine);
+  return { root, runId, engine, view, source };
+}
+
+/** The graph a reader that only reads 2.0.0 graphs needs. */
+function requireWorkGraph(run: RunWithGraph): WorkGraphSource {
+  if (run.source === null) throw new OperationalError(`run ${run.runId} has no 2.0.0 work graph: pass --waves <file> or reference one on the run's first line`);
+  return run.source;
+}
+
+/**
+ * Which test lines cite each acceptance criterion of the graph's requirements, by the scan
+ * `coverage --tests` runs. A requirement the SRS does not hold is left out: its criteria are not live.
+ * @req IR-CLI-113 AC-4, IR-CLI-114 AC-4, FR-NODE-251 AC-1
+ */
+async function citationScan(workspace: ParsedWorkspace, graph: WorkGraph): Promise<Pick<TestSufficiencyReport, "requirements">> {
+  const known = new Set(workspace.records.map((record) => record.id));
+  const ids = [...new Set(graph.nodes.flatMap((node) => node.requirements))].filter((id) => known.has(id));
+  if (ids.length === 0) return { requirements: [] };
+  const scanned = await checkTestSufficiency(workspace, { ids });
+  if (!scanned.ok) throw new OperationalError(`the test-citation scan failed: ${scanned.error.message}`);
+  return scanned.value;
 }
 
 /**
@@ -1533,8 +1719,12 @@ function jsonMode(program: Command, options: Record<string, unknown>): boolean {
 export function registerOrchestrateCommands(command: Command, context: CliContext): void {
   const orchestrate = command.command("orchestrate").description("kiwi-orchestrator run surface (phase 1)");
 
-  const read = (target: Command, options: Record<string, unknown>, body: () => Promise<VerbResult>): Promise<void> =>
-    runVerb({ program: command, context, json: jsonMode(command, options), kind: "read" }, body);
+  const read = (
+    target: Command,
+    options: Record<string, unknown>,
+    body: () => Promise<VerbResult>,
+    human?: RunVerbOptions["human"]
+  ): Promise<void> => runVerb({ program: command, context, json: jsonMode(command, options), kind: "read", ...(human === undefined ? {} : { human }) }, body);
   const mutate = (options: Record<string, unknown>, body: () => Promise<VerbResult>): Promise<void> =>
     runVerb(
       { program: command, context, json: jsonMode(command, options), kind: "mutation", dryRun: options.dryRun === true },
@@ -1983,7 +2173,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
     .option("--waves <path>", "a wave declaration file; plans its ready waves from the run journal (needs --run-id)")
     .option("--sds <path...>", "the wave SDS files, in wave order; <waveId>=<file>,<file> makes several SDS files one wave")
     .option("--depends <json>", "with --sds: declared dependencies {waveId: [waveId, ...]}; a wave with no key depends on every earlier wave")
-    .option("--lanes <n>", `per-stage lane cap, 1 to ${MAX_LANE_CAP}`, laneCapOption, 4)
+    .option("--lanes <n>", `per-stage lane cap, 1 to ${MAX_LANE_CAP}`, laneCapOption, DEFAULT_LANE_CAP)
     // @req IR-CLI-084 AC-6 — off by default, and journalled when used.
     .option("--strict-grounding", "require every declared path to exist at the dispatch base")
     .option("--existing-paths <path>", "the dispatch base path list, as JSON; with --waves, defaults to the paths tracked at HEAD")
@@ -2071,6 +2261,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
 
   addMutationOptions(round.command("record"))
     .option("--run-id <id>", "the run the round belongs to")
+    .option("--engine <engine>", RUN_ENGINE_HELP)
     .option("--payload <json>", "the round, inline")
     // @req FR-NODE-169 AC-7 — required, not optional. A round record is verdict-bearing and
     // `waves-event.md` §2.2 requires one externally recomputable proof on such a line, but
@@ -2082,7 +2273,13 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
       await mutate(options, async () => {
         const root = projectRoot(command);
         const runId = requireOption(options.runId, "--run-id");
-        const payload = parseInlineJson(options.payload, "--payload") as unknown as Round;
+        // @req IR-CLI-113 AC-9 — the round is written under its run's engine, decided before anything is appended.
+        const engine = await resolveRunEngine(root, options, options.journal as string);
+        const parsed = parseInlineJson(options.payload, "--payload");
+        // @req FR-NODE-254 AC-1 — a usage error, before anything is evaluated or appended.
+        const problems = roundPayloadProblems(parsed);
+        if (problems.length > 0) throw new OperationalError(problems.join("; "));
+        const payload = parsed as unknown as Round;
         const proof = parseInlineJson(options.proof, "--proof");
         const outcome = evaluateRound(payload);
         // @req FR-NODE-169 AC-1, AC-2 — `null` covers both an out-of-vocabulary scope and one
@@ -2091,6 +2288,9 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         if (!line) {
           return refuse("invalid-run-scope-option", [{ scope: payload.scope, loop: payload.loop }]);
         }
+        // @req FR-NODE-254 AC-3 — the row IDs exist only here, so the by-ID check runs before append.
+        const residualProblems = terminalResidualProblems(payload, outcome);
+        if (residualProblems.length > 0) throw new OperationalError(residualProblems.join("; "));
         const appended = await appendWavesLine(
           root,
           options.journal as string,
@@ -2098,7 +2298,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           {
             schema_version: CURRENT_WAVES_SCHEMA_VERSION,
             run_id: runId,
-            engine: "kiwi-orchestrator",
+            engine,
             event: "result",
             ts: new Date().toISOString(),
             proof,
@@ -2212,19 +2412,41 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
   // @req IR-CLI-104 — read-only: the journal and the declaration are read, nothing is written.
   addCommonOptions(wave.command("status"))
     .option("--run-id <id>", "the run whose waves are reported; defaults to the most recent resumable run")
-    .option("--engine <engine>", "journal engine (kiwi-orchestrator | kiwi-wave-master)", "kiwi-orchestrator")
+    .option("--engine <engine>", RUN_ENGINE_HELP)
     .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
     .option("--waves <path>", "a wave declaration file; also lists the waves schedule waves --waves would plan")
+    .option("--with-tests", "with a 2.0.0 work graph: also scan the tests for AC citations")
     .action(async (options) => {
       await read(orchestrate, options, async () => {
-        const root = projectRoot(command);
-        const engine = requireEngine(options.engine);
-        const relativePath = options.journal as string;
-        const runId = await selectRunId(root, options.runId, engine, relativePath);
-        const view = await readJournalView(root, runId, relativePath, engine);
-        // A run the journal does not hold is an error, not an empty report that reads as "no waves yet".
-        if (view.lines.length === 0) throw new OperationalError(`run ${runId} has no ${engine} line in ${relativePath}`);
+        const { root, runId, engine, view, source } = await readRunWithGraph(command, options, { acceptRunWithoutLines: true });
         const progress = computeRunProgress(view);
+        const ready =
+          typeof options.waves === "string"
+            ? { ready: waveReadiness(await readWaveDeclaration(root.root, options.waves), progress.waveStatuses).ready.map((entry) => entry.wave) }
+            : {};
+        const run = { runId, engine, complete: progress.runComplete, needsFinalVerify: progress.needsFinalVerify, aborted: isRunAborted(view) };
+        // @req IR-CLI-113 AC-1 — with a 2.0.0 graph every node is reported, not only the waves the journal names.
+        if (source !== null) {
+          const workspace = await parseWorkspace(root);
+          // @req IR-CLI-113 AC-4 — the citation scan only on request; without it citations are unchecked.
+          const cited = options.withTests === true ? citedAcsOf(await citationScan(workspace, source.graph)) : null;
+          const state = deriveWorkGraphState({ graph: source.graph, records: workspace.records, cited, journal: view.lines });
+          const actions = completionActionsOf({ graph: source.graph, runId, journal: view.lines });
+          const input = { graph: source.graph, state, journal: view.lines, latestPerWave: view.latestPerWave, waveStatuses: progress.waveStatuses, actions };
+          const rows = waveStatusRows(input);
+          return {
+            report_version: WAVE_STATUS_REPORT_VERSION,
+            graph: { path: source.path, digest: source.digest },
+            journal_lines: view.lines.length,
+            cited_checked: state.cited_checked,
+            waves: rows,
+            summary: waveStatusSummary({ ...input, rows }),
+            run,
+            warnings: source.warnings,
+            ...ready
+          };
+        }
+        // @req IR-CLI-113 AC-6 — no graph, or a 1.0.0 declaration: the IR-CLI-104 output, unchanged.
         const field = (value: unknown, type: "string" | "number"): unknown => (typeof value === type ? value : null);
         const waves = [...view.latestPerWave.entries()]
           .sort(([left], [right]) => left - right)
@@ -2237,15 +2459,146 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
             lane: field(event.lane, "string"),
             ts: field(event.ts, "string")
           }));
-        const ready =
-          typeof options.waves === "string"
-            ? { ready: waveReadiness(await readWaveDeclaration(root.root, options.waves), progress.waveStatuses).ready.map((entry) => entry.wave) }
-            : {};
-        return {
-          waves,
-          run: { runId, engine, complete: progress.runComplete, needsFinalVerify: progress.needsFinalVerify, aborted: isRunAborted(view) },
-          ...ready
+        return { waves, run, ...ready };
+      });
+    });
+
+  // @req IR-CLI-114 — read-only: one node in full, bounded.
+  addCommonOptions(wave.command("show"))
+    .option("--wave <id>", "the node to show")
+    .option("--ac <ref>", "\"<REQ-ID> AC-<n>\": show every node holding that criterion")
+    .option("--req <id>", "show every node holding a criterion of that requirement")
+    .option("--waves <path>", "the 2.0.0 work graph; defaults to the run's latest graph reference")
+    .option("--run-id <id>", "the run whose journal is read; defaults to the most recent resumable run")
+    .option("--engine <engine>", RUN_ENGINE_HELP)
+    .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
+    .option("--full", "every citation and every journal line of the node")
+    .action(async (options) => {
+      await read(orchestrate, options, async () => {
+        // @req IR-CLI-114 AC-1 — decided before anything is read.
+        const selectors = (["wave", "ac", "req"] as const).filter((name) => typeof options[name] === "string");
+        if (selectors.length !== 1) throw new OperationalError("give exactly one of --wave, --ac or --req");
+        const name = selectors[0] as "wave" | "ac" | "req";
+        const selector = { [name]: options[name] as string } as NodeSelector;
+        const run = await readRunWithGraph(command, options, { acceptRunWithoutLines: true });
+        const source = requireWorkGraph(run);
+        const selected = selectNodes(source.graph, selector);
+        if (selected.length === 0) throw new OperationalError(`no node of ${source.path} holds --${name} ${options[name] as string}`);
+        const workspace = await parseWorkspace(run.root);
+        // @req IR-CLI-114 AC-4 — always scanned.
+        const scan = await citationScan(workspace, source.graph);
+        const state = deriveWorkGraphState({ graph: source.graph, records: workspace.records, cited: citedAcsOf(scan), journal: run.view.lines });
+        const actions = completionActionsOf({ graph: source.graph, runId: run.runId, journal: run.view.lines });
+        const prd = source.graph.prd === undefined ? null : await loadPrdFile(run.root.root, source.graph.prd);
+        if (prd !== null && !prd.ok) throw new OperationalError(`the graph's PRD ${source.graph.prd as string} is unreadable: ${prd.error.message}`);
+        const byId = new Map(workspace.records.map((record) => [record.id, record]));
+        const input = {
+          graph: source.graph,
+          state,
+          journal: run.view.lines,
+          actionRows: actionRows({ graph: source.graph, runId: run.runId, engine: run.engine, actions, state }),
+          citations: new Map(scan.requirements.flatMap((requirement) => requirement.acs.map((ac) => [`${requirement.requirementId} ${ac.acId}`, ac.citations] as const))),
+          prdItems: (requirements: readonly string[]) =>
+            prd === null ? [] : rationalePrdItems(prd.value, requirements.flatMap((id) => (byId.has(id) ? [byId.get(id) as RequirementRecord] : []))),
+          full: options.full === true
         };
+        return {
+          graph: { path: source.path, digest: source.digest },
+          run: { runId: run.runId, engine: run.engine },
+          cited_checked: state.cited_checked,
+          nodes: selected.map((node) => waveShowNode(input, node.wave)),
+          warnings: source.warnings
+        };
+      });
+    });
+
+  // @req FR-NODE-251 — read-only: computes what is due and sends nothing.
+  addCommonOptions(wave.command("actions"))
+    .option("--waves <path>", "the 2.0.0 work graph; defaults to the run's latest graph reference")
+    .option("--run-id <id>", "the run whose actions are computed; defaults to the most recent resumable run")
+    .option("--engine <engine>", RUN_ENGINE_HELP)
+    .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
+    .action(async (options) => {
+      await read(orchestrate, options, async () => {
+        const run = await readRunWithGraph(command, options);
+        const source = requireWorkGraph(run);
+        const workspace = await parseWorkspace(run.root);
+        // @req FR-NODE-251 AC-1 — always scanned: a notice is visible outside the run.
+        const cited = citedAcsOf(await citationScan(workspace, source.graph));
+        const state = deriveWorkGraphState({ graph: source.graph, records: workspace.records, cited, journal: run.view.lines });
+        const actions = completionActionsOf({ graph: source.graph, runId: run.runId, journal: run.view.lines });
+        return {
+          graph: { path: source.path, digest: source.digest },
+          run: { runId: run.runId, engine: run.engine },
+          cited_checked: state.cited_checked,
+          actions: actionRows({ graph: source.graph, runId: run.runId, engine: run.engine, actions, state }),
+          summary: actionCounts(actions, state),
+          warnings: source.warnings
+        };
+      });
+    });
+
+  // @req FR-NODE-246 AC-1 — read-only: no lanes lock, no journal line.
+  addCommonOptions(wave.command("check"))
+    .requiredOption("--waves <path>", "the 2.0.0 work graph to check")
+    .option("--run-id <id>", "the run whose journal is checked against the graph")
+    .option("--engine <engine>", RUN_ENGINE_HELP)
+    .option("--journal <path>", "run journal path", WAVES_JOURNAL_PATH)
+    .option("--all-diagnostics", "every diagnostic, not the first 50")
+    .action(async (options) => {
+      await read(orchestrate, options, async () => {
+        const root = projectRoot(command);
+        const graph = await readJsonFile(path.resolve(root.root, options.waves as string), "--waves");
+        const workspace = await parseWorkspace(root);
+        // @req FR-NODE-246 AC-9 — the journal only when a run is named.
+        const journal = typeof options.runId === "string" ? (await readJournalView(root, options.runId, options.journal as string, await resolveRunEngine(root, options, options.journal as string))).lines : null;
+        const parsed = parseWorkGraph(graph);
+        const sdsWriteSets = new Map<string, string[]>();
+        for (const entry of parsed.ok ? parsed.graph.declaration.waves : []) {
+          const files = await declaredSdsFiles(root.root, workspace, entry);
+          if (files.length > 0) sdsWriteSets.set(entry.wave, files.flatMap((file) => file.writeSet));
+        }
+        const report = checkWorkGraph({ graph, records: workspace.records, journal, sdsWriteSets, allDiagnostics: options.allDiagnostics === true });
+        const { ok, ...fields } = report;
+        return ok ? fields : reportWithErrors(fields);
+      });
+    });
+
+  // @req FR-NODE-247 AC-1 — read-only: the draft goes to stdout.
+  addCommonOptions(wave.command("propose"))
+    .option("--target <target>", "draft from the target's non-discarded requirements")
+    .option("--requirements <ids>", "draft from these requirements, comma-separated")
+    .requiredOption("--files <path>", "the expected-files map, as JSON: requirement ID to path list")
+    .requiredOption("--run-id <id>", "the run the draft is for")
+    .option("--max-requirements <n>", `at most this many requirements per node (default ${DEFAULT_PROPOSAL_CAPS.requirements})`)
+    .option("--max-acs <n>", `at most this many live acceptance criteria per node (default ${DEFAULT_PROPOSAL_CAPS.acs})`)
+    .option("--max-files <n>", `at most this many non-test paths per node (default ${DEFAULT_PROPOSAL_CAPS.files})`)
+    .action(async (options) => {
+      await read(orchestrate, options, async () => {
+        // @req FR-NODE-247 AC-1 — decided before anything is read.
+        if ((typeof options.target === "string") === (typeof options.requirements === "string")) {
+          throw new OperationalError("give exactly one of --target or --requirements");
+        }
+        const caps = {
+          ...capOption(options.maxRequirements, "--max-requirements", "requirements"),
+          ...capOption(options.maxAcs, "--max-acs", "acs"),
+          ...capOption(options.maxFiles, "--max-files", "files")
+        };
+        const root = runRoot(command);
+        const scope = typeof options.target === "string" ? { target: options.target } : { requirements: (options.requirements as string).split(",").map((id) => id.trim()) };
+        const workspace = await parseWorkspace({ root });
+        const selection = proposalRequirementsOf(workspace.records, scope);
+        // @req FR-NODE-247 AC-11 — a usage error naming every such ID.
+        if (!selection.ok) {
+          throw new OperationalError(`--requirements names ${selection.violations.map((entry) => `${entry.id} (${entry.reason})`).join(", ")}: each must be a requirement that is not discarded`);
+        }
+        const expected = readExpectedFiles(await readJsonFile(path.resolve(root, options.files as string), "--files"));
+        if (!expected.ok) throw new OperationalError(`--files ${options.files as string}: ${expected.message}`);
+        const trackedPaths = await trackedPathsAtHead(root);
+        if (trackedPaths === null) throw new OperationalError("cannot read the paths tracked at HEAD here, which grounding the expected paths needs");
+        const proposal = proposeWaves({ runId: options.runId as string, scope, requirements: selection.requirements, expectedFiles: expected.files, trackedPaths, caps });
+        if (!proposal.ok) return refuse(proposal.code, proposal.violations);
+        return { graph: proposal.graph, hubs: proposal.hubs };
       });
     });
 
@@ -2277,6 +2630,27 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         const writeSets = (await readJsonFile(path.resolve(root, options.writeSets as string), "--write-sets")) as Record<string, string[]>;
         return { rows: planDuplicationAudit(diffs, writeSets) };
       });
+    });
+
+  // ---- preservation ---------------------------------------------------------------------------------------------
+  const preservation = orchestrate.command("preservation").description("the preservation layer of a diff");
+
+  // @req FR-NODE-252 AC-1 — read-only: git is asked, nothing is written.
+  addCommonOptions(preservation.command("check"))
+    .requiredOption("--base <rev>", "the revision the diff starts from")
+    .option("--head <rev>", "the revision the diff ends at", "HEAD")
+    .action(async (options) => {
+      await read(
+        orchestrate,
+        options,
+        async () => {
+          const result = await checkPreservation({ root: runRoot(command), base: options.base as string, head: options.head as string });
+          if (!result.ok) throw new OperationalError(result.error.message);
+          return { ...result.value };
+        },
+        // @req FR-NODE-252 AC-4 — the text form carries the statement of what is not checked, as the JSON does.
+        (outcome) => formatPreservationReport(outcome as unknown as PreservationReport)
+      );
     });
 
   // ---- replay ---------------------------------------------------------------------------------------------------

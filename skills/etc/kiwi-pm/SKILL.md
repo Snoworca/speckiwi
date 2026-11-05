@@ -13,7 +13,7 @@ description: "OpenCode/Hermes local-LLM variant for running one requirement-ID s
 
 요구 ID 집합(`--req-filter`)을 입력으로 받아 — 사용자가 `--sds <path>` 로 SDS 를 주면 그 SDS 를 — 격리된 delegated worker(`kiwi-coder`) 실행 하나로 구현시키는 runner. 호출 하나가 실행 단위다 — PM 은 요구 집합이나 SDS 를 나누거나 합치지 않는다.
 
-PM 자체는 read-only orchestrator 에 가깝다 — 구현/TDD/회귀/MCP mutation 4종 중 3종은 자식 `kiwi-coder` 전권. PM 은 부팅 시 요구 집합을 확정하고(`--sds` 면 `check_sds` 로 SDS 를 검사하고) speckiwi `list_requirements` read 로 Stability lifecycle gate 적용하고, 실행이 끝나면 T-final 단계에서 `update_status("implemented")` + `add_completed_work(req-summary)`(`--sds` 면 `add_completed_work(sds-summary)`) 2종 mutation 으로 마무리한다. 보고서는 doculight MCP 가용 시 doculight MCP `open_markdown` 으로 표시.
+PM 자체는 read-only orchestrator 에 가깝다 — 구현/TDD/회귀/MCP mutation 4종 중 3종은 자식 `kiwi-coder` 전권. PM 은 부팅 시 요구 집합을 확정하고(`--sds` 면 `check_sds` 로 SDS 를 검사하고) speckiwi read(요구 집합 실행은 요구마다 `get_requirement`)로 Stability lifecycle gate 적용하고, 실행이 끝나면 T-final 단계에서 `update_status("implemented")` + `add_completed_work(req-summary)`(`--sds` 면 `add_completed_work(sds-summary)`) 2종 mutation 으로 마무리한다. 보고서는 doculight MCP 가용 시 doculight MCP `open_markdown` 으로 표시.
 
 ---
 
@@ -22,6 +22,13 @@ PM 자체는 read-only orchestrator 에 가깝다 — 구현/TDD/회귀/MCP muta
 pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` 이며, 동일 기능의 `speckiwi workflow pipeline-emit` CLI 도 같은 자리에 기록한다. `_shared/kiwi/pipeline-event.md` §5.1 의 손으로 짠 bash append 는 그 도구를 쓸 수 없을 때의 **degraded 폴백**이고 그대로 남는다 — 이벤트가 놓이는 자리는 같은 문서 §1 의 위치 규칙(git 루트 → `./kiwi` → `$HOME/.kiwi`)이 정하며, 도구 경로도 그 자리를 바꾸지 않는다. degraded 로 내려간 실행은 도구 진단·산출물 경로·active target 을 사용자 보고에 함께 남긴다.
 
 세션 상태 조회의 정상 경로도 같다 — `--resume` 이 읽는 `pm-state.json` 은 MCP `workflow_session_status` 로 읽고, 실행 기록 `worklog.jsonl` 은 `workflow_worklog_tail` 로 조회한다. 파일을 직접 읽는 것은 같은 degraded 폴백이다.
+
+---
+
+## 핵심 규칙 — 컴팩션 뒤에도 남는 실행 규칙 (FR-FLOW-223)
+
+- **요구는 ID 로 읽는다** — `--req-filter` 의 요구는 하나씩 `get_requirement` 로 읽는다. 그 요구가 어느 target 에 있든 읽고, 활성 target 에 없다는 이유로 빼지 않는다 (§1.1).
+- **테스트 커밋이 먼저다** — `--commit-lane-work` 로 커밋할 때 요구마다 테스트 커밋이 구현 커밋보다 앞선다. 두 커밋 모두 `REQ: <요구 ID>` 와 `Commit-Kind: test` · `Commit-Kind: implementation` trailer 를 싣는다 (§1.5).
 
 ---
 
@@ -40,9 +47,9 @@ pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` �
 | §0.9 | **외부 모듈 영향 처리는 kiwi-coder 책임** (kiwi-coder §0.G2). 자식이 `NEEDS_USER + severity=business-decision` 으로 PM 에 버블업하면 §5 가드레일 적용 |
 | §0.10 | **project signature-ban instruction** + **project change-history policy**. 본 스킬 본문에 `## 변경 이력` / `## Changelog` / `### v0.x.y` 섹션 없음 — git history 가 SSOT. 커밋 메시지·코드 주석·산출물 어디에도 AI 식별 정보 금지 |
 | §0.11 | **`.kiwi/sessions/{run_id}/pm-state.json` 영속 의무**. 실행 종료 / NEEDS_USER 버블업 / FAILED / `--resume` 진입 / lifecycle gate 평가 직후 SAVE_STATE. 손상 시 `.bak` 복구 (§7.2) |
-| §0.12 | **MCP 호출 분담 + 시그니처 SSOT** — speckiwi MCP 실제 schema 기준. PM 호출 2종: (a) `update_status(id, status)` — T-final 조건부 implemented 승급, dryRun 옵션 없음. (b) `add_completed_work(date, summary, [requirementIds, target, scope, reportPaths, allowIncomplete, dryRun])` — T-final sds-summary, sds_id 같은 임의 필드는 summary 텍스트에 인코딩. read 3종: `get_active_target` / `list_requirements` / `check_sds`. 자식 kiwi-coder 4종 mutation: `add_trace_link(id, type, reference, relation)` / `add_verification_evidence(id, type, reference, [covers, notes])` / `update_status(id, status="in_progress")` / `add_completed_work(date, summary, ...)`. doculight MCP: `open_markdown` / `update_markdown` (§6.3) |
+| §0.12 | **MCP 호출 분담 + 시그니처 SSOT** — speckiwi MCP 실제 schema 기준. PM 호출 2종: (a) `update_status(id, status)` — T-final 조건부 implemented 승급, dryRun 옵션 없음. (b) `add_completed_work(date, summary, [requirementIds, target, scope, reportPaths, allowIncomplete, dryRun])` — T-final sds-summary, sds_id 같은 임의 필드는 summary 텍스트에 인코딩. read 4종: `get_active_target` / `get_requirement` / `list_requirements` / `check_sds`. 자식 kiwi-coder 4종 mutation: `add_trace_link(id, type, reference, relation)` / `add_verification_evidence(id, type, reference, [covers, notes])` / `update_status(id, status="in_progress")` / `add_completed_work(date, summary, ...)`. doculight MCP: `open_markdown` / `update_markdown` (§6.3) |
 | §0.13 | **회귀 테스트는 kiwi-coder §0.13 책임**. PM 은 별도 회귀 호출 안 함. 종합 통합 테스트가 필요하면 사용자에게 별도 안내 |
-| §0.14 | **세션 id SSOT**. SDS 없는 실행의 `run_id` 는 `--run-id <id>`, 없으면 `<target>-<정렬한 REQ ID 의 sha256 앞 8 hex>`. 그 `run_id` 의 세션이 있고 끝나지 않았으면 이어서 돌고, 끝났으면 다음 빈 접미사 `<run_id>-2`, `-3`, … 를 쓴다. `--sds` 면 `run_id` = sds-id(SDS 파일 이름에서 `.sds.md` 를 뺀 값) — work-order 와 세션 해석기가 sds-id 로 세션을 찾는다. SDS 없는 실행에는 SDS sha pin 도 `sha-mismatch-on-resume` 의 SDS 경우도 없다. `run_id` = `[a-z0-9.-]{4,128}` — 벗어나면 §7.1 차단. 이 정규식은 **세션 식별자** 전용이며 **이벤트 emit 키**에는 **적용하지 않는다** — 재진입 emit 키 `{run_id}#r{n}` 는 다른 id 공간이다(`pipeline-event.md` §5.4) |
+| §0.14 | **세션 id SSOT**. SDS 없는 실행의 `run_id` 는 `--run-id <id>`, 없으면 `<target>-<정렬한 REQ ID 의 sha256 앞 8 hex>`. `<target>` 은 활성 target 의 이름이고, 활성 target 이 없으면 `none` 이다(`--req-filter` 실행은 활성 target 없이도 돈다). 그 `run_id` 의 세션이 있고 끝나지 않았으면 이어서 돌고, 끝났으면 다음 빈 접미사 `<run_id>-2`, `-3`, … 를 쓴다. `--sds` 면 `run_id` = sds-id(SDS 파일 이름에서 `.sds.md` 를 뺀 값) — work-order 와 세션 해석기가 sds-id 로 세션을 찾는다. `--sds` 와 `--req-filter` 를 함께 주면 `run_id` 는 `<sds-id>-<정렬한 REQ ID 의 sha256 앞 8 hex>` 다 — 같은 SDS 에 다른 요구를 준 두 실행은 다른 run 이다. SDS 없는 실행에는 SDS sha pin 도 `sha-mismatch-on-resume` 의 SDS 경우도 없다. `run_id` = `[a-z0-9.-]{4,128}` — 벗어나면 §7.1 차단. 이 정규식은 **세션 식별자** 전용이며 **이벤트 emit 키**에는 **적용하지 않는다** — 재진입 emit 키 `{run_id}#r{n}` 는 다른 id 공간이다(`pipeline-event.md` §5.4) |
 | §0.15 | **위임 worker 위임 모드 단일** — 사용 가능한 delegated worker/delegation 도구로 자식 `kiwi-coder` 를 실행한다. 자식 모델 = local-LLM max-profile (또는 `local-LLM max profile` 시 kiwi-coder 내부에서 local evaluator override). legacy `--headless` CLI subprocess 폐기. 메인 컨텍스트 직접 skill 재진입 금지 (메인 컨텍스트 격리가 PM 본질 가치). 본 결정의 영향 — T1/T2/T3 forbidden_patterns 게이트 / ENV_WHITELIST / sentinel parser / process group / Python self-heal hook 모두 불필요해져 제거 |
 | §0.16 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 | §0.17 참고 | `--mini`/`--loops N` 는 kiwi-coder 자식 spawn 과 §6.4 hand-off 에 전파 (loop-option.md §6) |
@@ -121,7 +128,7 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 
 작업 입력은 요구 ID 집합이고, 사용자가 SDS 를 줄 때만 SDS 다.
 
-- **`--req-filter <REQ-ID,...>`** — 구현할 요구 ID 집합. 없으면 활성 target 의 열린 작업 후보(`list_requirements` 의 `planned` · `in_progress` 요구)를 집합으로 출력하고 kiwi-coder 를 띄우기 전에 사용자 게이트에서 확인받는다(`--auto` 면 결정 위원회가 정한다, `../_shared/kiwi/auto-option.md`). 확인된 집합은 `pm-state.json` 의 `req_ids` 로 기록한다. SDS 가 없다는 이유로 멈추지 않는다.
+- **`--req-filter <REQ-ID,...>`** — 구현할 요구 ID 집합. 없으면 활성 target 의 열린 작업 후보(`list_requirements` 의 `planned` · `in_progress` 요구)를 집합으로 출력하고 kiwi-coder 를 띄우기 전에 사용자 게이트에서 확인받는다(`--auto` 면 결정 위원회가 정한다, `../_shared/kiwi/auto-option.md`). 확인된 집합은 `pm-state.json` 의 `req_ids` 로 기록한다. `--req-filter` 가 있으면 lifecycle gate 와 T-final `implemented` 승급은 집합의 요구를 하나씩 `get_requirement` 로 ID 로 읽는다 — 그 요구가 어느 target 에 있든 읽고, 활성 target 에 없다는 이유로 빼지 않는다. `--req-filter` 의 ID 가운데 `get_requirement` 가 찾지 못하는 것이 있으면 kiwi-coder 를 띄우기 전에 멈추고 그 ID 를 적는다. `--sds` 와 함께 주면 실행 집합(gate · kiwi-coder 에 넘기는 요구 · 승급)은 `--req-filter` 의 ID 이고 SDS 는 그 요구들의 설계만 준다 — SDS 의 `@req` 에 없는 ID 가 있으면 kiwi-coder 를 띄우기 전에 멈추고 그 ID 를 적는다. SDS 가 없다는 이유로 멈추지 않는다.
 - **`--sds <path>` (별칭 `SDS_PATH=<path>`)** — 사용자가 주거나 말로 요청할 때만 쓰는 SDS: `$kiwi-sds` 가 합의(`agreed`)한 lite SDS 한 파일, `docs/sds/<sds-id>.sds.md`. 문법과 검사는 `docs/rule/SDS-MD-Rules-v2.6.0.md` §9 가 정본이다. 그 파일이 없으면 HALT 하고 `$kiwi-sds` 로 SDS 를 먼저 작성·합의하라고 안내한다. Status 가 `agreed` 가 아니거나 `speckiwi sds check` 가 error 를 내면 HALT 하고 `$kiwi-sds` 로 돌려보낸다.
 - **열린 SDS 는 보고만 한다** — SDS 를 받지 않았는데 `docs/sds/` 의 열린(`agreed`, `closed` 아님) SDS 가 집합의 요구를 `@req` 로 지명하면 그 경로를 정보로 보고만 하고, 읽지도 검사하지도 그것으로 구현하지도 않는다 — `--auto` 와 워커 모드에서도 같다. `docs/sds/` 에서 파일을 골라 대신 쓰지 않는다.
 
@@ -171,7 +178,7 @@ $kiwi-pm [--req-filter <REQ-ID,...>]      # 기본 입력 — 없으면 열린 �
          [--session-suffix <lane>]        # 세션 디렉터리를 .kiwi/sessions/{run_id}/lanes/{lane}/ 로 재배치 (§1.5)
          [--no-final]                     # T-final 요구 승급과 §6.4 hand-off skip (§1.5)
          [--no-pipeline-emit]             # 인자 없음 — kiwi/pipeline.jsonl append 를 수행하지 않는다 (§1.5)
-         [--commit-lane-work]             # 인자 없음 — 이 실행이 바꾼 경로만(--sds 면 SDS 쓰기 집합만) stage 해 실행당 commit 1개 (§1.5)
+         [--commit-lane-work]             # 인자 없음 — 이 실행이 바꾼 경로만(--sds 면 SDS 쓰기 집합만) stage 해 요구마다 테스트 커밋과 구현 커밋 2개 (§1.5)
          [--defer-srs-mutation <path>]    # kiwi-coder spawn 프롬프트로 그대로 전달 (§1.5)
          [--review-hop-owned-by-parent]   # 인자 없음 — §6.4 hand-off 를 부모가 소유 (§6.4)
          [--no-doculight]                 # doculight MCP 표시 강제 skip
@@ -188,7 +195,7 @@ $kiwi-pm [--req-filter <REQ-ID,...>]      # 기본 입력 — 없으면 열린 �
 | `.kiwi/sessions/{run_id}/state.json` | 실행의 TDD 단계 영속 | kiwi-coder (자식) |
 | `.kiwi/sessions/{run_id}/worklog.jsonl` | append-only 이벤트 로그 | PM + 자식 공유 |
 | `.kiwi/sessions/{run_id}/reports/pm-{ts}.md` | T-final 단계 | PM |
-| 이 실행이 바꾼 경로(`--sds` 면 SDS 쓰기 집합)의 commit 1개 | `--commit-lane-work` 가 있고 실행이 `done` 일 때 (§1.5) | PM |
+| 이 실행이 바꾼 경로(`--sds` 면 SDS 쓰기 집합)의 커밋 — 요구마다 테스트 커밋과 구현 커밋 | `--commit-lane-work` 가 있고 실행이 `done` 일 때 (§1.5) | PM |
 | speckiwi REQ status `implemented` 승급 | T-final mutation | PM (조건부) |
 | speckiwi `add_completed_work(req-summary)`(`--sds` 면 `add_completed_work(sds-summary)`) | T-final mutation | PM |
 | doculight viewer 표시 | T-final 보고서 작성 직후 | PM (가용 시) |
@@ -216,7 +223,7 @@ $kiwi-pm [--req-filter <REQ-ID,...>]      # 기본 입력 — 없으면 열린 �
 #### `--commit-lane-work` — unit 산출물 commit
 
 - **`--commit-lane-work`** — **인자를 받지 않는다**. SDS 없는 실행은 kiwi-coder 가 보고한 변경 경로와 그 실행이 쓴 테스트만 stage 한다 — 작업 트리 전체를 stage 하지 않는다. 그 경로가 lane 의 쓰기 집합 안에 드는지는 stage 가 아니라 호스트가 PW-8 에서 판정한다(`../_shared/kiwi/parallel-waves.md`). `--sds` 면 그 SDS 의 쓰기 집합 — Files 경로와 Test Plan 테스트 파일 — 을 그대로 stage 한다.
-- kiwi-coder 실행 하나당 commit 1개를 만든다 — 실행이 `done` 으로 끝났을 때만. stage 대상은 그 집합에서 뽑은 **명시 pathspec** 이며, **작업 트리 전체를 stage 하지 않는다**(`git add -A` 금지) — unit 밖의 미커밋 변경과 오케스트레이터 자신의 상태 파일까지 딸려 들어간다.
+- 요구마다 커밋 두 개를 만든다 — 먼저 그 요구의 새 테스트와 바뀐 테스트만 stage 한 **테스트 커밋**, 그다음 그 요구의 구현을 stage 한 **구현 커밋**이다. 테스트 커밋이 구현 커밋보다 앞선다 — 테스트가 먼저였음을 git 이 보인다. 요구의 테스트는 테스트 줄이 그 요구의 `<REQ-ID> AC-<n>` 을 인용한 테스트 파일이고, 요구가 여럿인 실행은 요구 순서대로 요구마다 두 커밋을 만든다. 실행이 `done` 으로 끝났을 때만 커밋한다. 두 커밋 모두 `REQ: <요구 ID>` 와 `Commit-Kind: test` 또는 `Commit-Kind: implementation`, 그리고 run 좌표(`Orch-Run` · `Orch-Wave` · `Orch-Stage` · `Orch-Lane`)를 trailer 로 싣는다 — 워커의 재개 커서가 이 trailer 다(`_shared/kiwi/parallel-waves.md §6`). stage 대상은 그 집합에서 뽑은 **명시 pathspec** 이며, **작업 트리 전체를 stage 하지 않는다**(`git add -A` 금지) — unit 밖의 미커밋 변경과 오케스트레이터 자신의 상태 파일까지 딸려 들어간다.
 - run 좌표(`Orch-Run` · `Orch-Wave` · `Orch-Stage` · `Orch-Lane`)는 git **trailer** 로 싣는다. commit **제목**에는 run 좌표를 **넣지 않는다** — 제목의 단계·진행 표식은 CLAUDE.md §6 이 금지한다.
 - **pathspec 파일은 쓰지 않는다**: 오케스트레이터 자신의 상태 디렉터리(`kiwi/orchestrator/`) 아래 경로는 git-ignore 대상이라 격리된 워크스페이스에는 아예 존재하지 않는다. pathspec 은 같은 호출의 실행 결과(`--sds` 면 그 SDS)에서 와야 한다.
 - **플래그를 생략하면** 본 스킬은 **아무것도 commit 하지 않는다**. 그 unit 의 산출물은 **미커밋** 작업 트리로 남고, **다음 unit** 의 실행이 그것을 밟는다. §0.5 의 "PM 은 자동 commit 하지 않는다" 는 이 플래그를 명시하지 않은 경우의 규칙이며, `--commit-lane-work` 가 그 유일한 예외다.
@@ -231,7 +238,7 @@ $kiwi-pm [--req-filter <REQ-ID,...>]      # 기본 입력 — 없으면 열린 �
 
 ### 2.1 디렉토리 SSOT
 
-`.kiwi/sessions/{run_id}/` — kiwi-coder 의 `.kiwi/` 영역을 공유. `run_id` 는 §0.14 가 정한다(`--sds` 면 sds-id).
+`.kiwi/sessions/{run_id}/` — kiwi-coder 의 `.kiwi/` 영역을 공유. `run_id` 는 §0.14 가 정한다(`--sds` 면 sds-id, `--sds` 와 `--req-filter` 면 `<sds-id>-<sha8>`).
 
 ```
 .kiwi/sessions/{run_id}/
@@ -254,6 +261,7 @@ $kiwi-pm [--req-filter <REQ-ID,...>]      # 기본 입력 — 없으면 열린 �
   "sds_sha256": "abcdef0123...",
   "target_slug": "4.0.0",
   "req_ids": ["REQ-CORE-001", "REQ-CORE-002"],
+  "req_filter": null,
   "write_set": ["src/service.ts", "test/service.test.ts"],
   "started_at": "2026-09-27T09:00:00Z",
   "last_updated_at": "2026-09-27T11:30:00Z",
@@ -295,10 +303,10 @@ $kiwi-pm [--req-filter <REQ-ID,...>]      # 기본 입력 — 없으면 열린 �
 
 - `run_id` — §0.14. `base_sha` — 실행 시작 시 HEAD (이 실행이 바꾼 경로의 기준)
 - `sds_path` / `sds_sha256` — `--sds` 실행의 입력 SDS 와 부팅 SHA256 (외부 변경 감지, §5.4 `--resume`). SDS 없는 실행은 둘 다 `null` 이다
-- `req_ids` — 확인된 요구 집합(§1.1, `--sds` 면 부팅 시 `check_sds` 요약에서 옮긴 SDS `@req` 집합), `write_set` — `--sds` 면 SDS 쓰기 집합(Files 경로 ∪ Test Plan 테스트 파일), SDS 없는 실행은 kiwi-coder 가 보고한 변경 경로(실행 뒤 채운다)
+- `req_ids` — 확인된 요구 집합(§1.1, `--sds` 면 부팅 시 `check_sds` 요약에서 옮긴 SDS `@req` 집합, `--req-filter` 도 주면 그 ID), `req_filter` — `--req-filter` 로 받은 ID 목록(없으면 `null`) — gate · T-final 의 ID 분기와 재개가 이 값으로 갈린다, `write_set` — `--sds` 면 SDS 쓰기 집합(Files 경로 ∪ Test Plan 테스트 파일), SDS 없는 실행은 kiwi-coder 가 보고한 변경 경로(실행 뒤 채운다)
 - `run.status` enum: `pending` | `running` | `done` | `failed` | `blocked`
 - `run.changed` — 이번 실행이 쓰기 집합 안에 commit 이나 작업 트리 변경을 남겼는지 (§10 무동작 판정)
-- `run.commit_sha` — `--commit-lane-work` 로 만든 commit (§1.5), 없으면 null
+- `run.commit_sha` — `--commit-lane-work` 가 §1.5 대로 요구마다 만든 테스트 커밋 · 구현 커밋 가운데 마지막 구현 커밋, 없으면 null
 - `run.attempts` — delegated worker spawn 횟수 (재spawn 포함). §0.G3/§0.G4 카운터
 - `lifecycle_gate_state` — 부팅 T0 평가 결과 캐싱. stability_snapshot 은 부팅 시점의 REQ Stability 스냅샷 (종료 시 drift 감지 가능)
 - `req_coverage` — T-final 단계에 채워짐. REQ-ID 별 `{status_at_start, status_at_end, all_done: bool}`
@@ -340,15 +348,22 @@ pid 를 확인하지 않는다 — 에이전트가 lock 에 찍을 수 있는 pi
 ```
 FUNCTION MAIN(args):
     # T-1: 부팅
-    IF args.sds_path:                            # --sds <path> (별칭 SDS_PATH=) — 사용자가 준 SDS 만
-        sds = LOAD_AND_CHECK_SDS(args.sds_path)
-        req_ids = sds.req_ids
+    IF args.resume:                              # §5.4 — 저장된 집합으로 돈다. 집합을 다시 정하지 않는다
+        state = LOAD_STATE(FIND_SESSION(args))   # --run-id, 없으면 재개 호출의 --sds · --req-filter 로 다시 계산한 run_id (§0.14). 못 찾으면 HALT 하고 --run-id 를 묻는다
     ELSE:
-        sds = None
-        req_ids = RESOLVE_REQ_SET(args)          # §1.1 — --req-filter 또는 열린 작업 후보 + 사용자 게이트
-        REPORT_OPEN_SDS(req_ids)                 # §1.1 — 정보로 보고만, 읽지 않는다
-         # §7.1 — check_sds (MCP). 위반 시 HALT
-    state = LOAD_OR_INIT_STATE(sds, req_ids, args)   # §0.14 run_id · base_sha, --resume 분기 (§5.4)
+        IF args.sds_path:                            # --sds <path> (별칭 SDS_PATH=) — 사용자가 준 SDS 만
+            sds = LOAD_AND_CHECK_SDS(args.sds_path)
+            req_ids = sds.req_ids
+            IF args.req_filter:                      # §1.1 — 두 플래그면 실행 집합은 --req-filter 의 ID, SDS 는 그 요구들의 설계만 준다
+                HALT_ON_IDS_OUTSIDE_SDS(args.req_filter, sds.req_ids)   # SDS @req 에 없는 --req-filter ID 를 적고 kiwi-coder 전에 멈춘다
+                req_ids = args.req_filter
+        ELSE:
+            sds = None
+            req_ids = RESOLVE_REQ_SET(args)          # §1.1 — --req-filter 또는 열린 작업 후보 + 사용자 게이트
+            REPORT_OPEN_SDS(req_ids)                 # §1.1 — 정보로 보고만, 읽지 않는다
+             # §7.1 — check_sds (MCP). 위반 시 HALT
+        state = LOAD_OR_INIT_STATE(sds, req_ids, args)   # §0.14 run_id · base_sha · req_filter 기록
+    IF state.req_filter: HALT_ON_MISSING_IDS(state.req_filter)   # §1.1 — 처음 실행과 재개가 같은 확인을 부른다: ID 마다 get_requirement, 찾지 못한 ID 를 적고 kiwi-coder 전에 멈춘다
     ACQUIRE_LOCK(state.run_id, args.force)
     SAVE_STATE(state)
 
@@ -381,7 +396,7 @@ FUNCTION MAIN(args):
                     state.run.status = "failed"; BREAK
         state.run.changed = WRITE_SET_CHANGED(state.write_set)      # §6.1
         IF args.commit_lane_work AND state.run.status == "done":
-            state.run.commit_sha = COMMIT_WRITE_SET(state)          # §1.5
+            state.run.commit_sha = COMMIT_PER_REQUIREMENT(state)    # §1.5 — 요구마다 테스트 커밋 뒤 구현 커밋, 값은 마지막 구현 커밋 sha
         SAVE_STATE(state)
 
     # T-final: 종료 마무리 (§6.2 ~ §6.4)
@@ -394,6 +409,10 @@ FUNCTION MAIN(args):
     EMIT_PIPELINE_EVENT(state, args)                 # §10 — hand-off 앞에 쓴다
     HAND_OFF_REVIEW(state, args)                     # §6.4 — 단독 실행이면 항상
     PRINT_FINAL_SUMMARY(state)
+
+FUNCTION HALT_ON_MISSING_IDS(ids):               # §1.1 · §7.1 — 처음 실행과 재개가 MAIN 의 한 곳에서 부른다
+    missing = [id FOR id IN ids IF MCP_CALL(get_requirement, id=id) IS NOT_FOUND]
+    IF missing: HALT(f"--req-filter 의 요구를 찾지 못함: {missing}")   # kiwi-coder 를 띄우기 전
 ```
 
 ### 3.2 위임 worker 자식 실행 프롬프트
@@ -405,7 +424,7 @@ FUNCTION MAIN(args):
 
 ## INPUTS
 - REQ_IDS={state.req_ids}             # 구현할 요구 ID 집합 (기본 입력)
-- SDS_PATH={args.sds_path OR "없음"}   # --sds 일 때만 — 없으면 kiwi-coder 는 SDS 없이 요구 집합을 구현한다
+- SDS_PATH={state.sds_path OR "없음"}   # --sds 일 때만 — 없으면 kiwi-coder 는 SDS 없이 요구 집합을 구현한다
 - RUN_ID={state.run_id}                # .kiwi/sessions/{run_id}/ 영속화에 사용. --session-suffix 지정 시 .kiwi/sessions/{run_id}/lanes/{lane}/ (§1.5)
 - TARGET={state.target_slug}           # lifecycle gate 일관성 확인용
 - CODE_PATH={args.code_path}
@@ -423,7 +442,7 @@ FUNCTION MAIN(args):
 Open Agent Skills invocation wording로 `kiwi-coder` 를 사용하라:
 
 ```
-Use $kiwi-coder with --req-filter {state.req_ids 를 쉼표로 이음}{(' --sds ' + args.sds_path) if args.sds_path else ''} RUN_ID={state.run_id} SPAWN_CONTEXT=pm-child --max{LOOP_FLAGS}{PASS_THROUGH_FLAGS}
+Use $kiwi-coder with --req-filter {state.req_ids 를 쉼표로 이음}{(' --sds ' + state.sds_path) if state.sds_path else ''} RUN_ID={state.run_id} SPAWN_CONTEXT=pm-child --max{LOOP_FLAGS}{PASS_THROUGH_FLAGS}
 ```
 
 스킬 내용을 추측하거나 우회하지 말 것. 가능한 경우 실제 `kiwi-coder` skill body를 로드하고, 스킬 로딩 기능이 없으면 해당 skill folder의 `SKILL.md`를 직접 읽어 따른다.
@@ -535,7 +554,7 @@ kiwi-coder §0.G4 자체 게이트가 처리. PM 무대응:
 - draft REQ 목록은 skip 목록으로 보고한다 (worklog `lifecycle_skip_per_req`, 보고서 §7). 실행은 `NEEDS_USER` 로 끝나며 사유에 그 목록과 요구 필터 재작성 안내를 싣는다
 - skip 된 REQ 는 조용히 사라지지 않는다 — `reason_class = "draft-stability-skip"` 로 종료 보고서 §7 과 부모 wave 검증의 `verification.residual` 에 잔여로 표면화한다
 - `deprecated` / `frozen` → 즉시 HALT (정책 위반 / 의도된 제거, §0.G7 `lifecycle-gate-policy-stop`)
-- target 비어있음 → HALT
+- target 비어있음 → HALT (`--req-filter` 실행은 제외)
 - `--auto --skip-lifecycle-gate` 조합은 §1.3 에서 차단
 
 본 절의 완화는 `draft` 한 종류에 한정한다 — `deprecated` / `frozen` 의 HALT, `--auto` 가 자식의 안전 우회 옵션(`--yes-all` 등)을 자동 생성하지 않는다는 원칙, §5.1 의 나머지 예외는 그대로 유지한다.

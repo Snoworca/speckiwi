@@ -39,7 +39,7 @@
 | `run_id` | string | 그 실행(run)의 run_id |
 | `wave` | string | `wave-{n}` (예: `wave-1`) |
 | `order` | number | wave 실행 순서 (1-based) |
-| `target` | string | 그 wave 의 전용 SRS target (`wave-{n}`) |
+| `target` | string | run 의 제품 target(모든 노드가 같다) |
 | `status` | string (enum) | `pending` / `in_progress` / `complete` / `failed` |
 | `summary` | string | 1-3 문장 사람-읽기용 요약 |
 
@@ -61,7 +61,7 @@
 | `pipeline_run_id` | string | 2.0.0 이전 run 에서 wave 가 돌린 `/kiwi-pipeline` 사이클 run_id — 옛 줄을 읽기 위해 남는다. 2.0.0 run 의 wave 는 pipeline 사이클을 돌리지 않으므로 이 필드를 쓰지 않는다 |
 | `req_ids` | string[] | 그 wave 에서 다룬 REQ-ID 목록 |
 | `notes` | string | 자유 텍스트 부연 |
-| `phase` | string (enum) | `pipeline` / `srs-authoring` / `sds` / `worker` / `wave-verify` / `final-verify` / `intake` / `design` / `wave-design` / `schedule` / `handoff` / `lane` / `integrate` / `stage-close` — `in_progress` 이벤트가 어느 단계에 있는지. `sds`(SDS 작성)와 `worker`(워커 dispatch)는 2.0.0 신설이고, `pipeline` 과 `handoff` 는 2.0.0 미만 줄을 읽기 위해서만 남고, 2.0.0 이상 줄이 실으면 `vocabulary-retired-in-4-0-0` 이다 — `journal append` 는 최신 줄에서 거절하고 `orchestrate resume` 은 심각도와 무관하게 거절한다. `intake` 부터 뒤의 8개는 v1.4.0 신설 (오케스트레이터 단계) |
+| `phase` | string (enum) | `pipeline` / `srs-authoring` / `sds` / `worker` / `wave-verify` / `final-verify` / `intake` / `design` / `wave-design` / `schedule` / `handoff` / `lane` / `integrate` / `stage-close` / `redecompose` — `in_progress` 이벤트가 어느 단계에 있는지. `redecompose` 는 남은 노드를 다시 나눈 줄이며 그 판의 `graph` 를 싣고 어느 wave 의 상태도 바꾸지 않는다(`wave-decomposition.md §6`). `sds`(SDS 작성)와 `worker`(워커 dispatch)는 2.0.0 신설이고, `pipeline` 과 `handoff` 는 2.0.0 미만 줄을 읽기 위해서만 남고, 2.0.0 이상 줄이 실으면 `vocabulary-retired-in-4-0-0` 이다 — `journal append` 는 최신 줄에서 거절하고 `orchestrate resume` 은 심각도와 무관하게 거절한다. `intake` 부터 뒤의 8개는 v1.4.0 신설 (오케스트레이터 단계) |
 | `terminal_review` | object | 그 run 을 닫는 줄이 싣는 종료 리뷰 기록 — `{skill, base, head, verdict}`. `base` 는 같은 줄의 `run_diff_window.base_sha` 와 **같아야 하고**, `head` 는 실제로 심판한 범위의 head 다 — 리뷰가 고친 것을 커밋한 뒤 종료 줄을 쓰므로 run head 는 그보다 앞서 있는 것이 정상이며, head 까지 일치를 요구하면 올바른 run 이 거부된다. verdict 은 `pass` / `residual` / `not-applicable-empty-window` / `skipped-run-halted` 중 하나이며, 완료를 방면하는 값은 `pass` 와 `not-applicable-empty-window` 이고, 방면하지 않는 값은 `residual` 과 `skipped-run-halted` 이다. `phase="final-verify"` 종료 줄에 이 필드를 실을 때는 같은 줄에 `run_diff_window` 를 **반드시 함께** 싣는다 — 없으면 창 대조가 수행되지 않아 임의의 창을 적어도 통과한다 (1.5.0~, FR-NODE-188) |
 | `outcome` | string | `dispatch-route` result 줄이 그 rung 의 위임 결과를 싣는 값 — `delegated-complete` 는 그 줄이 run 종료 줄임을 뜻한다. 그 줄이 `status` 를 싣지 않을 때 완료 보고 여부를 결정하는 값이 이것이며, `status` 가 있으면 `status` 가 우선한다 (1.5.0~, FR-NODE-188) |
 | `verification` | object | 웨이브 종료 상호검증 결과. 아래 §2.3 |
@@ -75,7 +75,7 @@
 | `engine` | string (enum) | `kiwi-wave-master` / `kiwi-orchestrator` — 이 줄을 쓴 **생산자**. **부재 ⇒ `kiwi-wave-master`** 로 읽는다. §4 의 재개 술어가 이 값으로 필터한다 (v1.4.0 신설) |
 | `writer` | string | `speckiwi-orchestrate/{pkgVersion}` — 도구가 **매 write 마다** 찍는 스탬프. `schema_version` **1.4.0 이상** 줄에만 요구하며, 그보다 낮은 줄은 `unstamped` 로 보고하고 **실패하지 않는다** (v1.4.0 신설) |
 | `event` | string (enum) | `intent` / `result` — write-ahead intent 와 write-behind fact 의 짝. 어떤 `(verb, wave, lane)` 키의 마지막 줄이 `intent` 면 그 verb 는 중단된 것이다 (v1.4.0 신설) |
-| `verb` | string (enum) | 이 줄이 다루는 프로그램 카운터 값. 닫힌 verb enum 은 오케스트레이터 스킬 본문이 SSOT 다 (v1.4.0 신설) |
+| `verb` | string (enum) | 이 줄이 다루는 프로그램 카운터 값. 닫힌 verb enum 은 오케스트레이터 스킬 본문이 SSOT 다. `node-complete-action` 은 노드의 `complete` 뒤 완료 행동 하나의 intent 와 result 를 싣는다(`parallel-waves.md §5.1`) (v1.4.0 신설) |
 | `inputs_digest` | string | intent 시점의 그 verb 선언 입력들에 대한 sha256 (v1.4.0 신설) |
 | `lane` | string | `lane-{waveId}` — 이 줄이 특정 lane, 곧 wave 하나의 워커를 다룰 때 (v1.4.0 신설) |
 | `stage` | number | 이 줄이 다루는 stage — 서로 독립인 wave 들을 함께 dispatch 하는 묶음. stage 에 묶이지 않는 줄에는 싣지 않는다 (v1.4.0 신설) |
@@ -95,6 +95,13 @@
 | `strict_grounding` | bool | `--strict-grounding` 이 적용된 채로 그 verb 를 실행했다는 기록. `freeze-lane-plan` **intent** 줄에 싣는다 — 판정을 조인 옵션은 판정 자체의 일부이므로, 저널 밖에만 있으면 재개하는 쪽이 그 run 이 어느 기준으로 경로를 거절했는지 알 수 없다 (v1.4.0 신설) |
 | `abort_gate` | string (enum) | `abort-run` 줄이 run 을 끝낸 게이트를 지명한다. 값은 `GateId` 어휘의 원소다. 중첩 `verification.residual[]` 의 `reason_class` 와 이름을 공유하지 않는 별개 어휘이며, 최신 줄에서 어휘 밖 값은 `abort-gate-outside-vocabulary` 오류이고 그 이전 줄에서는 경고다 (v1.4.0 신설) |
 | `round` | number | 검증 라운드 기록의 1-기반 라운드 번호. **이 필드가 그 줄을 라운드 기록으로 만든다** — wave 별 최신 status 계산과 run-scope 최종 검증 판정은 둘 다 이 필드를 실은 줄을 제외한다. 라운드 기록은 루프가 어디까지 갔는지를 보고할 뿐 run 이 무엇인지를 단언하지 않기 때문이다 (v1.4.0 신설) |
+| `graph` | object | `{ path, digest }` — run 의 작업 그래프(schema 2.0.0) 경로와 그 파일 바이트의 sha256. run 의 첫 graph 줄(그래프를 커밋한 뒤 처음 쓰는 저널 줄)과 `redecompose` 줄에만 싣는다. run 의 최신 그래프는 최신 `redecompose` 줄의 것, 없으면 첫 graph 줄의 것이다 (2.0.0 신설) |
+| `done_when_confirmed` | string[] | `complete` 줄이 싣는, 호스트가 확인한 노드 완료 조건의 `DW-<n>` id 목록 (2.0.0 신설) |
+| `action_id` | string | `node-complete-action` 줄의 행동 id — 노드 `on_complete` 의 `id` (2.0.0 신설) |
+| `completion_ref` | string | `node-complete-action` 줄이 가리키는 노드 `complete` 줄 — 멱등 키 `{run_id}:{wave}:{action_id}:L{n}` 의 `L{n}` (2.0.0 신설) |
+| `attempt` | number | `node-complete-action` 줄의 시도 번호, 1 부터 (2.0.0 신설) |
+| `result` | string (enum) | `node-complete-action` result 줄의 결과 — `sent` / `failed` / `waived`. 이 필드가 없는 `node-complete-action` 줄이 intent 다 (2.0.0 신설) |
+| `error` | string | `node-complete-action` result 줄이 `failed` 일 때의 사유 — 예: 전역 에이전트 지침에 주소가 없는 채널 별칭 (2.0.0 신설) |
 
 `sds_id` 는 dispatch · `complete` · `phase=wave-verify` 이벤트에서는 SDS 유무와 관계없이 사실상 필수다 — 그 wave 의 워커 세션과 증거 창(그리고 있으면 SDS)을 여는 키이기 때문이다. wave 시작 시의 첫 `in_progress` 에서는 아직 dispatch 하지 않았으므로 생략한다.
 
@@ -116,35 +123,35 @@
 | `rounds` | number | 실제 수행한 라운드 수 |
 | `cap` | number | 그 run 에 적용된 라운드 상한 (기본 5 / `--max` 8 / `--mini` 3 / `--loops N`) |
 | `verdict` | string (enum) | `in-progress` / `pass` / `fail-residual` / `fail-cap` — `in-progress` 는 루프가 아직 도는 **비종료** 라운드, `fail-cap` 은 상한 소진, `fail-residual` 은 상한 전에 미해소 finding 을 남기고 끝낸 경우 |
-| `axis_a` | object | `{ roll_up: "ALL_MATCH" \| "GAPS", expected: n, checked: n }` |
-| `axis_b` | object | `{ substantive_clean: bool, open: { critical, high, medium, low } }` |
-| `design_layer` | object | `{ expected: n, mapped: n, unmapped: [...] }` — 설계 기준선 범위의 설계 항목 분모 (v1.2.0 신설) |
-| `constraint_layer` | object | `{ expected: n, checked: n, violations: [...] }` — 선언된 사용자 제약 분모 (v1.3.0 신설) |
-| `preservation_layer` | object | `{ expected: n, checked: n, rows: [{ item, verdict, evidence }] }` — 행마다의 판정은 `intended-improvement` / `unapproved-damage` 두 값이며, `evidence` 는 그 판정의 근거 REQ-ID 또는 SDS-AC id (v1.2.0 신설, `evidence` 는 v1.3.0 신설) |
+| `findings` | object | `{ kept: n, dropped: n }` — 그 라운드에서 검증자가 쓴 테스트 가운데 red 로 남은 것(kept)과 버린 것(dropped)의 수. `round record` 가 채운다 |
+| `red_tests` | string[] | kept finding 마다 그것을 입증한 red 테스트 — 테스트 식별자와 red 출력 요약. `axis_a` · `axis_b` 를 대신하며, 그 둘은 5.3.0 이전 줄만 싣는다 |
+| `design_layer` | object | 5.3.0 이전 줄만 싣는다. `{ expected: n, mapped: n, unmapped: [...] }` — 설계 기준선 범위의 설계 항목 분모 (v1.2.0 신설) |
+| `constraint_layer` | object | 5.3.0 이전 줄만 싣는다. `{ expected: n, checked: n, violations: [...] }` — 선언된 사용자 제약 분모 (v1.3.0 신설) |
+| `preservation_layer` | object | 5.3.0 이전 줄만 싣는다. `{ expected: n, checked: n, rows: [{ item, verdict, evidence }] }` — 행마다의 판정은 `intended-improvement` / `unapproved-damage` 두 값이며, `evidence` 는 그 판정의 근거 REQ-ID 또는 SDS-AC id (v1.2.0 신설, `evidence` 는 v1.3.0 신설) |
 | `regression` | object | `{ command, exit_code, failing_tests: [...], baseline_failing_tests: [...] }` — 그 wave 의 head 에서 실행한 전체 회귀 스위트와 run 시작 시 pin 한 기준선 (v1.2.0 신설, `baseline_failing_tests` 는 v1.3.0 신설) |
-| `frozen_denominator` | object | `{ round: n, req_ac: n, design_items: n, preservation: n, constraints: n }` — 그 라운드 진입 시 freeze 한 분모 개수 (v1.3.0 신설) |
-| `residual` | array | 종료 시점의 미해소 finding **전량**. 각 항목 `{ id, severity, summary, reason_class, cross_wave, carried_into }` |
+| `frozen_denominator` | object | `{ round: n, req_ac: n }` — 그 라운드 진입 시 고정한 개수(검증자가 쓴 테스트 수). 5.3.0 이전 줄은 `design_items` · `preservation` · `constraints` 도 싣는다 (v1.3.0 신설) |
+| `residual` | array | 종료 시점의 미해소 finding **전량**. 각 항목 `{ id, summary, reason_class, cross_wave, carried_into }` |
 | `report_path` | string | 상호검증 보고서 경로 |
 
-- `design_layer.expected` 는 그 wave 의 `design_items` 길이로 외부에서 고정하며, 검증자가 스스로 산정하지 않는다.
-- `constraint_layer.expected` 는 최신 `constraints_path` 아티팩트의 항목 수로 외부에서 고정하며, 검증자가 스스로 산정하지 않는다.
-- `wave="all"` 이벤트의 `design_layer.expected` 는 모든 wave `design_items` 의 **합집합** 크기에 `integration_items` 길이를 더한 값이다 — 어느 한 wave 의 분모도 아니다.
-- `constraint_layer.violations` 에 **1건이라도** 항목이 있으면 `axis_a.roll_up` 을 `ALL_MATCH` 로 기록할 수 없다 — 제약 위반은 요구 실현 여부와 별개의 실패다.
+- 5.3.0 이전 줄: `design_layer.expected` 는 그 wave 의 `design_items` 길이로 외부에서 고정하며, 검증자가 스스로 산정하지 않는다.
+- 5.3.0 이전 줄: `constraint_layer.expected` 는 최신 `constraints_path` 아티팩트의 항목 수로 외부에서 고정하며, 검증자가 스스로 산정하지 않는다.
+- 5.3.0 이전 줄: `wave="all"` 이벤트의 `design_layer.expected` 는 모든 wave `design_items` 의 **합집합** 크기에 `integration_items` 길이를 더한 값이다 — 어느 한 wave 의 분모도 아니다.
+- `constraint_layer.violations` 에 **1건이라도** 항목이 있으면 `axis_a.roll_up` 을 `ALL_MATCH` 로 기록할 수 없다(`axis_a` 를 실은 5.3.0 이전 줄) — 제약 위반은 요구 실현 여부와 별개의 실패다.
 - 제약이 선언되지 않은 run 도 **빈 배열** 아티팩트를 쓰고 `constraints_path` 를 기록한다 — 빈 배열은 반증 가능한 주장이고 필드 부재는 침묵이다.
 - `residual` 은 **전량**이어야 하며 잘라내지 않는다 — 상위 N 건만 남기면 "전부 커버했다"로 읽힌다. 미해소 건이 정말로 없으면 빈 배열을 명시한다(빈 배열은 반증 가능한 주장이고, 필드 부재는 침묵이다).
 - `reason_class` ∈ `draft-stability-skip` / `task-failure-skip` / `scope-boundary-deferred` / `srs-level-unclosable` / `design-gap` / `cross-wave-carry-forward` / `oscillation` / `budget-exhausted` — 하위 스킬이 skip 하거나 보류한 REQ 가 왜 남았는지를 자유 텍스트가 아니라 분류로 남긴다. 뒤의 두 값은 v1.4.0 신설이며, 각각 라운드가 진동해 수렴하지 못한 경우와 `--subagent-budget` / `--run-budget` 상한이 소진된 경우를 가리킨다.
 - `invalid_round` 은 그 라운드가 **무효**임을 선언한다 — 열거 개수가 `frozen_denominator` 와 어긋나 라운드 자체가 성립하지 않은 경우다. 선언된 무효 라운드는 `denominator-mismatch` 로 거절하지 않는다: 그것이 무효 라운드의 유일한 정직한 기록이기 때문이다. 선언하지 않은 불일치는 종전대로 거절한다 (v1.4.0 신설)
 - `cross_wave` 가 `true` 인 항목은 이전 wave 가 만든 산출물을 건드리는 finding 이며, `carried_into` 에 그것을 이월한 wave id 를 적는다.
-- **미매핑 설계 항목**이 `design_layer.unmapped` 에 **1건이라도** 있으면 `axis_a.roll_up` 을 `ALL_MATCH` 로 기록할 수 없다 — REQ·AC 계층이 완결하더라도 마찬가지다.
-- `preservation_layer.rows` 에 `verdict` 가 `unapproved-damage` 인 행이 **1건이라도** 있으면 `verdict` 를 `pass` 로 기록하지 않는다 — 파손을 정직하게 기록한 것이 통과를 막지 못하면 그 계층은 기록 전용이다.
-- `unmapped` 은 **전량**이어야 하며 잘라내지 않는다 — 상위 N 건만 남기면 설계 계층이 커버된 것으로 읽힌다.
+- **미매핑 설계 항목**이 `design_layer.unmapped` 에 **1건이라도** 있으면 `axis_a.roll_up` 을 `ALL_MATCH` 로 기록할 수 없다(`axis_a` 를 실은 5.3.0 이전 줄) — REQ·AC 계층이 완결하더라도 마찬가지다.
+- 5.3.0 이전 줄: `preservation_layer.rows` 에 `verdict` 가 `unapproved-damage` 인 행이 **1건이라도** 있으면 `verdict` 를 `pass` 로 기록하지 않는다 — 파손을 정직하게 기록한 것이 통과를 막지 못하면 그 계층은 기록 전용이다.
+- 5.3.0 이전 줄: `unmapped` 은 **전량**이어야 하며 잘라내지 않는다 — 상위 N 건만 남기면 설계 계층이 커버된 것으로 읽힌다.
 - `regression.failing_tests` 가 `baseline_failing_tests` 의 부분집합이 아니면(`failing_tests ⊆ baseline_failing_tests` 위반, 즉 **신규 실패 0 건**이 아니면) `verdict` 를 `pass` 로 기록하지 않는다.
 - 기준선 **캡처에 실패**해 `baseline_failing_tests` 가 부재한 라운드에서는 `regression.exit_code` 가 0 이 아니면 `verdict` 를 `pass` 로 기록하지 않는다 — 기준선이 없으면 신규 실패를 분리할 수 없고, 그때의 통과 조건은 `exit_code` 0 하나뿐이다.
-- 열거한 **행 수**가 `frozen_denominator` 에 기록된 고정 분모의 개수와 다른 라운드는 두 검증자 **모두**에 대해 **무효**이며, cap 은 소비하되 연속 clean 스트릭은 0 으로 되돌린다.
+- 열거한 **행 수**가 `frozen_denominator` 에 기록된 고정 분모의 개수와 다른 라운드는 그 라운드의 검증자 **모두**에 대해 **무효**이며, cap 은 소비하되 연속 clean 스트릭은 0 으로 되돌린다.
 - `complete` 이벤트에 `verification` 이 **부재**하면 clean 이 아니라 **미검증**으로 읽는다. v1.0.0 시절 이벤트가 여기에 해당하며, 하드 실패가 아니라 보고 대상이다.
 - `verification` 은 **증거일 뿐 권한이 아니다**. `status` 가 완료의 **유일한 긍정 신호**이고 `verification` 은 그것을 **무효화할 수 있는 선행 조건**일 뿐이다 — 즉 `verification` 만으로 완료를 추론하는 읽기 측은 진실 출처를 둘로 만들지만, §3 대로 선행 기록이 없거나 통과가 아니면 `status=complete` 도 완료로 읽지 않는다.
 
-### 2.4 `design_baseline` object (선택, v1.2.0 신설)
+### 2.4 `design_baseline` object (선택, v1.2.0 신설 — 5.3.0 이전 줄만 싣는다)
 
 | 키 | 타입 | 값 |
 |---|---|---|
@@ -227,19 +234,19 @@ else WAVE_ROOT="$HOME"; JOURNAL=".kiwi/waves.jsonl"; fi   # 홈 fallback = $HOME
 PAYLOAD=$(mktemp)
 # 1) 웨이브 종료 상호검증 기록 (§3 이 요구하는 선행 통과 기록). 라운드마다 1줄.
 cat > "$PAYLOAD" <<'JSON'
-{"schema_version":"2.0.0","engine":"kiwi-wave-master","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"in_progress","phase":"wave-verify","sds_id":"<rid>-wave-1","diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}
+{"schema_version":"2.0.0","engine":"kiwi-wave-master","run_id":"<rid>","wave":"wave-1","order":1,"target":"5.3.0","status":"in_progress","phase":"wave-verify","sds_id":"<rid>-wave-1","diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","findings":{"kept":0,"dropped":2},"red_tests":[],"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":2},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}
 JSON
 speckiwi orchestrate journal append --root "$WAVE_ROOT" --journal "$JOURNAL" --run-id <rid> --payload-file "$PAYLOAD" --json
 
 # 2) 그 다음에야 complete. verdict 가 pass 가 아니면 이 줄을 쓰지 않는다.
 cat > "$PAYLOAD" <<'JSON'
-{"schema_version":"2.0.0","engine":"kiwi-wave-master","run_id":"<rid>","wave":"wave-1","order":1,"target":"wave-1","status":"complete","sds_id":"<rid>-wave-1","diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":8,"checked":8},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":6,"mapped":6,"unmapped":[]},"constraint_layer":{"expected":3,"checked":3,"violations":[]},"preservation_layer":{"expected":3,"checked":3,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":8,"design_items":6,"preservation":3,"constraints":3},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}
+{"schema_version":"2.0.0","engine":"kiwi-wave-master","run_id":"<rid>","wave":"wave-1","order":1,"target":"5.3.0","status":"complete","sds_id":"<rid>-wave-1","done_when_confirmed":["DW-1"],"diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"verification":{"rounds":2,"cap":5,"verdict":"pass","findings":{"kept":0,"dropped":2},"red_tests":[],"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":2,"req_ac":2},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}
 JSON
 speckiwi orchestrate journal append --root "$WAVE_ROOT" --journal "$JOURNAL" --run-id <rid> --payload-file "$PAYLOAD" --json
 
 # 3) 마지막 wave 의 complete 뒤 1회. run-scope 최종 검증 (§3): wave 는 "all", order 는 0. run 창은 `run_diff_window` 로 싣는다(wave 단위 `diff_window` 는 싣지 않는다).
 cat > "$PAYLOAD" <<'JSON'
-{"schema_version":"2.0.0","engine":"kiwi-wave-master","run_id":"<rid>","wave":"all","order":0,"target":"all","status":"complete","phase":"final-verify","run_diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"terminal_review":{"skill":"kiwi-review-fix-loop","base":"<sha>","head":"<sha>","verdict":"pass"},"verification":{"rounds":1,"cap":5,"verdict":"pass","axis_a":{"roll_up":"ALL_MATCH","expected":21,"checked":21},"axis_b":{"substantive_clean":true,"open":{"critical":0,"high":0,"medium":0,"low":0}},"design_layer":{"expected":21,"mapped":21,"unmapped":[]},"constraint_layer":{"expected":9,"checked":9,"violations":[]},"preservation_layer":{"expected":9,"checked":9,"rows":[]},"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":1,"req_ac":21,"design_items":21,"preservation":9,"constraints":9},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}
+{"schema_version":"2.0.0","engine":"kiwi-wave-master","run_id":"<rid>","wave":"all","order":0,"target":"all","status":"complete","phase":"final-verify","run_diff_window":{"base_sha":"<sha>","head_sha":"<sha>"},"terminal_review":{"skill":"kiwi-review-fix-loop","base":"<sha>","head":"<sha>","verdict":"pass"},"verification":{"rounds":1,"cap":5,"verdict":"pass","findings":{"kept":0,"dropped":1},"red_tests":[],"regression":{"command":"npm test","exit_code":0,"failing_tests":[],"baseline_failing_tests":[]},"frozen_denominator":{"round":1,"req_ac":1},"residual":[],"report_path":"docs/analysis/..."},"summary":"<one-liner>"}
 JSON
 speckiwi orchestrate journal append --root "$WAVE_ROOT" --journal "$JOURNAL" --run-id <rid> --payload-file "$PAYLOAD" --json
 ```

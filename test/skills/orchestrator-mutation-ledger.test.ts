@@ -68,7 +68,9 @@ const OWNED_RULES: Record<string, string[]> = {
     "R-LOOP-D-NO-EDIT-APPLIED-IN-THE-PASSING-ROUND",
     "R-LOOP-D-PASS-REQUIRES-ALL-FIVE-CONJUNCTS"
   ],
-  "FR-FLOW-080": ["R-WAVE-DESIGN-3A-BEFORE-SRS-REGISTRATION-3B"],
+  // FR-FLOW-080 (loop W before 3.b) is superseded by FR-FLOW-215 (2026-11-05): no per-wave design document
+  // is written, so its ordering rule has no sentence left; the absence is pinned in
+  // orchestrator-srs-first.fr-flow-215.test.ts.
   // FR-FLOW-081's three handoff rules left with the handoff documents and loop H (FR-FLOW-081
   // discarded; FR-FLOW-187 AC-4), and FR-FLOW-099's `--allow-plan-residual` rule left with the R-PLAN
   // close-out (FR-FLOW-099 AC-8 retired in 4.0.0).
@@ -111,11 +113,9 @@ const OWNED_RULES: Record<string, string[]> = {
     "R-FINAL-VERIFY-WAVE-MASTER-JOURNAL-CARRIES-THE-ENGINE-FLAG",
     "R-FINAL-VERIFY-WAVE-MASTER-JOURNAL-IS-NOT-VALIDATED-OVER-MCP"
   ],
-  // The promotion hop's scope clause. `kiwi-srs-feasibility` moves stability across a whole target,
-  // so an unscoped call from a per-wave rung would put the other waves' requirements into promotion
-  // evaluation — which is why the hop carries `TARGET=wave-{n}` and why that is a rule rather than a
-  // convention.
-  "FR-FLOW-165": ["R-PROMOTION-HOP-SCOPED-TO-THE-WAVE-TARGET"],
+  // 2026-11-05: the hop is scoped to the product target and runs once for the run (FR-FLOW-213 AC-1); the
+  // per-wave TARGET=wave-{n} rule FR-FLOW-165 owned has no sentence left.
+  "FR-FLOW-213": ["R-PROMOTION-HOP-ONCE-FOR-THE-RUN"],
   unowned: ["R-SECTION-ZERO-NO-CHANGELOG-IN-BODY", "R-SECTION-ZERO-NO-COMMIT-SIGNATURE", "R-SECTION-ZERO-NO-SNOWORCA-SKILL-CALL"]
 };
 

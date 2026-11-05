@@ -32,8 +32,8 @@ pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` �
 | §0.3 | **/snoworca-\* 스킬 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부. `_shared/snoworca/` 모듈 로드도 금지 |
 | §0.4 | **검증자는 별도 위임 worker**. 인라인 자가검증 금지 (project verification rule) |
 | §0.5 | **검증자 입력 격리**. 시니어 코더의 결론·정당화 전달 금지. 관련 SRS AC(`--sds` 면 원본 SDS 도) + 작성된 코드 + 테스트만 |
-| §0.6 | **Mock 금지** (regex 자동 탐지). CRITICAL severity |
-| §0.7 | **ZERO TOLERANCE SDS-코드 일치 게이트 (`--sds` 실행만)**. SDS Interfaces 의 Files · 심볼 선언과 `← caller` 연결이 실제 코드와 어긋나면 CRITICAL (§5.1.(d′)) |
+| §0.6 | **Mock 금지** (regex 자동 탐지). 검출은 kept finding 이다 — regex 출력이 증거다 |
+| §0.7 | **ZERO TOLERANCE SDS-코드 일치 게이트 (`--sds` 실행만)**. SDS Interfaces 의 Files · 심볼 선언과 `← caller` 연결이 실제 코드와 어긋나면 kept finding (§5.1.(d′)) |
 | §0.8 | **사용자 확인 의무**. 외부 모듈 영향, `--sds` 면 SDS Files 밖 파일 변경, 통합 테스트 실행, MCP mutation 회수 ≥10건 batch 시 모두 User clarification gate |
 | §0.9 | **외부 모듈 수정 금지**. cwd 외부 path 가 SDS Files 또는 실제 변경에 진입 시 즉시 중단 + User clarification gate (§0.G2) |
 | §0.10 | **시그니처 금지** (project signature-ban instruction). 커밋 메시지·코드 주석·산출물 어디에도 AI 식별 정보 금지. `Co-Authored-By` 등 자동 추가 차단 |
@@ -42,7 +42,7 @@ pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` �
 | §0.13 | **회귀 테스트 의무**. 실행 종료 시 (1) 영향받는 test 파일 실행 + (2) 전체 회귀 스위트 실행. `--skip-regression` 플래그 명시 시에만 (2) skip, (1) 은 항상 실행 |
 | §0.14 | **run-id SSOT**. 부모 `kiwi-pm` 이 넘긴 `RUN_ID` 를 그대로 쓴다 (`.kiwi/sessions/{RUN_ID}/`). 단독 실행이면 `kiwi-pm` §0.14 와 같은 규칙으로 정한다 — `--run-id <id>`, 없으면 `<target>-<정렬한 REQ ID 의 sha256 앞 8 hex>`, `--sds` 면 SDS 파일 이름에서 `.sds.md` 를 뺀 sds-id. `run_id` = `[a-z0-9.-]{4,128}` — 벗어나면 §0.G3 차단 |
 | §0.15 | **호출 1 : 실행 1**. 요구 집합 하나(`--sds` 면 SDS 하나)가 곧 작업 단위다. 메인이 임의로 집합이나 SDS 를 나누거나 합치지 않는다 — 한 실행에 너무 크면 `$kiwi-sds` 가 여러 SDS 로 나눈다 |
-| §0.16 | **검증 worker 정책 SSOT**. 검증은 `../_shared/kiwi/local-llm-profile.md` 의 local evaluator 가 맡는다. **TDD 검증 (Phase 1.2) 은 기본 검증 1 개, `--max` 에서 2 개**이며, etc profile 은 `--max` 가 기본이고 multi-worker fanout 을 끄므로 둘을 한 번에 하나씩 돈다 (§4.2). 심각도 게이트·회귀 테스트 의무는 불변 |
+| §0.16 | **검증 worker 정책 SSOT**. 검증은 `../_shared/kiwi/local-llm-profile.md` 의 local evaluator 가 맡는다. **TDD 검증 (Phase 1.2) 은 기본 검증 1 개, `--max` 에서 2 개**이며, etc profile 은 `--max` 가 기본이고 multi-worker fanout 을 끄므로 둘을 한 번에 하나씩 돈다 (§4.2). kept finding 게이트·회귀 테스트 의무는 불변 |
 | §0.17 | **`@req` 태그 부착 (참고용 SSOT)**. 본 §0.17 은 글로벌 project editing guidance (Simplicity / Surgical Changes) 의 코멘트 보수성 가이드보다 본 skill 내부에서 **우선**한다. 세부 규약은 §0.17.1~§0.17.7. **본 태그는 순수 참고용** — speckiwi `add_trace_link` 가 SSOT, 태그는 rg/search 보조. REQ rename/deprecate 시 자동 갱신 의무 없음 (부패 허용). **운영 순서 SSOT** (시니어 코더 단계별): (1) §0.17.1 의무 범위 + §0.17.2 면제 enum 판정 → (2) 면제 시 worklog `req_tag_exempted` append + skip / 의무 시 다음 → (3) §0.17.5 lenient 정규식으로 기존 토큰 set 추출 + 새 토큰 dedupe 검사 → (4) 일치 시 skip / 미일치 시 §0.17.4 위치 결정 → (5) 위치 모호 시 worklog `req_tag_position_ambiguous` + 보류 / 결정 시 §0.17.3 wrapper-tolerant 정규식 형식으로 신규 라인 작성 |
 | §0.17.1 | **의무 범위**. **구현 단계 (Phase 2.c) 에서 새로 정의되는 클래스/메서드/함수** 에 한해 부착 의무 (가시성 제한 없음 — public/private 무관). 붙일 REQ-ID 는 그 정의가 구현하는 집합의 요구다(`--sds` 면 그 정의가 놓인 SDS Files 항목과 심볼 줄이 `@req` 로 지명한 것). 함수 정의 = 명명 함수 (named function/method) + lambda/closure/arrow function (단, §0.17.2 enum (5) 의 private 1라인 lambda 는 면제). 부착 위치 = 정의 직전 라인 또는 docstring 첫 줄. **테스트 파일은 부착 의무 대상에서 제외** — 식별 SSOT: (a) 이 실행이 쓴 테스트 파일(`--sds` 면 SDS Test Plan 이 지명한 모든 테스트 파일), (b) 경로 정규식 `(^|/)(tests?|__tests__|spec|e2e|integration)(/|$)` 매칭 디렉토리 내 파일, (c) 파일명 정규식 `\.(test|spec)\.[a-zA-Z]+$` 매칭 파일. 통합 테스트 (§8.2 산출물) 도 본 면제에 포함. 테스트의 요구 매핑은 테스트 줄의 `<REQ-ID> AC-<n>` / `SDS-AC-<n>` 인용이 SSOT (§4.1.3) |
 | §0.17.2 | **면제 enum (closed-list, 시니어 재량 없음)**. 아래 8종만 면제: (1) 1라인 getter (`return this.x`), (2) 1라인 setter (`this.x = v`), (3) 언어 자동 생성 메서드 명시 (Java toString/hashCode/equals, JS Object.prototype.*, Python `__repr__`/`__eq__`/`__hash__`/`__init__` 자동 생성, Rust `#[derive(...)]` / procedural attribute macro `#[...]` (예: `#[tokio::main]`, `#[async_trait]`) / function-like macro `macro!(...)` (예: `lazy_static!{}`, `bitflags!{}`) 가 생성한 메서드, Go receiver method 자동 생성), (4) IDE 자동 생성 boilerplate constructor (필드 대입 (다중 가능) + `super(...)` 호출 + null-coalescing default 까지 허용. 비즈니스 로직·검증·side effect 가 1줄이라도 포함되면 부착 의무), (5) private 1라인 lambda/helper (가시성 무관 의무 §0.17.1 에 따라 lambda 도 의무 — 본 enum 항목으로만 면제), (6) 인터페이스/추상메서드 (구현 없음), (7) override 시 부모에 이미 `@req` 가 있고 **부모가 cwd 내부일 때만** (부모가 외부 라이브러리면 enum 7 미적용 = 부착 의무), (8) IDE/언어/매크로가 인간 작성 없이 자동 생성한 메서드 일반 (worklog 사유에 `reason_enum_id=8` + `raw_reason` 부가 **의무**). **결정 알고리즘**: enum (1)~(7) 매칭 패턴이 있으면 우선 분류 (raw_reason 불필요), enum (1)~(7) 어디에도 매칭 안 되는 자동 생성 메서드만 enum (8) 사용 — Rust derive 같이 enum (3) 명시 항목이 있는 경우는 항상 (3). **면제 적용 시 worklog `req_tag_exempted { sds_id, member_path, reason_enum_id, raw_reason? (enum=8 필수, 그 외 생략) }` append 의무** (§7.2). enum 외 사유로 면제 불가 |
@@ -71,15 +71,15 @@ pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` �
 |---|---|
 | `--sds` 실행: SDS 의 SDS-AC 에 Test Plan 행이 없음 (`speckiwi sds check` 가 이미 SDS-E064 로 거부) | 차단 + 사용자 보고 ("`$kiwi-sds` 로 Test Plan 을 채우십시오") |
 | 시니어 코더가 테스트 작성 단계 skip 시도 | 차단 + Phase 1 재진입 강제 |
-| Phase 1 검증(검증 서브에이전트 + 스크립트 판정 2종)에서 1개라도 CRITICAL finding 잔존 | Phase 2 (구현) 진입 차단, Phase 1.3 개선 루프 |
-| green 확인 실패 (구현 후에도 test 가 fail) | Phase 2.g 개선 루프 편입 (HIGH 카운터 소모) |
+| Phase 1 검증(검증 서브에이전트 + 스크립트 판정 2종)에서 kept finding 이 1개라도 남음 | Phase 2 (구현) 진입 차단, Phase 1.3 개선 루프 |
+| green 확인 실패 (구현 후에도 test 가 fail) | Phase 2.g 개선 루프 편입 (라운드 1 소모) |
 
 #### §0.G2 — 외부 모듈 영향
 
 | IF | THEN |
 |---|---|
 | SDS Files 또는 실제 변경에 cwd 외부 path | 즉시 중단 + User clarification gate 3옵션: (1) 진행 승인 / (2) 외부 path 제외 / (3) 작업장 이동 후 재실행 |
-| 시니어 코더가 cwd 외부 파일 편집 시도 | 즉시 차단 + CRITICAL |
+| 시니어 코더가 cwd 외부 파일 편집 시도 | 즉시 차단 |
 | 회귀 테스트가 cwd 외부 모듈 실패 | WARN 만, 차단 안 함 (외부 책임) |
 
 #### §0.G3 — 입력 무결성
@@ -123,7 +123,7 @@ pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` �
 |---|---|---|
 | `external-module-impact` | SDS Files 또는 실제 변경이 cwd 외부 path 진입 (§0.9 / §0.G2) | §0.G2 |
 | `zero-tolerance-sds-code-mismatch` | SDS Interfaces 의 Files · 심볼 선언 · `← caller` 연결 ↔ 실제 코드 불일치 (§0.7) — SDS 가 있는 run 에서만 발동한다 | §0.7 / §5.1.(d′) |
-| `mock-detection` | Mock regex 자동 탐지 CRITICAL (§0.6) | §0.6 / §5.1.(b) |
+| `mock-detection` | Mock regex 자동 탐지 (§0.6) | §0.6 / §5.1.(b) |
 | `tdd-bypass-attempt` | TDD 우회 시도 (§0.G1 — 시니어가 테스트 작성 단계 skip 시도 / SDS-AC 에 Test Plan 행 부재 — 이 SDS-AC 경우는 SDS 가 있는 run 에서만 발동한다) | §0.G1 |
 | `improvement-loop-divergence-4opt` | §0.G4 4옵션 게이트 발동 (시니어/TDD 검증자/까칠 누적 + 회귀 2회 연속 fail) | §0.G4 / §7.3 |
 | `mcp-mutation-backward-status` | `update_status` backward 전이 시도 (§0.G5 Rule 1) | §0.G5 |
@@ -138,7 +138,7 @@ pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` �
 | `lifecycle-gate-deprecated-or-frozen` | deprecated / frozen REQ 구현은 정책상 중단 | Phase 0 |
 | `validate-spec-error` | `validate_spec` 가 error 급 진단을 하나라도 돌려줌 — 오류를 안은 요구 위에 증거와 승급을 쌓으면 그 통과가 무엇을 근거로 기록되었는지 되읽을 수 없다 | §0.12 MCP mutation — `add_verification_evidence` 직전 |
 
-**`review-hop-start-residual-branches`**: 위 `followup-review-fix-loop-close-unsafe` 행이 덮는 것은 §8.4 3지선다의 **비가역 갈래 하나**뿐이다 — unsafe 한 상태에서 (1) 을 자동 채택해 `--close-reqs` 로 요구를 `verified` 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에 수동과 (3) skip 은 요구를 `implemented` 에 남기므로 나중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 `verified` 를 쓰지 않는다 — 그 쓰기는 `kiwi-review-fix-loop` §0.G8 의 `close-reqs-with-regression-fail` · `close-reqs-critical-or-high-residual` · `bulk-close-or-finalize` 가 `--auto` 와 무관하게 항상 막는다. 그래서 3지선다 전체를 본 표에 올리지 않는다 — 올리면 모든 무인 실행이 마지막 홉에서 죽는 정지점이 되며, 이는 `kiwi-tdd` §0.AG 가 `sds-architecture-decision-approval` 을 critical 로 올리지 않은 것과 같은 이유다. 판정을 비워 두지 않기 위해 이 문단을 남긴다.
+**`review-hop-start-residual-branches`**: 위 `followup-review-fix-loop-close-unsafe` 행이 덮는 것은 §8.4 3지선다의 **비가역 갈래 하나**뿐이다 — unsafe 한 상태에서 (1) 을 자동 채택해 `--close-reqs` 로 요구를 `verified` 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에 수동과 (3) skip 은 요구를 `implemented` 에 남기므로 나중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 `verified` 를 쓰지 않는다 — 그 쓰기는 `kiwi-review-fix-loop` 의 close 차단 게이트(§0.G8 — 회귀 실패 · 남은 finding · 일괄 close)가 `--auto` 와 무관하게 항상 막는다. 그래서 3지선다 전체를 본 표에 올리지 않는다 — 올리면 모든 무인 실행이 마지막 홉에서 죽는 정지점이 되며, 이는 `kiwi-tdd` §0.AG 가 `sds-architecture-decision-approval` 을 critical 로 올리지 않은 것과 같은 이유다. 판정을 비워 두지 않기 위해 이 문단을 남긴다.
 
 **이 게이트를 관측하는 자리**: 위 표에서 이 행의 세 번째 칸이 가리키는 홉에서 MCP `validate_spec` 을 실행한다 — MCP 가 없으면 CLI `speckiwi validate --json` 이다. error 급 진단이 하나라도 남아 있으면 그 홉을 진행하지 않고 `validate-spec-error` 로 중단하며, `--auto` 도 이 중단을 덮지 못한다. 실행하지 않은 채 통과로 기록하지 않는다.
 
@@ -230,7 +230,7 @@ Phase 0 : Bootstrap (preflight, 입력 확정 — --sds 면 SDS 로드·검사 �
 Phase 1 : TDD 작성·검증
   1.1 : 시니어 코더가 요구 AC(--sds 면 SDS Test Plan 도)로 테스트 파일 작성
   1.2 : TDD 검증 (기본 1, --max 2 — etc 는 한 번에 하나씩, 2축, §4.2) + 스크립트 판정 2종
-  1.3 : 개선 루프 (CRITICAL/HIGH 잔존 시 1.1 재진입)
+  1.3 : 개선 루프 (kept finding 이 남으면 1.1 재진입)
   1.4 : red 확인 (테스트 실행 → 의도된 fail)
   1.5 : red_evidence 기록 (state.json)
 Phase 2 : 구현 (snoworca-coder 차용)
@@ -240,7 +240,7 @@ Phase 2 : 구현 (snoworca-coder 차용)
   2.d : 보존 검사 (모든 실행) + SDS-코드 일치 게이트 (--sds 만 — Files · 심볼 · ← caller 연결)
   2.e : 정형 검사 (스크립트, 4축 + 호출자 검사)
   2.f : 까칠 리뷰 (single delegated reviewer, 8축)
-  2.g : 개선 루프 (심각도 카운터)
+  2.g : 개선 루프 (kept finding 0 까지, 라운드 카운터)
   2.h : 테스트 실행 + green 확인
   2.i : green_evidence 기록 + AC 인용 검증
 Phase 3 : 실행 종료 처리
@@ -284,7 +284,7 @@ Phase 4 : (선택) 통합 테스트 + 최종 보고서
 
 ### 3.3 요구 AC 로드
 
-요구 집합(`--sds` 면 SDS `@req` 집합)의 각 REQ 를 MCP `get_requirement` 로 읽어 AC 본문을 `state.req_acs` 에 둔다. 이 AC(`--sds` 면 SDS 의 Acceptance Contracts 도)가 Phase 1 테스트의 분모다. 같은 읽기에서 Stability 를 확인한다:
+구현 대상은 넘겨받은 요구 집합(`--req-filter` · `REQ_IDS`)이다 — `--sds` 를 함께 받아도 SDS `@req` 전체가 아니라 그 집합이고, 요구 집합 없이 `--sds` 만 받았을 때만 SDS `@req` 집합이다. 아래에서 `--sds` 의 `@req` 집합이라 적은 곳은 모두 이 구현 집합이다 — 워커는 요구 하나와 그 요구를 담은 조각을 넘기므로(`_shared/kiwi/parallel-waves.md` PW-6), 조각의 다른 요구까지 구현하면 뒤 요구의 테스트 커밋과 구현 커밋이 섞인다. 그 집합의 각 REQ 를 MCP `get_requirement` 로 읽어 AC 본문을 `state.req_acs` 에 둔다. 이 AC(`--sds` 면 그 집합의 요구를 인용한 SDS 의 Acceptance Contracts 도)가 Phase 1 테스트의 분모다. 같은 읽기에서 Stability 를 확인한다:
 
 - `evolving` / `stable`: 진행 가능.
 - `draft`: 요구 집합 실행이면 그 REQ 를 집합에서 빼고 보고한다(남은 요구가 없으면 `NEEDS_USER`). `--sds` 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 `NEEDS_USER`(severity `business-decision`)로 끝낸다 — 요구 단위 부분 진행은 SDS 범위에서 한다 (`$kiwi-sds` 요구 필터로 그 REQ 를 뺀 SDS). `SPAWN_CONTEXT=pm-child` 면 멈추지 않는다 — 부모 `kiwi-pm` 이 spawn 전에 lifecycle gate 를 적용했고, draft REQ 가 여기까지 왔다면 사용자가 override(kiwi-pm §4.2 (B) 또는 `--skip-lifecycle-gate`)로 넘긴 것이다. worklog 에 `lifecycle_override_inherited` 를 남기고 진행한다.
@@ -342,7 +342,7 @@ Phase 4 : (선택) 통합 테스트 + 최종 보고서
 
 분석 로그: `docs/analysis/kiwi-coder-{run-id}/tdd_draft.txt`
 
-**검증 패스 산출물 영속 의무**: 각 검증 패스(TDD 검증·정형 검사·까칠 리뷰)는 결과를 `docs/analysis/kiwi-coder-{run-id}/` 아래에 기록한다. **finding 0 건이어도 기록한다** — 기록이 없으면 "아무것도 못 잡은 패스"와 "돌지 않은 패스"와 "버려진 산출물"을 구별할 수 없고, 그 구별 불가가 검사의 가치를 판단 불가로 만든다. 각 기록은 패스 이름·대상 요구 집합(`--sds` 면 SDS)·severity 별 finding 을 담는다.
+**검증 패스 산출물 영속 의무**: 각 검증 패스(TDD 검증·정형 검사·까칠 리뷰)는 결과를 `docs/analysis/kiwi-coder-{run-id}/` 아래에 기록한다. **finding 0 건이어도 기록한다** — 기록이 없으면 "아무것도 못 잡은 패스"와 "돌지 않은 패스"와 "버려진 산출물"을 구별할 수 없고, 그 구별 불가가 검사의 가치를 판단 불가로 만든다. 각 기록은 패스 이름·대상 요구 집합(`--sds` 면 SDS)·kept 와 dropped finding 과 그 증거를 담는다.
 
 ### 4.2 TDD 검증 (2축)
 
@@ -352,34 +352,30 @@ Phase 4 : (선택) 통합 테스트 + 최종 보고서
 
 | 검증자 | 모델 | 검증 축 | 출력 finding 형식 |
 |---|---|---|---|
-| **S1** intent-alignment | local evaluator | SDS-AC / 요구 AC ↔ test 의미 일치 — test 가 정말 해당 AC 를 검증하는가 | `{ severity, axis: "intent-alignment", evidence: {file, line}, suggestion }` |
-| **S2** technical-quality | local evaluator | TDD 코드 기술 품질 (네이밍, 결정성, flaky 위험, assertion 적절성, isolation, fixture) | `{ severity, axis: "tech-quality", ... }` |
+| **S1** intent-alignment | local evaluator | SDS-AC / 요구 AC ↔ test 의미 일치 — test 가 정말 해당 AC 를 검증하는가 | `{ axis: "intent-alignment", evidence: {file, line}, proof, suggestion }` |
+| **S2** technical-quality | local evaluator | TDD 코드 기술 품질 (네이밍, 결정성, flaky 위험, assertion 적절성, isolation, fixture) | `{ axis: "tech-quality", evidence, proof, ... }` |
 
 **req-mapping · red-verification 은 서브에이전트가 아니라 스크립트가 판정한다.** 두 축의 통과 규칙이 각각 집합 소속·정규식과 exit_code·시그니처 동등비교로 이미 결정적으로 진술돼 있어, 판단자가 실행할 이유가 없다.
 
 | 판정 | 실행 주체 | 규칙 | 결과 |
 |---|---|---|---|
-| req-mapping | SDS 없으면 `speckiwi coverage --tests --ids <요구 집합>`, `--sds` 면 `speckiwi sds check` 와 `speckiwi coverage --tests --ids <@req 집합> --sds <SDS_PATH>` 를 그대로 재사용 | SDS 없으면 집합의 모든 AC 가 테스트 줄에 인용되는가. `--sds` 면 `@req` 와 `(<REQ-ID> AC-m)` 이 SRS 에 실재하고 SDS-AC 마다 Test Plan 행이 있는가 (sds check), Test Plan 이 지명한 테스트 파일이 실재하고 그 SDS-AC 를 인용하는가 (coverage --tests) — 두 도구가 이미 내리는 판정이며 **재구현하지 않는다**. 요구 AC 별 인용 공백은 테스트 충분성 확인(`../_shared/kiwi/test-sufficiency.md`)의 몫이며 이 축을 가르지 않는다 | 위반 시 CRITICAL, Phase 2 진입 차단 |
-| red-verification | 테스트 러너 직접 실행 (Test Plan 파일에 대한 프로젝트 테스트 명령) | `exit_code` 와 `captured_failure` 를 `red_evidence_meta.expected_failures` 의 기대 실패 신호와 테스트마다 **동등비교** (신호를 적지 않은 테스트는 0 이 아닌 `exit_code` 와 그 테스트의 실패 보고, §4.1.3). 근사 일치는 실패로 본다 — 판단자보다 엄격하다 | red 미발생·신호 불일치 시 CRITICAL |
+| req-mapping | SDS 없으면 `speckiwi coverage --tests --ids <요구 집합>`, `--sds` 면 `speckiwi sds check` 와 `speckiwi coverage --tests --ids <@req 집합> --sds <SDS_PATH>` 를 그대로 재사용 | SDS 없으면 집합의 모든 AC 가 테스트 줄에 인용되는가. `--sds` 면 `@req` 와 `(<REQ-ID> AC-m)` 이 SRS 에 실재하고 SDS-AC 마다 Test Plan 행이 있는가 (sds check), Test Plan 이 지명한 테스트 파일이 실재하고 그 SDS-AC 를 인용하는가 (coverage --tests) — 두 도구가 이미 내리는 판정이며 **재구현하지 않는다**. 요구 AC 별 인용 공백은 테스트 충분성 확인(`../_shared/kiwi/test-sufficiency.md`)의 몫이며 이 축을 가르지 않는다 | 위반은 kept finding(도구 출력이 증거), Phase 2 진입 차단 |
+| red-verification | 테스트 러너 직접 실행 (Test Plan 파일에 대한 프로젝트 테스트 명령) | `exit_code` 와 `captured_failure` 를 `red_evidence_meta.expected_failures` 의 기대 실패 신호와 테스트마다 **동등비교** (신호를 적지 않은 테스트는 0 이 아닌 `exit_code` 와 그 테스트의 실패 보고, §4.1.3). 근사 일치는 실패로 본다 — 판단자보다 엄격하다 | red 미발생·신호 불일치는 kept finding(러너 출력이 증거), Phase 2 진입 차단 |
 
 **두 도구는 이 자리에서 직접 실행하며, 입력도 이 자리에서 정한다** — SDS 없는 실행에서 `coverage --tests` 는 kiwi-pm 이 기록한 `req_ids`(부모가 넘긴 `REQ_IDS`, 단독이면 §1.1 의 집합)를 받는다. `--sds` 면 `sds check` 는 `SDS_PATH` 를, `coverage --tests` 는 `SDS_PATH` 와 SDS `@req` 집합을 받고, 입력은 둘 다 이 실행이 받은 SDS 에서 나온다. 상위 `$kiwi-sds` 가 이미 `sds check` 를 돌렸다고 가정하지 않는다. 본 스킬은 다른 곳에서 작성된 SDS 로도 진입할 수 있고, 선행 단계가 일어났음을 전제한 보증은 보증이 아니다.
 
-**severity 정의**:
-- **CRITICAL**: 의도 위배 (S1), Mock 사용 (S2), `@req`·`(REQ AC)` 해석 실패 (sds check), red 미발생 (러너)
-- **HIGH**: 모호한 assertion (S2), AC 인용 누락 (coverage --tests), 기대 실패 신호 불일치 (러너)
-- **MEDIUM**: 네이밍 / fixture 개선 (S2)
-- **LOW**: 스타일 (S2)
+**finding 은 실패하는 테스트 · 재현 · 명령 출력이 입증할 때만 남는다(kept).** 스크립트 판정 두 개(req-mapping · red-verification)의 위반은 그 도구 출력이 증거이므로 언제나 kept 다. S1 · S2 의 finding 은 그 결함을 드러내는 실행 — AC 와 다른 입력에서도 통과하는 테스트(S1), Mock 사용 (S2) 을 잡는 §0.6 regex 출력, 같은 입력에서 결과가 갈리는 두 번의 실행(S2) — 을 실어야 kept 이고, 그런 실행이 없는 것과 네이밍 · fixture 취향 · 스타일은 dropped 로 보고만 한다. 등급은 매기지 않는다 — 통과를 가르는 것은 kept 하나다.
 
 **축 소관 경계**: 각 축은 자기 주제만 판정한다. Mock 사용은 S2 가, 인용·참조 해석은 두 도구가 단독 소관이며 S1 은 이를 중복 판정하지 않는다 — 한 결함이 두 축에서 서로 다른 설명으로 두 번 보고되면 시니어가 같은 원인을 두 번 해석해야 하고, 스크립트가 내린 판정을 축이 다시 이름 부르면 판단을 없애려고 옮긴 것을 산문으로 되불러온다.
 
-### 4.3 개선 루프 (3회 연속 no-improvement 까지)
+### 4.3 개선 루프 (kept finding 0 까지)
 
 ```
 clean_count = 0
 WHILE clean_count < 3:
   ├─ local evaluator 실행
-  ├─ no actionable improvement → clean_count += 1
-  ├─ CRITICAL/HIGH/MEDIUM 또는 actionable LOW → 시니어 코더 재호출, clean_count = 0
+  ├─ kept finding 0 → clean_count += 1
+  ├─ kept finding ≥1 → 시니어 코더 재호출 (kept finding 과 그 증거 전달), clean_count = 0
   └─ 동일 blocker 3회 반복 + 안전한 수정 경로 없음 → §0.G4 발동
 ```
 
@@ -421,11 +417,11 @@ Phase 2 진입
   │       └─ **@req 태그 부착** (§0.17 SSOT 7-clause): §0.17.1 의무 범위 (테스트 파일 제외) / §0.17.2 면제 enum (closed-list, 현재 8종) + worklog 기록 / §0.17.3 1라인 1 REQ-ID 형식 + line-anchored 정규식 / §0.17.4 append 위치 결정성 / §0.17.5 dedupe 알고리즘 (lenient 정규식으로 토큰 추출 비교) / §0.17.6 포괄 면책 (모든 게이트 점검 제외) / §0.17.7 누락 무차단 — 시니어 코더는 본 7-clause 를 그대로 따른다. **검증/리뷰/회귀 단계 어디에서도 비교 금지** (§0.17.6)
   ├─ (d) 보존 검사 — SDS 유무와 무관하게 모든 실행에서 돈다
   │       ├─ diff 에서 기존 테스트 파일 삭제 / 기존 테스트 케이스 제거 / 기존 단언 약화 검출 (§0.20)
-  │       │       └─ 검출 시 CRITICAL + (c) 재호출로 재구현 강제 — 지운 테스트를 복원하고 구현으로 green 을 만든다
+  │       │       └─ 검출은 kept finding(diff 가 증거) + (c) 재호출로 재구현 강제 — 지운 테스트를 복원하고 구현으로 green 을 만든다
   │       ├─ diff 에서 기존 public 심볼 삭제 / 시그니처 변경 검출 (§0.G6 `existing-public-contract-change`)
-  │       │       └─ 검출 시 CRITICAL + (c) 재호출. 파일 경로와 무관하게 판정 — 계약 파손은 경로가 아니라 심볼에서 일어난다
+  │       │       └─ 검출은 kept finding(diff 가 증거) + (c) 재호출. 파일 경로와 무관하게 판정 — 계약 파손은 경로가 아니라 심볼에서 일어난다
   │       ├─ diff 에서 비-테스트 **기존 파일의 삭제·이동** 검출 (§0.G6 `existing-file-deleted-or-moved`)
-  │       │       └─ 검출 시 CRITICAL + (c) 재호출로 재구현 강제 — 쓰기 집합(lane `writeSet`, `--sds` 면 SDS Files)에 등재되어 있다는 사실만으로는 해소되지 않는다. 등재는 그 파일을 편집한다는 허가이지 제거한다는 허가가 아니다
+  │       │       └─ 검출은 kept finding(diff 가 증거) + (c) 재호출로 재구현 강제 — 쓰기 집합(lane `writeSet`, `--sds` 면 SDS Files)에 등재되어 있다는 사실만으로는 해소되지 않는다. 등재는 그 파일을 편집한다는 허가이지 제거한다는 허가가 아니다
   │       ├─ **동일 항목 2회째 검출** 시 (c) 재호출로 자기 치유하지 않고 §0.G6 의 대응 gate_id 로 부모에 **버블업**한다 — 1차 검출은 재구현으로 닫되, 같은 항목이 두 번 나오면 치유가 수렴하지 않는 것이므로 사용자 결정으로 올린다
   │       └─ SDS 없는 단독 실행에는 쓰기 집합 경계가 없다 — 바꾼 경로를 모두 보고서에 적고, 마지막 `kiwi-review-fix-loop` 창이 그것을 모두 덮는다
   ├─ (d′) SDS-코드 일치 게이트 (ZERO TOLERANCE) — `--sds` 일 때만
@@ -434,7 +430,7 @@ Phase 2 진입
   │       ├─ `← caller` 가 붙은 심볼은 그 caller 쪽에서 참조된다 — 정의 지점과 import 줄 밖의 참조를 센다. import 만 되고 쓰이지 않는 심볼은 연결이 아니다
   │       ├─ SDS-AC 의 `→` 대상 심볼이 모두 존재한다
   │       ├─ **`@req` 주석 추가는 본 게이트 평가에서 제외** (§0.17.6) — 태그 추가/append 라인은 SDS Files 밖 변경 판정 시 변경 set 에서 제거 후 비교
-  │       └─ 위반 시 CRITICAL + (c) 재호출
+  │       └─ 위반은 kept finding(게이트 출력이 증거) + (c) 재호출
   ├─ (e) 정형 검사 (**스크립트**, 서브에이전트 아님)
   │       └─ 4축 전부 결정적 판정 — 판단자가 실행할 이유가 없다
   │       ├─ Mock 사용: §0.6 의 regex 를 **그대로 재사용** (재구현 금지)
@@ -443,21 +439,18 @@ Phase 2 진입
   │       ├─ 호출자 검사 (모든 실행): 이 실행이 비-테스트 파일에 새로 정의한 함수·클래스·export 심볼은 정의와 import 밖의 비-테스트 코드에서 참조되거나, 보고서에 의도된 진입점(공개 API, CLI 명령, MCP 도구, 테스트 헬퍼)으로 기록되어야 한다 — 둘 다 아니면 개선 루프가 닫아야 하는 finding 이다
   │       └─ 테스트 커버리지: 요구 집합의 AC 마다(`--sds` 면 SDS Test Plan 행마다도) **실제로 실행된, 그것을 인용한 테스트**가 대응하는가. 전역 커버리지 %가 아니라 그 실행이 약속한 AC 를 본다
   │               └─ **이 축은 종전에 기준이 없었다** — 스킬에도 확장 레퍼런스에도 판정 규칙이 정의된 적 없이 축 이름만 있었다. 여기서 처음 정의한다 (옮겨온 것이 아니다)
-  │       └─ 위반 시 CRITICAL + (c) 재호출
+  │       └─ 위반은 kept finding(스크립트 출력이 증거) + (c) 재호출
   │       └─ 검증 축 4개: Mock regex, 타입/빌드, SDS-코드 매핑 재확인, 테스트 커버리지
-  │       └─ CRITICAL 발견 시 (g) 직행 (까칠 skip)
+  │       └─ kept finding 이 있으면 (g) 직행 (까칠 skip)
   ├─ (f) 까칠 리뷰 (single delegated reviewer)
   │       └─ 검증 축 8개 (§5.2)
-  ├─ (g) 개선 루프 (심각도별 독립 카운터)
-  │       ├─ CRITICAL ≤ 3
-  │       ├─ HIGH ≤ 3
-  │       ├─ MEDIUM ≤ 2
-  │       ├─ LOW ≤ 1 (정보만) — 주석 표현·서식 LOW 는 재작업 라운드 0, 보고만 하고 넘어간다
-  │       └─ 초과 시 §0.G4 발동
+  ├─ (g) 개선 루프 (kept finding 0 까지)
+  │       ├─ 라운드 상한 3 — kept finding 이 남은 채 넘으면 §0.G4 발동
+  │       └─ dropped finding(주석 표현·서식·스타일 등)은 재작업 라운드 0 — 보고만 하고 넘어간다
   ├─ (h) 테스트 실행 (green 확인)
   │       ├─ Phase 1.4 의 red cmd 동일하게 실행
   │       ├─ exit_code=0 + 작성한 테스트가 모두 pass → green
-  │       └─ 미통과 시 (g) HIGH 카운터 +1, (c) 재호출
+  │       └─ 미통과는 kept finding(러너 출력이 증거) — (g) 라운드 +1, (c) 재호출
   ├─ (i) green_evidence 기록 (state.json: command / exit_code / timestamp 3필드)
   │       └─ 부가 정보 (통과한 테스트 이름 목록, stdout_excerpt) 는 `green_evidence_meta` 에 별도 저장
   └─ (j) AC 인용 검증 (`speckiwi coverage --tests --ids <요구 집합>` — `--sds` 면 `--sds <SDS_PATH>` 를 더해 SDS-AC 마다도 — 로 인용한 테스트가 실재하고 green 인지 확인. **`@req` 태그 부착 여부는 본 SDS-AC 검증 대상이 아님** — §0.17.6)
@@ -480,14 +473,12 @@ Phase 2 진입
 
 **`@req` 태그 검증 금지 (§0.17.6 포괄 면책)**: 정형 검사 (스크립트) 와 까칠 리뷰 (single delegated reviewer) 모두 코드 주석의 `@req` 라인에 대해 다음 행위를 금지한다 — (a) 존재 여부 점검, (b) SDS `@req` 집합과 비교, (c) REQ-ID 실재성 검증 (speckiwi 조회), (d) 라인 누락을 finding 으로 발행. 본 태그는 정보용 breadcrumb 이며 어떤 게이트에도 영향 주지 않는다.
 
-### 5.3 심각도 정의 (구현 단계)
+### 5.3 kept 판정 (구현 단계)
 
-- **CRITICAL**: Mock 사용, SDS-코드 매핑 누락(`--sds`), 빌드/타입 실패, 보안 중대, green 미달성
-- **HIGH**: 테스트 fail, SDS-AC 미충족, 의도 이탈, 축 8 닫힌 4종의 주석 주장이 거짓으로 측정됨
-- **MEDIUM**: 경계 조건 누락, 리팩토링 미흡, 에러 처리 불충분
-- **LOW**: 스타일, 주석 표현·서식 — 정보 보고 전용이며 개선 루프 재작업 라운드 0
+- **kept**: 실행이 입증한 결함 — Mock 사용(§0.6 regex 출력), SDS-코드 매핑 누락(`--sds`, (d′) 게이트 출력), 빌드/타입 실패, 테스트 fail · green 미달성(러너 출력), SDS-AC 미충족 · 의도 이탈 · 경계 조건 누락 · 에러 처리 결함(실패하는 테스트나 재현), 보안 결함(재현), 축 8 닫힌 4종의 주석 주장이 거짓으로 측정됨(`existsSync` · `grep -c` 출력)
+- **dropped**: 실행으로 입증하지 못한 것과 스타일 · 명명 · 리팩토링 취향 · 주석 표현 · 서식 — 보고만 하며 개선 루프 재작업 라운드 0
 
-Phase 2 통과 조건: **green 확정 + 단일 evaluator 3회 연속 no actionable improvement**.
+Phase 2 통과 조건: **kept finding 0 + green 확정**. etc 는 단일 evaluator 가 kept finding 0 을 3회 연속 돌려준 뒤에 통과한다(`../_shared/kiwi/local-llm-profile.md`).
 
 ### 5.4 시니어 코더 입력 (재호출 시 포함)
 
@@ -511,7 +502,7 @@ Phase 2 통과 조건: **green 확정 + 단일 evaluator 3회 연속 no actionab
 **6.1.1 실행 범위**: (1) 영향받는 test 파일은 항상 실행, (2) 전체 회귀 스위트는 `--skip-regression` 부재 시 실행. 대상 추론과 실행 로그 적재 규약은 extended reference §6.1 참조. 실행 시간 추정 ≥10분 시 비용 경고 게이트 (`--auto-cost-warning` 로 우회, §1.2 pass-through).
 
 **6.1.3 회귀 발견 시 처리** — 회귀 여부는 기준선 대비 **델타로 판정**한다:
-- 기준선에서 pass 였는데 이번 실행에서 fail 한 test = **신규 실패**. 이 실행이 만든 회귀이므로 CRITICAL + (Phase 2.c) 재진입
+- 기준선에서 pass 였는데 이번 실행에서 fail 한 test = **신규 실패**. 이 실행이 만든 회귀이므로 kept finding(회귀 출력이 증거) + (Phase 2.c) 재진입
 - 기준선에 이미 있던 **기존 실패**는 그대로 보고하고, 현재 실행의 것으로 **귀속하지 않는다** — 남의 실패를 좇는 동안 이 실행의 루프가 발산한다
 - 기준선에서 fail 이었는데 이번에 pass 한 test 는 회귀가 아니다 (보고만)
 - `state.regression_baseline` 이 null (§3.5 캡처 실패) 이면 델타를 계산하지 않고 실패 전량을 보고하며, 판정이 격하되었음을 함께 적는다

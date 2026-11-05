@@ -65,32 +65,9 @@ function windowsAround(text: string, re: RegExp, radius: number): string[] {
 // ---------------------------------------------------------------------------------------------------
 // Shared tokens.
 // ---------------------------------------------------------------------------------------------------
-const WAVE = /wave/i;
-// The dedicated per-wave target naming `wave-{n}` (or a concrete `wave-1`, `wave-2`). Entirely absent
-// today (skill does not exist), so any assertion keyed on it is a red driver.
-const WAVE_TARGET = /wave-\{?n\}?|wave-\d+/i;
-const KIWI_SRS = /kiwi-srs(?!-)/; // bare kiwi-srs authoring skill, never kiwi-srs-research/-feasibility
 const KIWI_PIPELINE = /kiwi-pipeline/;
 const AUTO_FLAG = /--auto\b/;
 const MAX_FLAG = /--max\b/;
-
-// AC-1 heuristic: explicit wave structure (headers) in the document when present, OTHERWISE a subagent
-// analyzes the document's overall flow to split waves.
-const DECOMPOSE = /decompos|분해|나누|나눈|쪼갠|쪼개|split|분할/i;
-const ORDERED = /order(ed|ing|s)?|순서|순차|정렬/i;
-const HEADER_EXPLICIT =
-  /header|헤더|제목|explicit\s+wave|명시(?:적|된|되어)?\s*(?:wave|웨이브|구조|섹션)|document\s+structure|문서\s*(?:구조|섹션)|섹션\s*구조/i;
-const ELSE_BRANCH =
-  /otherwise|그렇지\s*않|아니면|else\b|없(?:으면|을\s*때|는\s*경우)|부재\s*시|when\s+absent|absent|when\s+not\s+present/i;
-const SUBAGENT = /sub-?agent|서브\s*에이전트|서브에이전트|하위\s*에이전트/i;
-const ANALYZE_FLOW = /flow|흐름|overall\s+flow|전체\s*흐름|analyz|분석/i;
-
-// AC-2: register a dedicated wave-{n} target via /kiwi-srs with an explicit work scope, bounded so
-// downstream feasibility/planning/review stay within that wave and never look beyond it.
-const TARGET_TOKEN = /target|타깃|타겟|대상/i;
-const SCOPE = /scope|스코프|범위|작업\s*범위|work\s*scope/i;
-const BOUNDED =
-  /bound|한정|국한|제한|해당\s*wave|그\s*wave|do\s+not\s+look\s+beyond|look\s+beyond|beyond|넘어서지|벗어나지|넘어\s*보지|이상\s*보지/i;
 
 // AC-3: persist wave progress to ./kiwi/waves.jsonl, mark a wave complete only after its run succeeds,
 // resume from the first incomplete wave. `waves.jsonl` is absent today (red driver).
@@ -101,10 +78,6 @@ const ONLY_AFTER_SUCCESS =
 const RESUME = /resume|재개|이어서|다시\s*시작|재시작/i;
 const FIRST_INCOMPLETE =
   /first\s+incomplete|incomplete\s+wave|첫\s*(?:번째\s*)?(?:미완료|미완|incomplete)|미완료(?:된)?\s*(?:첫|wave)/i;
-
-// Wave order vocabulary (FR-FLOW-030 AC-2: the epic mode merges the waves in wave order).
-const PER_WAVE_ORDER =
-  /per[- ]wave|wave\s*별|각\s*wave|in\s+order|순서(?:대로|에\s*따라)?|순차|registration\s+order|등록\s*순서/i;
 
 // AC-5: under --auto run all waves autonomously to the end (per-wave pipeline safety gates still
 // apply); under --max propagate --max to the sub-skills every wave runs (FR-FLOW-029 AC-5, revised in 4.0.0).
@@ -119,55 +92,8 @@ const SUBSKILL =
 describe("FR-FLOW-029 — kiwi-wave-master multi-wave orchestrator", () => {
   for (const variant of VARIANTS) {
     describe(`variant: ${variant}`, () => {
-      it("AC-1: exists and decomposes docs into ordered waves (headers-first, else a subagent analyzes the flow)", () => {
-        const text = readWaveSkill(variant);
-        // Skill existence / registration: the net-new SKILL.md must declare name=kiwi-wave-master.
-        expect(
-          text,
-          `FR-FLOW-029 AC-1: ${variant} kiwi-wave-master/SKILL.md must exist with frontmatter name=kiwi-wave-master`,
-        ).toMatch(/^---[\s\S]*?\bname:\s*kiwi-wave-master\b[\s\S]*?---/m);
-
-        const body = skillBody(text);
-        // Decomposition of the research/plan documents into ORDERED waves.
-        const decomposesOrdered = windowsAround(body, WAVE, 220).some(
-          (win) => DECOMPOSE.test(win) && ORDERED.test(win),
-        );
-        expect(
-          decomposesOrdered,
-          `FR-FLOW-029 AC-1: ${variant} kiwi-wave-master must decompose the research/plan documents into ordered waves`,
-        ).toBe(true);
-
-        // Two-branch wave-split heuristic: explicit wave structure (headers) when present, OTHERWISE a
-        // subagent analyzes the document's overall flow to split the waves.
-        const headerFirst = HEADER_EXPLICIT.test(body);
-        const elseSubagentFlow = windowsAround(body, SUBAGENT, 320).some(
-          (win) => ELSE_BRANCH.test(win) && ANALYZE_FLOW.test(win),
-        );
-        expect(
-          headerFirst && elseSubagentFlow,
-          `FR-FLOW-029 AC-1: ${variant} kiwi-wave-master must use explicit wave structure (headers) when present, otherwise have a subagent analyze the document flow to split the waves`,
-        ).toBe(true);
-      });
-
-      it("AC-2: registers a dedicated wave-{n} target via /kiwi-srs with an explicit scope bounded to the wave", () => {
-        const body = skillBody(readWaveSkill(variant));
-        // A dedicated per-wave target (wave-{n}) is registered through the bare kiwi-srs authoring skill
-        // with an explicitly specified work scope.
-        const registersScopedTarget = windowsAround(body, WAVE_TARGET, 340).some(
-          (win) => KIWI_SRS.test(win) && TARGET_TOKEN.test(win) && SCOPE.test(win),
-        );
-        expect(
-          registersScopedTarget,
-          `FR-FLOW-029 AC-2: ${variant} kiwi-wave-master must register a dedicated wave-{n} target via /kiwi-srs with an explicitly specified work scope`,
-        ).toBe(true);
-        // The scope bounds downstream feasibility/planning/review to that wave (does not look beyond).
-        const boundedToWave = windowsAround(body, SCOPE, 320).some((win) => BOUNDED.test(win));
-        expect(
-          boundedToWave,
-          `FR-FLOW-029 AC-2: ${variant} kiwi-wave-master must bound the wave scope so downstream stages do not look beyond that wave`,
-        ).toBe(true);
-      });
-
+      // FR-FLOW-029 AC-1 (heading decomposition) and AC-2 (per-wave targets) expired 2026-11-05 naming
+      // FR-FLOW-212; their replacement is pinned in wave-srs-first.fr-flow-212.test.ts.
       it("AC-3: persists to ./kiwi/waves.jsonl, marks complete only after success, resumes from first incomplete", () => {
         const body = skillBody(readWaveSkill(variant));
         // Progress is persisted to a waves.jsonl file (red driver: token absent today).
@@ -212,23 +138,29 @@ describe("FR-FLOW-029 — kiwi-wave-master multi-wave orchestrator", () => {
             `FR-FLOW-029 AC-4: ${variant} §5 still hands a wave to /kiwi-pipeline: ${line}`,
           ).toBe(true);
         }
-        // The contract's host-serial /kiwi-srs step authors each wave's requirements (§4, PW-1).
-        const registration = h2Section(waveBody, /^##\s+4\.\s/);
+        // Rewritten 2026-11-05 with FR-FLOW-212 AC-3: the SRS is authored once, before decomposition
+        // (§3), and the stage's only authoring is the incremental call over worker deltas (§4, PW-1).
+        const authoring = h2Section(waveBody, /^##\s+3\.\s/);
         expect(
-          /wave 하나씩 직렬로/.test(registration) && /PW-1/.test(registration),
-          `FR-FLOW-029 AC-4: ${variant} §4 must author each wave's SRS host-serially as the contract's PW-1 step`,
+          /wave-srs-registration\.md §1/.test(authoring),
+          `FR-FLOW-029 AC-4: ${variant} §3 must author the SRS once through wave-srs-registration.md §1`,
         ).toBe(true);
-        // SDS authoring and the workers never re-run that authoring; only the incremental /kiwi-srs
-        // re-entry and the SDS close-out clarification stay sanctioned SRS writes.
+        const incremental = h2Section(waveBody, /^##\s+4\.\s/);
+        expect(
+          /stage 는 SRS 를 처음부터 저작하지 않는다/.test(incremental) && /PW-1/.test(incremental) && /§2 의 호출 하나로/.test(incremental),
+          `FR-FLOW-029 AC-4: ${variant} §4 must limit a stage to the one incremental PW-1 call`,
+        ).toBe(true);
+        // SDS authoring and the workers never re-run that authoring; only the incremental delta authoring,
+        // the incremental /kiwi-srs re-entry and the SDS close-out clarification stay sanctioned SRS writes.
         const noRerun = stage.split("\n").find((line) => /SDS 작성과 워커는/.test(line)) ?? "";
         expect(noRerun, `FR-FLOW-029 AC-4: ${variant} §5 must state that SDS authoring and the workers do not re-author`).not.toBe("");
         expect(
-          /저작은 §4 에서 한 번 끝났다/.test(noRerun) && /다시 돌리지 않는다/.test(noRerun),
+          /저작은 §3 에서 한 번 끝났다/.test(noRerun) && /다시 돌리지 않는다/.test(noRerun),
           `FR-FLOW-029 AC-4: ${variant} the no-re-authoring rule must bind SDS authoring and the workers`,
         ).toBe(true);
         expect(
-          /증분 `[/$]kiwi-srs` 재진입/.test(noRerun) && /SDS close-out/.test(noRerun),
-          `FR-FLOW-029 AC-4: ${variant} the rule must keep the incremental /kiwi-srs re-entry and the SDS close-out clarification sanctioned`,
+          /§4 의 델타 증분 저작/.test(noRerun) && /증분 `[/$]kiwi-srs` 재진입/.test(noRerun) && /SDS close-out/.test(noRerun),
+          `FR-FLOW-029 AC-4: ${variant} the rule must keep the delta authoring, the incremental /kiwi-srs re-entry and the SDS close-out clarification sanctioned`,
         ).toBe(true);
       });
 
@@ -273,208 +205,8 @@ describe("FR-FLOW-029 — kiwi-wave-master multi-wave orchestrator", () => {
   });
 });
 
-// ---------------------------------------------------------------------------------------------------
-// @req FR-FLOW-030
-// FR-FLOW-030 — kiwi-wave-master epic-issue entry mode (T-PH005-03, RED phase).
-//
-// These assert the FINAL desired state of the epic-issue entry-mode section and therefore FAIL against
-// the current stub section (which only says "up-front wave-split 연구를 생략" and defers detail to a
-// later task — it carries neither the "each wave still researches" semantics nor the OQ-030 structure-
-// detection guard). They go green once T-PH005-04 fleshes out the section in all three variants. Like
-// the FR-FLOW-029 block above these are raw-text, language-neutral (English / Korean) assertions, but
-// scoped to the dedicated epic entry-mode section so the §1 input mention of an epic issue and the §2
-// phase-flow block (which name waves.jsonl and kiwi-pipeline) cannot mask genuine red state.
-//
-// OQ-030 (RESOLVED 2026-07-10, 5-member research committee, high-confidence): the epic-research-skip
-// (AC-3) is CONFIRMED only when the epic has extractable structure (task-list groups / >=2 linked
-// sub-issues); when no extractable structure exists (free-form prose, <2 sub-issues, no partitionable
-// task list) kiwi-wave-master FALLS BACK to FR-FLOW-029's wave-split subagent (no new component). AC-3
-// therefore asserts BOTH branches: the structured research-skip branch AND the unstructured wave-split-
-// subagent fallback branch.
-// ---------------------------------------------------------------------------------------------------
-
-/**
- * The dedicated epic-issue entry-mode section: from the heading that names an epic + an entry/mode
- * concept down to the next same-or-higher-level heading (or EOF). Scoping here keeps the §1 input
- * mention of an epic issue and the §2 phase-flow block — which already name waves.jsonl and
- * kiwi-pipeline — from false-greening the epic-mode assertions. Returns "" when no such section exists.
- */
-function epicEntrySection(body: string): string {
-  const lines = body.split("\n");
-  const headingStart = /^#{2,}\s+(?=.*(?:epic|에픽))(?=.*(?:entry|mode|진입|모드))/i;
-  let start = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (headingStart.test(at(lines, i))) {
-      start = i;
-      break;
-    }
-  }
-  if (start === -1) return "";
-  const level = (at(lines, start).match(/^#+/) as RegExpMatchArray)[0].length;
-  let end = lines.length;
-  for (let i = start + 1; i < lines.length; i++) {
-    const m = at(lines, i).match(/^#+/);
-    if (m && m[0].length <= level) {
-      end = i;
-      break;
-    }
-  }
-  return lines.slice(start, end).join("\n");
-}
-
-// AC-1: extract ordered waves FROM the epic (its structure / task list / linked sub-issues) rather than
-// analyzing a research/plan document.
-const EPIC_ISSUE = /epic[- ]?issue|에픽\s*이슈|epic\b|에픽/i;
-const EXTRACT = /extract|추출|derive|도출|가져오|끌어내/i;
-const STRUCTURE = /structure|구조|본문/i;
-const TASK_LIST = /task[- ]?list|태스크\s*리스트|작업\s*(?:목록|리스트)|체크리스트|checklist/i;
-const SUB_ISSUE = /sub-?issue|하위\s*이슈|자식\s*이슈|linked\s*(?:sub-?)?issue|연결된?\s*(?:하위\s*)?이슈/i;
-const INSTEAD_OF = /instead\s+of|rather\s+than|대신(?:에|하여)?|아니라|하지\s*않고|이\s*아닌/i;
-const ANALYZE = /analyz|분석|해석/i;
-const RESEARCH_PLAN_DOC =
-  /research\s*(?:·|\/)?\s*plan|research\s+(?:or\s+)?plan|plan\s+document|research\s+document|연구\s*[·/]?\s*계획|계획\s*문서|연구\s*문서|로드맵\s*문서/i;
-
-// AC-2: after extraction, proceed IDENTICALLY to the FR-FLOW-029 flow — scoped per-wave target
-// registration, waves.jsonl progress, the shared parallel-waves contract with merges in wave order. (WAVE_TARGET / SCOPE /
-// TARGET_TOKEN / WAVES_JSONL / KIWI_PIPELINE / PER_WAVE_ORDER are reused from the FR-FLOW-029 block.)
-const IDENTICAL =
-  /identical|동일(?:하게|한|히)?|same\s+(?:flow|as|way)|그대로|똑같이|equally|FR-FLOW-029/i;
-
-// AC-3: only the up-front wave-split research analysis is skipped; each wave's feasibility and SDS authoring still
-// performs its own per-wave research. OQ-030 guard: structured epic -> research-skip + structure split;
-// unstructured epic -> FR-FLOW-029 wave-split subagent fallback. (SUBAGENT / DECOMPOSE reused above.)
-const SKIP = /skip|생략|건너뛰|건너\s*뛰/i;
-const UPFRONT = /up-?front|사전|앞\s*단계|앞단|초기|선행|미리/i;
-const WAVE_SPLIT =
-  /wave-?split|웨이브\s*분할|wave\s*분할|분할\s*(?:연구|분석)|split[\s\S]{0,12}research|research[\s\S]{0,12}split/i;
-const RESEARCH = /research|연구|조사|리서치/i;
-// The distinguishing "each wave performs its OWN research" claim — an "own/self" qualifier bound
-// directly to a research verb, deliberately WITHOUT bare `연구`/`research` or the per-wave / 각 wave
-// vocabulary, so neither AC-2's machinery nor the up-front-skip sentence's `연구` token can satisfy it.
-const OWN_RESEARCH = /(?:자체|각자|고유|나름|own|its\s+own)\S{0,4}\s*(?:연구|조사|리서치|research)/i;
-const HAS_STRUCTURE_COND =
-  /추출\s*가능한?\s*구조|구조(?:가|를)?\s*있|has\s+(?:extractable\s+)?structure|extractable\s+structure|when\s+structured|task-?list\s+group|태스크\s*리스트\s*그룹|(?:>=?\s*2|2\s*개?\s*이상|둘\s*이상)\s*(?:linked\s*)?(?:sub-?issue|하위\s*이슈|연결)/i;
-const NO_STRUCTURE =
-  /구조가?\s*없|no\s+(?:extractable\s+)?structure|not\s+.{0,20}structure|\bunstructured\b|free-?form|자유\s*형식|비정형|\bprose\b|프로즈|(?:<\s*2|2\s*개?\s*미만|둘\s*미만)\s*(?:linked\s*)?(?:sub-?issue|하위\s*이슈)|나눌\s*수\s*없|분할\s*불가|(?:\bno\b|\bnot\b|cannot|can'?t|unable|non)[\s\S]{0,12}partition/i;
-const FALLBACK =
-  /fall\s*back|fallback|폴백|되돌아가|기존\s*(?:방식|흐름|029|FR-FLOW-029|wave-?split)|FR-FLOW-029\s*(?:의)?\s*(?:wave-?split|서브\s*에이전트|서브에이전트|흐름)/i;
-
-describe("FR-FLOW-030 — kiwi-wave-master epic-issue entry mode", () => {
-  for (const variant of VARIANTS) {
-    describe(`variant: ${variant}`, () => {
-      it("AC-1: extracts ordered waves from the epic (structure/task-list/linked sub-issues) rather than analyzing a research/plan doc", () => {
-        const sec = epicEntrySection(skillBody(readWaveSkill(variant)));
-        expect(
-          sec !== "",
-          `FR-FLOW-030 AC-1: ${variant} kiwi-wave-master must have a discoverable epic-issue entry-mode section`,
-        ).toBe(true);
-        // Epic-issue driven and extracts an ORDERED set of waves — as a co-located claim, not two
-        // tokens scattered across unrelated sentences.
-        const extractsOrdered = windowsAround(sec, EPIC_ISSUE, 320).some(
-          (win) => EXTRACT.test(win) && ORDERED.test(win),
-        );
-        expect(
-          extractsOrdered,
-          `FR-FLOW-030 AC-1: ${variant} epic entry mode must extract an ordered set of waves from the epic issue`,
-        ).toBe(true);
-        // The three epic-derived wave sources are named together: structure, task list, linked sub-issues.
-        const namesThreeSources = windowsAround(sec, SUB_ISSUE, 260).some(
-          (win) => STRUCTURE.test(win) && TASK_LIST.test(win),
-        );
-        expect(
-          namesThreeSources,
-          `FR-FLOW-030 AC-1: ${variant} epic entry mode must derive waves from the epic's structure, task list, or linked sub-issues`,
-        ).toBe(true);
-        // RED driver: the waves come FROM the epic RATHER THAN by analyzing a research/plan document —
-        // the contrast must be a single co-located clause (anchored on the analyze token, absent today).
-        const notResearchPlanDoc = windowsAround(sec, ANALYZE, 260).some(
-          (win) => INSTEAD_OF.test(win) && RESEARCH_PLAN_DOC.test(win),
-        );
-        expect(
-          notResearchPlanDoc,
-          `FR-FLOW-030 AC-1: ${variant} epic entry mode must state it extracts waves from the epic rather than analyzing a research/plan document`,
-        ).toBe(true);
-      });
-
-      it("FR-FLOW-030 AC-2: after extraction proceeds identically to FR-FLOW-029 (scoped wave-{n} target, waves.jsonl, shared parallel-waves contract with merges in wave order)", () => {
-        const sec = epicEntrySection(skillBody(readWaveSkill(variant)));
-        // Frames the post-extraction flow as identical to the FR-FLOW-029 flow, co-located with the
-        // reused machinery so the "identical" claim actually references that machinery (not dead weight).
-        const identicalToFlow = windowsAround(sec, IDENTICAL, 320).some(
-          (win) =>
-            WAVE_TARGET.test(win) || WAVES_JSONL.test(win) || KIWI_PIPELINE.test(win) || /FR-FLOW-029/.test(win),
-        );
-        expect(
-          identicalToFlow,
-          `FR-FLOW-030 AC-2: ${variant} epic entry mode must state that after extraction it proceeds identically to the FR-FLOW-029 flow (referencing the reused scoped-target / waves.jsonl / per-wave pipeline machinery)`,
-        ).toBe(true);
-        // RED driver: names the reused scoped per-wave target registration within the epic section.
-        expect(
-          WAVE_TARGET.test(sec) && (SCOPE.test(sec) || TARGET_TOKEN.test(sec)),
-          `FR-FLOW-030 AC-2: ${variant} epic entry mode must register a scoped per-wave wave-{n} target (reusing the FR-FLOW-029 machinery)`,
-        ).toBe(true);
-        // RED driver: names waves.jsonl progress tracking within the epic section.
-        expect(
-          WAVES_JSONL.test(sec),
-          `FR-FLOW-030 AC-2: ${variant} epic entry mode must track wave progress in waves.jsonl`,
-        ).toBe(true);
-        // FR-FLOW-030 AC-2 (revised in 4.0.0): the waves run through the shared parallel-waves contract
-        // (FR-FLOW-188) with merges in wave order — anchored on the execution bullet of the AC-2
-        // subsection, and no per-wave /kiwi-pipeline left anywhere in the epic section.
-        const execution = sec.split("\n").find((line) => /^\s*-\s/.test(line) && /parallel-waves\.md/.test(line)) ?? "";
-        expect(
-          execution,
-          `FR-FLOW-030 AC-2: ${variant} epic entry mode must run its waves through the shared parallel-waves contract`,
-        ).not.toBe("");
-        expect(
-          /병합/.test(execution) && PER_WAVE_ORDER.test(execution),
-          `FR-FLOW-030 AC-2: ${variant} epic entry mode must merge the waves in wave order`,
-        ).toBe(true);
-        expect(
-          KIWI_PIPELINE.test(sec),
-          `FR-FLOW-030 AC-2: ${variant} epic entry mode still runs a per-wave /kiwi-pipeline`,
-        ).toBe(false);
-      });
-
-      it("FR-FLOW-030 AC-3: only the up-front wave-split research is skipped and each wave still researches; OQ-030 structure guard (structured->skip / unstructured->wave-split subagent fallback)", () => {
-        const sec = epicEntrySection(skillBody(readWaveSkill(variant)));
-        // The skipped work is scoped to the UP-FRONT wave-split research analysis.
-        expect(
-          SKIP.test(sec) && UPFRONT.test(sec) && WAVE_SPLIT.test(sec) && RESEARCH.test(sec),
-          `FR-FLOW-030 AC-3: ${variant} epic entry mode must skip only the up-front wave-split research analysis`,
-        ).toBe(true);
-        // FR-FLOW-030 AC-3 (revised in 4.0.0): each wave's feasibility and SDS authoring under the shared
-        // parallel-waves contract STILL perform their OWN per-wave research. The "own/self + research"
-        // collocation must sit on the line that names both feasibility and SDS authoring, so neither
-        // AC-2's machinery vocabulary nor the up-front-skip sentence's bare `연구` token can satisfy it.
-        const ownResearchLine =
-          sec.split("\n").find((line) => /feasibility/i.test(line) && /SDS 작성|SDS authoring/i.test(line)) ?? "";
-        expect(
-          ownResearchLine !== "" && OWN_RESEARCH.test(ownResearchLine),
-          `FR-FLOW-030 AC-3: ${variant} epic entry mode must state each wave's feasibility and SDS authoring still perform their own per-wave research`,
-        ).toBe(true);
-        expect(
-          /공용 계약|parallel-waves/.test(ownResearchLine),
-          `FR-FLOW-030 AC-3: ${variant} the per-wave research must run under the shared parallel-waves contract`,
-        ).toBe(true);
-        // RED driver (OQ-030 branch a): a structured epic (task-list groups / >=2 linked sub-issues)
-        // confirms the research-skip and splits the waves from that structure.
-        expect(
-          HAS_STRUCTURE_COND.test(sec) && SKIP.test(sec) && DECOMPOSE.test(sec),
-          `FR-FLOW-030 AC-3 (OQ-030 guard): ${variant} epic entry mode must skip the up-front research and split waves from the epic structure only when the epic has extractable structure (task-list groups / >=2 linked sub-issues)`,
-        ).toBe(true);
-        // RED driver (OQ-030 branch b): an unstructured epic falls back to the FR-FLOW-029 wave-split
-        // subagent (no new component).
-        expect(
-          NO_STRUCTURE.test(sec) &&
-            FALLBACK.test(sec) &&
-            (SUBAGENT.test(sec) || /wave-?split|웨이브\s*분할|FR-FLOW-029/i.test(sec)),
-          `FR-FLOW-030 AC-3 (OQ-030 guard): ${variant} epic entry mode must fall back to FR-FLOW-029's wave-split subagent when the epic has no extractable structure`,
-        ).toBe(true);
-      });
-    });
-  }
-});
+// FR-FLOW-030 (epic waves extracted from the epic) is discarded, superseded by FR-FLOW-214, whose
+// contract is pinned in epic-through-prd.fr-flow-214.test.ts.
 
 // @req FR-FLOW-042 FR-FLOW-043
 // FR-FLOW-042 — kiwi-wave-master run-root preflight gate.

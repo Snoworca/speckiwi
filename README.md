@@ -447,10 +447,10 @@ The Kiwi skills use MCP tools for every read and every SRS change. The matching 
 | SDS & test sufficiency | `check_sds`, `check_test_sufficiency` |
 | PRD | `check_prd`, `list_prd_items`, `get_prd_item`, `search_prd_items`, `prd_cursor`, `check_prd_coverage` |
 | Compatibility | `add_compatibility_check`, `refresh_compatibility_check`, `revoke_compatibility_check`, `list_compat_edges`, `list_dirty_edges` |
-| Orchestrator run surface | 26 `orchestrate_*` tools: the run lock and journal, routing probe and freeze, the wave schedule and wave status, verification rounds, wave close, resume and replay, and the `--auto` gate decision. |
+| Orchestrator run surface | 31 `orchestrate_*` tools: the run lock and journal, routing probe and freeze, the wave schedule and wave status, verification rounds, wave close, resume and replay, and the `--auto` gate decision. |
 | Workflow & pipeline | 15 `workflow_*` tools: pipeline emit/status/tail, worklog, artifacts (SDS files included), session status, and repair and reclassification records. |
 
-**97 tools ship in total.** The table names every tool a skill calls directly. The last two rows are families, documented in the skills that drive them. After an upgrade, trust the count that `speckiwi doctor` reports, because that is what the server registered.
+**102 tools ship in total.** The table names every tool a skill calls directly. The last two rows are families, documented in the skills that drive them. After an upgrade, trust the count that `speckiwi doctor` reports, because that is what the server registered.
 
 #### Per-call `workspaceRoot`
 
@@ -1437,10 +1437,10 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 | SDS와 테스트 충분성 | `check_sds`, `check_test_sufficiency` |
 | PRD | `check_prd`, `list_prd_items`, `get_prd_item`, `search_prd_items`, `prd_cursor`, `check_prd_coverage` |
 | 호환성 | `add_compatibility_check`, `refresh_compatibility_check`, `revoke_compatibility_check`, `list_compat_edges`, `list_dirty_edges` |
-| 오케스트레이터 실행 | `orchestrate_*` 26개: 실행 잠금과 저널, 경로 탐색과 경로 동결, wave 일정과 wave 상태, 검증 라운드, wave 종료, 재개와 재생, `--auto` 모드의 판정을 다룹니다. |
+| 오케스트레이터 실행 | `orchestrate_*` 31개: 실행 잠금과 저널, 경로 탐색과 경로 동결, wave 일정과 wave 상태, 검증 라운드, wave 종료, 재개와 재생, `--auto` 모드의 판정을 다룹니다. |
 | 워크플로와 파이프라인 | `workflow_*` 15개 — 파이프라인 emit/status/tail, 작업 기록(worklog), 산출물(SDS 파일 포함), 세션 상태, 복구와 재분류 기록을 다룹니다. |
 
-**총 97개 도구가 배포됩니다.** 표는 스킬이 직접 부르는 도구를 모두 나열합니다. 마지막 두 행은 도구군이며, 그 도구들을 쓰는 스킬의 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 그 개수가 서버가 실제로 등록한 도구 수입니다.
+**총 102개 도구가 배포됩니다.** 표는 스킬이 직접 부르는 도구를 모두 나열합니다. 마지막 두 행은 도구군이며, 그 도구들을 쓰는 스킬의 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 그 개수가 서버가 실제로 등록한 도구 수입니다.
 
 #### 호출마다 넘기는 `workspaceRoot`
 

@@ -98,7 +98,8 @@ describe("FR-FLOW-188 AC-1 — the contract defines the run and both skills cite
       expect([...at.keys()].length, `${bundle}: PW steps`).toBeGreaterThanOrEqual(15);
       // Each step is identified by what it runs, not by its heading prose.
       const anchors: Array<[string, (block: string) => boolean]> = [
-        ["host-serial SRS authoring", (b) => b.includes("/kiwi-srs") && b.includes("/kiwi-srs-feasibility")],
+        // Rewritten 2026-11-05 with FR-FLOW-212 AC-3: PW-1 is the host-serial incremental authoring of worker deltas.
+        ["host-serial SRS authoring", (b) => b.includes("`wave-srs-registration.md §2`") && b.includes("srs_deltas[]")],
         ["SDS authoring", (b) => fences(b).some((f) => f.includes('skill: "kiwi-sds"'))],
         ["stage freeze", (b) => /orchestrate freeze lanes/.test(b)],
         ["worker dispatch", (b) => /dispatch-lane/.test(b)],
@@ -121,7 +122,7 @@ describe("FR-FLOW-188 AC-1 — the contract defines the run and both skills cite
     it(`FR-FLOW-188 AC-1 ${bundle}: SRS authoring runs one wave at a time and SDS authoring runs per wave in parallel`, () => {
       const text = contractText(bundle);
       const srs = step(text, 1);
-      expect(/하나씩|one at a time/i.test(srs), `${bundle}: PW-1 names no one-at-a-time rule`).toBe(true);
+      expect(/직렬|serially/i.test(srs), `${bundle}: PW-1 names no serial rule`).toBe(true);
       expect(/병렬로 돌리지 않는다|never (?:run|runs) (?:them |it )?in parallel/i.test(srs), `${bundle}: PW-1 does not forbid parallel SRS authoring`).toBe(true);
       const sds = step(text, 2);
       expect(/병렬|in parallel/i.test(sds), `${bundle}: PW-2 is not parallel`).toBe(true);
@@ -132,7 +133,8 @@ describe("FR-FLOW-188 AC-1 — the contract defines the run and both skills cite
       const text = contractText(bundle);
       expect(text.includes("worktree-lane.md"), `${bundle}`).toBe(true);
       const worker = step(text, 6);
-      expect(fences(worker).join("\n") + worker, `${bundle}: PW-6`).toMatch(/switch -C kiwi\/orch\/\{run_id\}\/\{laneId\} <base_sha>/);
+      // Lane-branch preparation is worktree-lane.md §2's alone (FR-FLOW-122 AC-8); PW-6 step 1 points at it.
+      expect(worker, `${bundle}: PW-6 step 1`).toMatch(/^1\. [^\n]*`worktree-lane\.md` §2/m);
       expect(worker, `${bundle}: PW-6 preflight`).toMatch(/orchestrate preflight[^\n]*--role lane/);
     });
 
@@ -167,8 +169,10 @@ describe("FR-FLOW-188 AC-2 — what a worker runs and what it never writes", () 
       }
       // FR-FLOW-188 AC-2 (4.1.0): the worker runs its wave's requirement set; under --sds its wave SDS:
       // `<sds_path>` is the lane's file of the wave's SDS files (§3), `docs/sds/{run_id}-wave-{n}.sds.md` unsplit.
-      expect(pm, `${bundle}`).toMatch(/--req-filter <(그 wave 의|the wave's) requirements\[\]>/);
-      expect(worker, `${bundle}: the --sds branch of the worker call`).toMatch(/`--sds` 면 `--req-filter` 대신 `--sds <sds_path>`|Under `--sds`, give `--sds <sds_path>` in place of `--req-filter`/);
+      // FR-FLOW-188 AC-2 as rewritten for 5.3.0 (FR-FLOW-216 AC-1): one kiwi-pm call per requirement, and
+      // under --sds the fragment holding that requirement is given beside --req-filter, not in its place.
+      expect(pm, `${bundle}`).toMatch(/--req-filter <(요구 하나|one requirement)>/);
+      expect(worker, `${bundle}: the --sds branch of the worker call`).toMatch(/`--sds` 면 그 요구를 `@req` 로 담은 조각을 `--sds <그 조각>` 으로 함께 준다|Under `--sds`, also give the fragment whose `@req` holds that requirement as `--sds <that fragment>`/);
       const stages = numbered(contractText(bundle), 3);
       const files = stages.split("\n").find((line) => line.includes("`<sds_path>`")) ?? "";
       expect(files, `${bundle}: §3 does not define <sds_path>`).not.toBe("");
@@ -199,14 +203,17 @@ describe("FR-FLOW-188 AC-3 — declared dependencies and write-set-disjoint stag
   for (const bundle of BUNDLES) {
     it(`FR-FLOW-188 AC-3 ${bundle}: the decomposition declares depends_on[] and a wave without it depends on every earlier wave`, () => {
       const decomposition = normaliseEol(readVariant(`skills/${bundle}/_shared/kiwi/wave-decomposition.md`));
-      const line = decomposition.split("\n").find((l) => l.includes("depends_on[]")) ?? "";
-      expect(line, `${bundle}: wave-decomposition.md names no depends_on[]`).not.toBe("");
-      expect(/앞 wave 전부에 의존|depends on every earlier wave/.test(decomposition), `${bundle}: no default dependency`).toBe(true);
+      // Rewritten 2026-11-05 with FR-FLOW-212 AC-1: the 2.0.0 graph declares dependencies as `edges`, and
+      // none is implied from node order (FR-NODE-244 AC-6).
+      const line = decomposition.split("\n").find((l) => l.includes("`edges`")) ?? "";
+      expect(line, `${bundle}: wave-decomposition.md names no edges`).not.toBe("");
+      const stages = numbered(contractText(bundle), 3);
+      expect(/간선이 없으면 의존도 없다 — 노드 순서로 의존을 추정하지 않는다|No edge means no dependency — none is inferred from node order/.test(stages), `${bundle}: a dependency is implied from node order`).toBe(true);
     });
 
     it(`FR-FLOW-188 AC-3 ${bundle}: a stage holds merged-dependency waves with pairwise disjoint SDS write sets`, () => {
       const stages = numbered(contractText(bundle), 3);
-      expect(/앞 wave 전부에 의존|depends on every earlier wave/.test(stages), `${bundle}`).toBe(true);
+      expect(/의존은 `edges` 다|dependencies between nodes are its `edges`/.test(stages), `${bundle}`).toBe(true);
       expect(/서로소|pairwise disjoint/.test(stages), `${bundle}: no disjointness`).toBe(true);
       // FR-FLOW-188 AC-3 (4.1.0): the write set is the entry's files[], plus the SDS Files ∪ Test Plan under --sds,
       // and the stage is computed from the declaration file (FR-FLOW-195), not from --sds/--depends.

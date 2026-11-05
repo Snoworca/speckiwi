@@ -11,6 +11,7 @@ import type { Result } from "../core/result.js";
  * of the PRD or the target that `prd check` and `validate` report, a validation error.
  */
 export const CLI_EXIT_CODES: Readonly<Record<string, number>> = Object.freeze({
+  VALIDATION: 1,
   USAGE: 2,
   IO: 3,
   PARSE: 4,
@@ -28,6 +29,21 @@ export const CLI_EXIT_CODES: Readonly<Record<string, number>> = Object.freeze({
   PRD_CURSOR_DONE: 5,
   PRD_LEDGER_CORRUPT: 4,
   PRD_CURSOR_DUPLICATE_ITEM: 1
+});
+
+/**
+ * @req FR-NODE-137 — the `orchestrate` namespace's own table (05 §10.6): 0 success, 1 an operational
+ * error, 2 a gate refusal whose payload names a `GateId`. A usage error a verb detects itself is an
+ * operational error there, at 1 — IR-CLI-114 AC-1 and FR-NODE-247 AC-1 fix that exit for a wrong
+ * selector — so exit 2 keeps meaning one thing in that namespace. A read verb whose report holds an
+ * error finding exits 1 with the report (FR-NODE-246 AC-1). Commander's own argument errors are mapped
+ * by the CLI entry for every namespace alike.
+ */
+export const ORCHESTRATE_EXIT_CODES = Object.freeze({
+  OK: 0,
+  OPERATIONAL_ERROR: 1,
+  REPORTED_ERRORS: 1,
+  GATE_REFUSAL: 2
 });
 
 export function exitCodeFor(code: string): number {

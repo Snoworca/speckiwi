@@ -33,7 +33,7 @@ export function formatDiagnosticsSummary(result: ValidationResult): DiagnosticsS
   return { errors: result.errors.length, warnings: result.warnings.length, byCode };
 }
 
-function coveredAcIds(row: EvidenceRow): Set<string> {
+function coveredAcIds(row: Pick<EvidenceRow, "covers">): Set<string> {
   return new Set(
     row.covers
       .split(/[,\s;]+/)
@@ -42,7 +42,8 @@ function coveredAcIds(row: EvidenceRow): Set<string> {
   );
 }
 
-function coversAcceptanceCriterion(row: EvidenceRow, acId: string): boolean {
+/** Whether an evidence row's `Covers` cell covers `acId`: `all`, or the id among its tokens. */
+export function coversAcceptanceCriterion(row: Pick<EvidenceRow, "covers">, acId: string): boolean {
   const covered = coveredAcIds(row);
   return covered.has("all") || covered.has(acId.toLowerCase());
 }

@@ -276,9 +276,11 @@ describe("FR-FLOW-046 — wave verification record in the shared wave-event cont
       /`in-progress`\s*\/\s*`pass`\s*\/\s*`fail-residual`\s*\/\s*`fail-cap`/.test(verification),
       `${copy} the verdict enum must list a non-terminal value for a round that is not the last`
     ).toBe(true);
+    // FR-FLOW-221 AC-4 (5.3.0): `findings {kept, dropped}` and `red_tests[]` replace the two verifier
+    // roll-ups `axis_a` / `axis_b`; the object must carry the keep/drop record the engine writes.
     expect(
-      /ALL_MATCH/.test(verification) && /substantive_clean/.test(verification),
-      `${copy} the verification object must carry both verifier roll-ups`
+      /^\| `findings` \|[^\n]*`\{ kept: n, dropped: n \}`/m.test(verification) && /^\| `red_tests` \|/m.test(verification),
+      `${copy} the verification object must carry the kept/dropped counts and the red tests`
     ).toBe(true);
   });
 
@@ -559,9 +561,11 @@ describe("FR-FLOW-047/048/049/051 — waves-event v1.2.0 continuity fields", () 
     // AC-6: the round-count reconciliation binds both axes, and an invalid round costs the streak.
     const rowCountRule = line(verification, /행 수/);
     expect(rowCountRule, `${copy} must state the row-count reconciliation rule`).not.toBe("");
+    // FR-FLOW-221 AC-4 (5.3.0): one verifier per round, two under --max — the rule binds every
+    // verifier of the round rather than the two stances that no longer exist.
     expect(
-      /두 검증자 \*\*모두\*\*/.test(rowCountRule),
-      `${copy} the row-count rule must bind BOTH verifiers, not only the intent axis`
+      /그 라운드의 검증자 \*\*모두\*\*/.test(rowCountRule),
+      `${copy} the row-count rule must bind every verifier of the round`
     ).toBe(true);
     expect(/\*\*무효\*\*/.test(rowCountRule), `${copy} a round whose row count misses the denominator must be invalid`).toBe(
       true

@@ -139,21 +139,20 @@ describe("FR-FLOW-143 AC-5 — the guarantee the axes carried is not weakened", 
   });
 
   it.each(COPIES)("FR-FLOW-143 AC-5: %s still blocks the phase on a missing red", (_label, relPath) => {
-    // Scoped to the CRITICAL line of §4.2, not to the file. Searching the whole document only
+    // Scoped to the red-verification row of §4.2, not to the file. Searching the whole document only
     // proves the phrase exists somewhere; the phrase also appears in prose, so the blocking
-    // attribution could be downgraded while this stayed green.
+    // attribution could be downgraded while this stayed green. FR-FLOW-221 AC-3 (5.3.0): the blocking
+    // attribution is a kept finding with Phase 2 blocked, no longer a CRITICAL severity line.
     const text = body(relPath);
-    const critical = section(text, "### 4.2 ")
-      .split(/\r?\n/)
-      .find((line) => line.includes("**CRITICAL**")) ?? "";
-    expect(critical, "§4.2 declares no CRITICAL line").not.toBe("");
-    expect(critical, "red 미발생 is no longer a blocking condition").toMatch(/red 미발생/);
+    const critical = scriptRow(text, "red-verification").at(-1) ?? "";
+    expect(critical, "§4.2 declares no red-verification row").not.toBe("");
+    expect(critical, "red 미발생 is no longer a blocking condition").toMatch(/red 미발생[^|]*kept finding[^|]*Phase 2 진입 차단/);
   });
 
   it.each(COPIES)("FR-FLOW-143 AC-5: %s keeps the script verdicts blocking, not advisory", (_label, relPath) => {
     const table = scriptTable(body(relPath));
     expect(table, "the script decision table was not found").not.toBe("");
-    expect(table, "the req-mapping verdict no longer blocks").toMatch(/CRITICAL/);
+    expect(table, "the req-mapping verdict no longer blocks").toMatch(/kept finding\(도구 출력이 증거\), Phase 2 진입 차단/);
     expect(table, "the script verdicts were downgraded to advisory").not.toMatch(/WARN|경고만|기록만|정보만/);
   });
 });
@@ -317,7 +316,8 @@ describe("FR-FLOW-143 AC-5 — the evidence fields and the blocking verdicts, on
     const text = body(relPath);
     const mapping = scriptRow(text, "req-mapping").at(-1) ?? "";
     const red = scriptRow(text, "red-verification").at(-1) ?? "";
-    expect(mapping, "a req-mapping violation no longer blocks Phase 2").toMatch(/CRITICAL, Phase 2 진입 차단/);
-    expect(red, "a missing or mismatched red no longer blocks").toMatch(/red 미발생·신호 불일치 시 CRITICAL/);
+    // FR-FLOW-221 AC-3 (5.3.0): a script verdict is a kept finding — its output is the proof — and blocks Phase 2.
+    expect(mapping, "a req-mapping violation no longer blocks Phase 2").toMatch(/위반은 kept finding\(도구 출력이 증거\), Phase 2 진입 차단/);
+    expect(red, "a missing or mismatched red no longer blocks").toMatch(/red 미발생·신호 불일치는 kept finding\(러너 출력이 증거\), Phase 2 진입 차단/);
   });
 });

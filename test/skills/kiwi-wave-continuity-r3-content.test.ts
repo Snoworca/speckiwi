@@ -98,8 +98,6 @@ function withModule(body: string, headingRe: RegExp, moduleName: string): string
   return `${sectionUnder(body, headingRe)}\n${moduleRegion(body, moduleName)}`;
 }
 
-const BASELINE_SECTION = /^#{2,4}\s.*설계 기준선/;
-const COVERAGE_SECTION = /^#{2,4}\s.*분해 커버리지 게이트/;
 
 /** The single line containing the first match of `re`. "" when absent. */
 function lineWith(text: string, re: RegExp): string {
@@ -276,14 +274,16 @@ describe("R3-H1 — kiwi-coder resolves a preservation gate on recorded evidence
       it("FR-FLOW-063 AC-4: makes the wave layer cite the same rule so the two verdicts cannot diverge", () => {
         const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
         expect(stance, `${variant}: the verifier-stance section must exist`).not.toBe("");
-        const rule = lineWith(stance, /kiwi-coder\s*§0\.20\.4/);
+        // 5.3.0: §5.5.2 names the criteria directly — kiwi-coder §0.20.3's closed list — rather than the
+        // §0.20.4 evidence rule the retired two-value verdict used.
+        const rule = lineWith(stance, /kiwi-coder\s*§0\.20\.3/);
         expect(
           rule,
-          `${variant}: kiwi-wave-master §5.5.2 must cite kiwi-coder §0.20.4 as the shared judgement rule`
+          `${variant}: kiwi-wave-master §5.5.2 must cite kiwi-coder §0.20.3 as the shared judgement criteria`
         ).not.toBe("");
         expect(
-          /같은 (?:규칙|문장)|동일한 (?:규칙|문장)/.test(rule),
-          `${variant}: the sentence must state that both layers share one rule, not merely mention the other section`
+          /closed list 와 같다/.test(rule),
+          `${variant}: the sentence must state that both layers judge by one list, not merely mention the other section`
         ).toBe(true);
       });
     });
@@ -526,9 +526,11 @@ describe("R3-H5 — resuming the pipeline stage carries its scope", () => {
         const resume = sectionUnder(moduleRegion(body, "parallel-waves"), /^##\s.*6\.\s*(?:재개|Resume)/);
         expect(resume, `${variant}: parallel-waves.md §6 must exist`).not.toBe("");
         const pm = lineWith(resume, /`pm-state\.json`/);
+        // 5.3.0 (FR-FLOW-216 AC-3): the cursor is the requirement-ID trailer commits, not the lane.
         expect(
-          /`\/kiwi-pm`[^\n]*(?:다시 돌리지 않|does not run again)/.test(pm),
-          `${variant}: a lane whose trailer commit already landed must not run kiwi-pm again`
+          /(?:요구 ID trailer 커밋|requirement-ID trailer commits)/.test(pm) &&
+            /(?:`<base_sha>\.\.<레인 브랜치>` 범위에 있는 요구는 끝난 것으로 보고 다시 돌리지 않는다|lies in the range `<base_sha>\.\.<lane branch>` is done and does not run again)/.test(pm),
+          `${variant}: a requirement whose implementation commit already landed must not run kiwi-pm again`
         ).toBe(true);
         expect(/`--resume`/.test(pm), `${variant}: kiwi-pm must be entered with --resume when its state exists`).toBe(true);
       });
@@ -560,10 +562,13 @@ describe("R3-H5 — resuming the pipeline stage carries its scope", () => {
 describe("R3-H6 — an out-of-scope exclusion is consented, classified and re-checked", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
+      // Rewritten 2026-11-05 with FR-FLOW-212 AC-2 and AC-4: the design baseline left. The closed vocabulary is
+      // `wave-decomposition.md §7`, the consent is §2's range narrowing (`scope.requirements`), and the final
+      // pass re-reads what that narrowing left out.
       it("classifies each exclusion with a closed vocabulary", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
-        expect(baseline, `${variant}: the design-baseline section must exist`).not.toBe("");
-        const rule = lineWith(baseline, /`exclusion_class`/);
+        const decomposition = withModule(skillBody(readWave(variant)), /^##\s*3\./, "wave-decomposition");
+        expect(decomposition, `${variant}: the decomposition section must exist`).not.toBe("");
+        const rule = lineWith(decomposition, /`exclusion_class`/);
         expect(rule, `${variant}: an exclusion must carry a classification, not only free-text reason`).not.toBe("");
         for (const member of EXCLUSION_CLASSES) {
           expect(
@@ -585,12 +590,12 @@ describe("R3-H6 — an out-of-scope exclusion is consented, classified and re-ch
           `${variant}: with no gate row the exclusion falls to the auto committee, which is the cheapest way to shrink every denominator`
         ).toBe(true);
         expect(
-          /§3\.2/.test(at(cells, 3)),
-          `${variant}: the gate's origin cell must point at §3.2, where the coverage gate reads the exclusions`
+          /^§3$/.test(at(cells, 3)),
+          `${variant}: the gate's origin cell must point at §3, where the decomposition narrows the range`
         ).toBe(true);
-        const gate = sectionUnder(skillBody(readWave(variant)), COVERAGE_SECTION);
+        const gate = withModule(skillBody(readWave(variant)), /^##\s*3\./, "wave-decomposition");
         const rule = lineWith(gate, /`out-of-scope-user-consent`/);
-        expect(rule, `${variant}: §3.2 must name the gate so the halt has an origin`).not.toBe("");
+        expect(rule, `${variant}: the decomposition must name the gate so the halt has an origin`).not.toBe("");
         expect(
           /`--auto`[^\n]*(?:중단|멈춘다)|중단[^\n]*`--auto`/.test(rule),
           `${variant}: the consent must be stated as surviving --auto`
@@ -601,7 +606,7 @@ describe("R3-H6 — an out-of-scope exclusion is consented, classified and re-ch
       it("puts every excluded item back into the final-pass denominator as its own layer", () => {
         const final = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.6/);
         expect(final, `${variant}: the final-verification section must exist`).not.toBe("");
-        const rule = lineWith(final, /`out_of_scope`/);
+        const rule = lineWith(final, /`scope\.requirements`/);
         expect(rule, `${variant}: the final pass must re-read the exclusions once`).not.toBe("");
         expect(
           /\*\*전량\*\*/.test(rule),
@@ -623,9 +628,11 @@ describe("R3-H6 — an out-of-scope exclusion is consented, classified and re-ch
 describe("R3-H7 — declared user constraints are collected into the artifact", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
+      // Rewritten 2026-11-05 with FR-FLOW-212 AC-2: the intake moved from the design baseline to the
+      // `constraints_path` row of `wave-decomposition.md §1`, which wave-master §3 runs.
       it("names the sources a constraint is extracted from", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
-        const rule = lineWith(baseline, /제약을 (?:추출|수집)/);
+        const inputs = withModule(skillBody(readWave(variant)), /^##\s*3\./, "wave-decomposition");
+        const rule = lineWith(inputs, /제약을 (?:추출|수집)/);
         expect(rule, `${variant}: the collection step must exist; the judging side is already complete`).not.toBe("");
         for (const source of ["사용자 프롬프트", "대화 로그", "`--constraint`"]) {
           expect(
@@ -636,9 +643,9 @@ describe("R3-H7 — declared user constraints are collected into the artifact", 
         expect(HEDGE.test(rule), `${variant}: the collection step must be an obligation, not advice`).toBe(false);
       });
 
-      it("fixes the extraction unit the way design_items are fixed", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
-        const rule = lineWith(baseline, /제약 문장 1건/);
+      it("fixes the extraction unit: one constraint sentence is one item", () => {
+        const inputs = withModule(skillBody(readWave(variant)), /^##\s*3\./, "wave-decomposition");
+        const rule = lineWith(inputs, /제약 문장 1건/);
         expect(rule, `${variant}: the constraint counting unit must be defined`).not.toBe("");
         expect(
           /제약 문장 1건\s*=\s*1\s*항목/.test(rule),
@@ -668,39 +675,10 @@ describe("R3-H7 — declared user constraints are collected into the artifact", 
 // =============================================================================================
 // R3-H8 — constraint_layer is the only layer whose denominator is not externally fixed or frozen.
 // =============================================================================================
-describe("R3-H8 — the constraint denominator is externally fixed and frozen", () => {
-  for (const variant of VARIANTS) {
-    describe(`${variant} variant`, () => {
-      it("pins constraint_layer.expected to the recorded artifact", () => {
-        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
-        const rule = lineWith(stance, /`constraint_layer\.expected`/);
-        expect(rule, `${variant}: the constraint denominator must be pinned like the other three`).not.toBe("");
-        expect(
-          /`constraints_path`/.test(rule),
-          `${variant}: expected must equal the item count of the latest constraints_path artifact`
-        ).toBe(true);
-        expect(
-          /검증자가 (?:스스로 )?(?:정하지|산정하지) 않는다/.test(rule),
-          `${variant}: the constraint denominator must be externally fixed, exactly like the REQ/AC and design ones`
-        ).toBe(true);
-        expect(HEDGE.test(rule), `${variant}: the external-denominator rule must be absolute, not hedged`).toBe(false);
-      });
-
-      it("adds constraints to the frozen denominator so the row-count rule reaches it", () => {
-        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
-        const rule = lineWith(stance, /`frozen_denominator`/);
-        expect(rule, `${variant}: the frozen denominator must be recorded`).not.toBe("");
-        // The four existing keys must survive the addition.
-        for (const key of ["round", "req_ac", "design_items", "preservation", "constraints"]) {
-          expect(
-            new RegExp("`" + key + "`").test(rule),
-            `${variant}: frozen_denominator must record ${key}`
-          ).toBe(true);
-        }
-      });
-    });
-  }
-});
+// R3-H8 (FR-FLOW-065 AC-3: `constraint_layer.expected` fixed from the artifact, `constraints` as a key of
+// `frozen_denominator`) expired 2026-11-05 → FR-FLOW-220: the verifier receives `constraints_path` and a
+// violation is a kept red test citing the constraint (machine-checks-first.fr-flow-220.test.ts AC-2 · AC-3);
+// the freeze record is `{ round, req_ac }` (kiwi-wave-continuity-r2-content.test.ts R2-M5).
 
 // =============================================================================================
 // R3-H9 — the final pass requires a preservation verdict whose denominator has no input at run scope.
@@ -744,7 +722,8 @@ describe("R3-H9 — the final pass reads the preservation denominator over the r
       it("orders the run-window capture before the final pass runs", () => {
         const final = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.6/);
         const captureAt = final.indexOf("run_diff_window");
-        const verdictAt = final.indexOf("unapproved-damage");
+        // 5.3.0: the final pass's preservation condition is the tool's rows, none left unresolved.
+        const verdictAt = final.indexOf("최종 패스도 보존 검사가 승인되지 않은 행을 하나도 남기지 않을 것");
         expect(captureAt, `${variant}: the run window must be named in the final pass`).toBeGreaterThan(-1);
         expect(verdictAt, `${variant}: the final pass must keep its preservation condition`).toBeGreaterThan(-1);
         expect(
@@ -778,7 +757,7 @@ describe("R3-H10 — a fail-residual wave halts through a declared gate", () => 
 
       it("stops folding fail-residual into the cap-exhaustion row", () => {
         const gates = gateSection(skillBody(readWave(variant)));
-        const cells = rowCells(gates, /`wave-verify-residual-critical`/);
+        const cells = rowCells(gates, /`wave-verify-kept-finding`/);
         expect(cells.length > 3, `${variant}: the existing residual gate row must survive`).toBe(true);
         expect(
           /`fail-residual`[^|]*별도 행|별도 행[^|]*`fail-residual`/.test(at(cells, 2)),
@@ -788,7 +767,7 @@ describe("R3-H10 — a fail-residual wave halts through a declared gate", () => 
 
       it("covers fail-residual in the final pass too", () => {
         const gates = gateSection(skillBody(readWave(variant)));
-        const cells = rowCells(gates, /`final-verify-residual-critical`/);
+        const cells = rowCells(gates, /`final-verify-kept-finding`/);
         expect(cells.length > 3, `${variant}: the final-pass gate row must exist`).toBe(true);
         expect(
           /`fail-residual`/.test(at(cells, 2)),
@@ -796,26 +775,9 @@ describe("R3-H10 — a fail-residual wave halts through a declared gate", () => 
         ).toBe(true);
       });
 
-      // R3-M17: the two readings of a MEDIUM residual must be split into an explicit branch.
-      it("branches the Normal early exit away from the user-decision path", () => {
-        const exit = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.4/);
-        expect(exit, `${variant}: the termination-condition section must exist`).not.toBe("");
-        const rule = lineWith(exit, /Normal 조기 종료/);
-        expect(rule, `${variant}: the two readings of a MEDIUM residual must be separated`).not.toBe("");
-        expect(
-          /`pass`[^\n]*`residual`/.test(rule),
-          `${variant}: the early exit must be stated as pass + residual`
-        ).toBe(true);
-        expect(
-          /사용자 결정을 받지 않는다/.test(rule),
-          `${variant}: the early exit must NOT also be a user decision — that is the contradiction being closed`
-        ).toBe(true);
-        expect(
-          /`wave-verify-fail-residual`/.test(exit),
-          `${variant}: the other branch must name the gate it halts through`
-        ).toBe(true);
-        expect(HEDGE.test(rule), `${variant}: the branch must be absolute, not hedged`).toBe(false);
-      });
+      // R3-M17 (FR-FLOW-065 AC-6: the two readings of a MEDIUM residual) expired 2026-11-05 → FR-FLOW-221:
+      // with no severities there is one reading; pass + residual versus fail-residual is pinned on
+      // verify-loop §5 (kiwi-shared-wave-engine-content.test.ts, FR-FLOW-106 AC-2).
     });
   }
 });
@@ -929,67 +891,14 @@ describe("R3-M3 — the final pass reuses the delegation and carry-forward machi
 // =============================================================================================
 // R3-M4 — the final denominator's integration items have no fixing subject or unit.
 // =============================================================================================
-describe("R3-M4 — integration items are materialised like design items", () => {
-  for (const variant of VARIANTS) {
-    describe(`${variant} variant`, () => {
-      it("fixes integration_items at baseline time with the same coordinates", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
-        const rule = lineWith(baseline, /`integration_items`/);
-        expect(rule, `${variant}: the cross-wave integration items must be materialised, not improvised`).not.toBe("");
-        for (const key of ["id", "heading_path", "line_start", "line_end", "statement"]) {
-          expect(
-            new RegExp("`" + key + "`").test(rule),
-            `${variant}: each integration item must record ${key}, like a design item`
-          ).toBe(true);
-        }
-      });
-
-      it("makes the final denominator the union plus those items", () => {
-        const final = sectionUnder(skillBody(readWave(variant)), /^##\s*5\.6/);
-        const rule = lineWith(final, /`integration_items`/);
-        expect(rule, `${variant}: the final pass must read the recorded integration items`).not.toBe("");
-        expect(
-          /`design_items`/.test(rule),
-          `${variant}: the denominator must be the recorded design items plus the recorded integration items`
-        ).toBe(true);
-        expect(
-          /검증자가 (?:스스로 )?(?:정하지|산정하지) 않는다/.test(rule),
-          `${variant}: the final denominator must be externally fixed too, or the verifier sizes its own workload`
-        ).toBe(true);
-        expect(HEDGE.test(rule), `${variant}: the final denominator rule must be absolute, not hedged`).toBe(false);
-      });
-    });
-  }
-});
+// R3-M4 (`integration_items`) expired with FR-FLOW-212 AC-2. The final pass's denominator is the run's PRD items
+// and the union of the node requirement sets (FR-FLOW-049 AC-2 as revised; prd-items-computed.fr-flow-219).
 
 // =============================================================================================
 // R3-M5 — a carry-forward wave's design baseline interface contradicts itself across three docs.
 // =============================================================================================
-describe("R3-M5 — a carry-forward wave gets a real design baseline", () => {
-  for (const variant of VARIANTS) {
-    describe(`${variant} variant`, () => {
-      it("FR-FLOW-060 AC-6: converts each carried finding into exactly one design item", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
-        const rule = lineWith(baseline, /이월 finding 목록/);
-        expect(rule, `${variant}: the carry-forward substitute denominator must exist`).not.toBe("");
-        expect(
-          /이월 finding 1건\s*=\s*`design_items` 1 ?항목/.test(rule),
-          `${variant}: the substitute must be expressed in the same unit the denominator rule reads, or the two contradict`
-        ).toBe(true);
-        expect(HEDGE.test(rule), `${variant}: the conversion rule must be absolute, not hedged`).toBe(false);
-      });
-
-      it("materialises the excerpt for that wave too", () => {
-        const baseline = sectionUnder(skillBody(readWave(variant)), BASELINE_SECTION);
-        const rule = lineWith(baseline, /이월 finding 목록/);
-        expect(
-          /`excerpt_path`/.test(rule),
-          `${variant}: §4 requires an excerpt for every wave, so a carry-forward wave must produce one from its finding list`
-        ).toBe(true);
-      });
-    });
-  }
-});
+// R3-M5 (FR-FLOW-060 AC-6, a carry-forward wave's design baseline) expired with FR-FLOW-212 AC-2. A carried
+// residual reaches the receiving wave through the incremental call's `residual` row (FR-FLOW-218 AC-4).
 
 // =============================================================================================
 // R3-M6 — the wave-to-pipeline target wiring rides on a side effect the resume path skips.
@@ -1015,9 +924,10 @@ describe("R3-M6 — the pipeline target is passed explicitly", () => {
         expect(run, `${variant}: the stage-execution section must exist`).not.toBe("");
         const rule = lineWith(run, /\*\*명시 전달\*\*/);
         expect(rule, `${variant}: §5 must state how the target reaches the wave's stages`).not.toBe("");
+        // Rewritten 2026-11-05 with FR-FLOW-212 AC-2: every wave shares the product target.
         expect(
-          /kiwi-sds[^\n]*`TARGET=wave-\{n\}`/.test(rule),
-          `${variant}: kiwi-sds must receive TARGET=wave-{n}`
+          /kiwi-sds[^\n]*`TARGET=<제품 target>`/.test(rule),
+          `${variant}: kiwi-sds must receive TARGET=<제품 target>`
         ).toBe(true);
         expect(/워커 카드[^\n]*`target`/.test(rule), `${variant}: the worker card must carry target`).toBe(true);
         expect(
@@ -1115,9 +1025,11 @@ describe("R3-M9 — the phase flow states that phases 2 to 4 repeat per stage", 
         expect(phases, `${variant}: the phase-flow section must exist`).not.toBe("");
         const rule = lineWith(phases, /stage 마다 반복/);
         expect(rule, `${variant}: the interleaving must be stated where the flow is drawn`).not.toBe("");
+        // Rewritten 2026-11-05 with FR-FLOW-212 AC-3: no wave registers a target, so there is no batch
+        // registration to refuse; the sentence instead keeps authoring out of the repeated phases.
         expect(
-          /일괄 등록하지 않는다/.test(rule),
-          `${variant}: the batch reading must be refused explicitly — §4 collects carried_into at wave entry, which a batch cannot do`
+          /SRS 는 Phase 1 에서 한 번 저작/.test(rule),
+          `${variant}: the repeated phases must not re-author the SRS`
         ).toBe(true);
         expect(HEDGE.test(rule), `${variant}: the interleaving rule must be absolute, not hedged`).toBe(false);
       });
@@ -1201,33 +1113,29 @@ describe("R3-M11 — a resumed run emits under a distinguishable key", () => {
 describe("R3-M12 — weakening is a denominator class and is never an intended improvement", () => {
   for (const variant of VARIANTS) {
     describe(`${variant} variant`, () => {
-      it("FR-FLOW-063 AC-5: adds weakening as its own class of verifier 2's denominator", () => {
-        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
-        const rule = lineWith(stance, /단언 약화/);
-        expect(rule, `${variant}: weakening must appear in the mechanically derived denominator`).not.toBe("");
+      // FR-FLOW-063 AC-5 as rewritten for 5.3.0: the tool reports the removals, and the weakenings it
+      // says it does not check are the verifier's — both inside the wave-layer judgement.
+      it("FR-FLOW-063 AC-5: the preservation judgement holds the tool's removals and the verifier's weakenings", () => {
+        const scope = sectionUnder(skillBody(readWave(variant)), /^###\s*5\.5\.2/);
+        const rule = lineWith(scope, /`orchestrate preservation check` 가/);
+        expect(rule, `${variant}: §5.5.2 must say what the tool reports`).not.toBe("");
+        expect(/지운 테스트 · 케이스 · 단언/.test(rule), `${variant}: the removals the tool reports`).toBe(true);
         expect(
-          /§0\.20\.3/.test(rule),
-          `${variant}: the criterion must be kiwi-coder's closed list, not the verifier's reading of "weaker"`
+          /도구가 보지 않는 단언 약화\(바뀐 기대값, 느슨해진 술어\)는 검증자가 판정한다/.test(rule),
+          `${variant}: the weakenings the tool does not check must be left to the verifier, not dropped`
         ).toBe(true);
-        expect(
-          /(?:네 부류|넷|4 ?부류)/.test(rule),
-          `${variant}: the denominator must be stated as four classes now, or the fourth reads as an aside`
-        ).toBe(true);
+        expect(/§0\.20\.3/.test(rule), `${variant}: the criterion must be kiwi-coder's closed list`).toBe(true);
       });
 
-      it("FR-FLOW-063 AC-5: forbids resolving a weakening as intended-improvement", () => {
-        const stance = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
-        const rule = lineWith(stance, /약화는[^\n]*`unapproved-damage`|`unapproved-damage`[^\n]*약화는/);
-        expect(rule, `${variant}: the weakening verdict must be fixed`).not.toBe("");
+      it("FR-FLOW-063 AC-5: a test weakening is never admitted by the wave gate", () => {
+        const engine = withModule(skillBody(readWave(variant)), /^###\s*5\.5\.2/, "verify-loop");
+        const row = lineWith(engine, /^\| 보존 \|/);
+        expect(/테스트 약화면 재진입으로 되돌린다/.test(row), `${variant}: a weakening goes back through re-entry`).toBe(true);
         expect(
-          /REQ|Task/.test(rule),
-          `${variant}: the sentence must say a REQ or Task citation does NOT resolve it — that is the loophole`
+          /`preservation check` 가 보지 않는다고 적은 단언 약화\(바뀐 기대값, 느슨해진 술어\)/.test(engine),
+          `${variant}: verify-loop §2 must leave the unchecked weakenings to the verifier`
         ).toBe(true);
-        expect(
-          /`intended-improvement`[^\n]*(?:쓰지 않는다|기록하지 않는다|될 수 없다)/.test(rule),
-          `${variant}: the sentence must forbid the improvement verdict outright`
-        ).toBe(true);
-        expect(HEDGE.test(rule), `${variant}: the prohibition must be absolute, not hedged`).toBe(false);
+        expect(HEDGE.test(row), `${variant}: the prohibition must be absolute, not hedged`).toBe(false);
       });
     });
   }

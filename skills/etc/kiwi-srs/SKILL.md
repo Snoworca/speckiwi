@@ -38,6 +38,14 @@ node -e "const f=require('fs').readFileSync(process.argv[1],'latin1').replace(/\
 
 ---
 
+## 핵심 규칙 — 요구 사이 의존 (FR-FLOW-208)
+
+요구 사이의 의존은 의존하는 요구에서 의존받는 요구로 `add_trace_link {type: "Requirement", relation: "depends_on"}` 하나로 적는다. 의존을 Requirement · Rationale · AC · 노트 문장에만 적지 않는다 — 문장에 적은 의존에는 같은 Trace Link 를 함께 단다.
+
+검증 라운드마다 `validate_spec` 이 이번 실행이 추가하거나 바꾼 요구에 낸 FR-PARSE-045 경고(산문에만 적은 의존, Type 이 `Requirement` 가 아닌 `depends_on` 행)는 하나하나 도구 진단이 붙은 kept finding 으로 keep 한다 — 그런 경고가 하나라도 남은 라운드는 통과하지 않는다.
+
+---
+
 신규 요구사항을 받아 **기존 코드 + 기존 speckiwi SRS**와 교차 분석하여 **4-way 분류** → **feasibility 판정** → **speckiwi MCP를 SSOT로 SRS 증분 작성·갱신**하는 스킬.
 
 **규칙 진술 원칙**: 본 문서의 모든 규칙은 **현재 적용되는 동작**만 declarative하게 기술한다. 연혁/정정/이관 주석은 git history 로 추적한다 (본문에 변경 이력 섹션 없음). 에이전트는 본문을 시간 차원 없이 그대로 적용한다.
@@ -71,7 +79,7 @@ pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` �
 | §0.15 | **Fabricated AC → OQ 강제**. AC 항목에 코드 증거 없거나 사용자 prompt 에 명시 없는 구체 값(예: 400-error body shape, 특정 timeout 초)이 포함되면 AC 라인에 포함 금지 — 대신 §6 Open Questions 에 `[NEEDS-USER]` 라벨로 등재. AC는 결정 가능 명제만. **Canonical placeholder grammar**: AC 본문이 OQ 결정을 참조하면 `{{OQ-N}}` 형식만 허용. `<default per OQ-1>`, `pending decision`, `TBD` 등 자유 형식 금지 |
 | §0.16 | **Discarded/Draft 마커 정책**. kiwi-srs 는 본문 마커(strikethrough / `[DISCARDED]` / `[DRAFT]`) 적용을 skip — speckiwi `Status=discarded` + `add_completed_work` Change Notes 기록을 SSOT 로 간주. 인덱스 (`00.index.md`) `(discarded)`/`(draft)` 접미사도 speckiwi mutation 이 자동 처리 |
 | §0.17 | **finding_hash 정확화**. `finding_hash = sha1(utf8_bytes(f"{req_id or '_'}|{axis}|{evidence_path or '_'}"))` — lowercase hex digest 40자 결과 문자열, 포뮬러 리터럴(`"sha1('...')"`) 금지. **Test vector**: `sha1_hex("FR-TODO-004|ac|src/api.ts:7-11")` = `29430d304a3a6670c054ab111dca51e5b27fed3d`. 평가자는 동일 입력으로 디지스트 계산 → 불일치 시 자체 거절 |
-| §0.18 | **Canonical relation encoding**. REQ 간 의존성은 `add_trace_link { type: "Requirement", relation: "depends_on\|supersedes\|conflicts_with\|extends\|regression-only" }` 만 SSOT. `tags: ["depends_on:X"]` 같은 tag 형식 금지. **방향 SSOT**: trace_link 는 항상 `id: {신규 REQ} → reference: {기존 REQ}` 방향. e.g. `supersedes`: `{NEW-ID} supersedes {OLD-ID}` |
+| §0.18 | **Canonical relation encoding**. REQ 간 의존성은 `add_trace_link { type: "Requirement", relation: "depends_on\|supersedes\|conflicts_with\|extends\|regression-only" }` 만 SSOT. `tags: ["depends_on:X"]` 같은 tag 형식 금지. **방향 SSOT**: `depends_on` 은 신규·기존과 무관하게 의존하는 요구 → 의존받는 요구(`id: {의존하는 REQ} → reference: {의존받는 REQ}`) 방향이다(FR-FLOW-208). 그 밖의 relation 은 항상 `id: {신규 REQ} → reference: {기존 REQ}` 방향. e.g. `supersedes`: `{NEW-ID} supersedes {OLD-ID}` |
 | §0.19 | **외부 모듈 수정 시 사용자 확인 의무**. 작업 대상은 cwd 하위 모듈로 한정. cwd 외부 경로(상위 디렉토리, 형제 프로젝트, 외부 패키지, monorepo 다른 워크스페이스) 수정 신호 감지 시 즉시 중단 + User clarification gate. 상세는 §0.G2 결정표 |
 | §0.20 | **etc local-LLM profile SSOT**. 본 스킬은 `../_shared/kiwi/local-llm-profile.md` 를 따른다. `--max` 는 항상 기본값이고, multi-worker fanout 은 금지되며, 위임 worker/evaluator 는 한 번에 하나만 사용한다. 평가/개선 루프는 3회 연속 개선사항 없음 후 다음 단계로 진행 |
 | §0.21 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `../_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |

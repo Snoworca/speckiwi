@@ -211,7 +211,7 @@ describe("FR-FLOW-157 AC-2 — the terminal-line section is held byte-exact from
 
   it.each(COPIES)("%s: two sentences reordered without changing a byte of either is refused", (copy) => {
     const A = "복구: 라운드를 다시 한다.";
-    const B = "게이트: `final-verify-residual-critical` · `wave-append-cap-exhausted`.";
+    const B = "게이트: `final-verify-kept-finding` · `wave-append-cap-exhausted`.";
     const reordered = terminalText(plantInBody(copy, `${A}\n${B}`, `${B}\n${A}`));
     expect(reordered, `${copy}: a pure reorder inside the compared section must be refused`).not.toBe(GOLDEN);
     // Proof that it IS a pure reorder: the same characters, in a different order. Without this the

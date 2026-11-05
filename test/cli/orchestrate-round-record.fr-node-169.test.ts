@@ -34,18 +34,23 @@ interface Run {
 
 const PROOF = { kind: "digest", ref: "sha256:0123456789abcdef" };
 
+/** The verifier every non-`--max` round names; a `--max` round names two (FR-NODE-254 AC-2). */
+const V = "verifier-1";
+
 function round(overrides: Partial<Round> = {}): Round {
+  const mode = overrides.mode ?? "normal";
   return {
     loop: "P",
     scope: "wave-1-post",
     roundIndex: 1,
-    mode: "normal",
+    mode,
     cap: 5,
     streakBefore: 0,
     frozenDenominator: 2,
+    verifiers: mode === "max" ? [V, "verifier-2"] : [V],
     rows: [
-      { id: "R-1", verdict: "pass", severity: "MEDIUM" },
-      { id: "R-2", verdict: "pass", severity: "MEDIUM" }
+      { id: "R-1", verdict: "pass", kept: false, verifier: V },
+      { id: "R-2", verdict: "pass", kept: false, verifier: V }
     ],
     fixAppliedThisRound: false,
     regression: { failingTests: [], baselineFailingTests: [], exitCode: 0 },
@@ -258,24 +263,24 @@ describe("FR-NODE-169 AC-7 — the line carries an externally recomputable proof
 });
 
 describe("FR-NODE-169 AC-8 — verification is an explicit snake_case projection", () => {
-  it("carries the mapped verdict, rounds, cap, residual and axis_b.open in snake_case", async () => {
+  it("carries the mapped verdict, rounds, cap, residual and the kept/dropped findings in snake_case", async () => {
     // Every count below is DISTINCT on purpose. The fixture this replaces set `roundIndex` and
     // `frozenDenominator` both to 2, so swapping the two sources of `frozen_denominator` stayed
-    // green, and it left three of the four severity buckets at 0, so cycling the three labels stayed
-    // green too. Distinct values are what make the projection's shape observable.
+    // green. Distinct values are what make the projection's shape observable. FR-NODE-254 AC-3
+    // replaced the severity-bucketed `axis_b.open` with `findings {kept, dropped}` and `red_tests`.
     const result = await record(
       round({
         roundIndex: 3,
         cap: 4,
         frozenDenominator: 7,
         rows: [
-          { id: "R-1", verdict: "pass", severity: "MEDIUM" },
-          { id: "R-2", verdict: "mismatch", severity: "CRITICAL" },
-          { id: "R-3", verdict: "mismatch", severity: "HIGH" },
-          { id: "R-4", verdict: "mismatch", severity: "HIGH" },
-          { id: "R-5", verdict: "mismatch", severity: "LOW" },
-          { id: "R-6", verdict: "mismatch", severity: "LOW" },
-          { id: "R-7", verdict: "mismatch", severity: "LOW" }
+          { id: "R-1", verdict: "pass", kept: false, verifier: V },
+          { id: "R-2", verdict: "mismatch", kept: true, evidence: "test/r-2.test.ts > red", verifier: V },
+          { id: "R-3", verdict: "mismatch", kept: false, verifier: V },
+          { id: "R-4", verdict: "mismatch", kept: false, verifier: V },
+          { id: "R-5", verdict: "mismatch", kept: false, verifier: V },
+          { id: "R-6", verdict: "mismatch", kept: false, verifier: V },
+          { id: "R-7", verdict: "mismatch", kept: false, verifier: V }
         ],
         residual: [{ id: "F-1", reasonClass: "design-gap" }]
       })
@@ -285,7 +290,8 @@ describe("FR-NODE-169 AC-8 — verification is an explicit snake_case projection
     expect(verification.rounds).toBe(3);
     expect(verification.cap).toBe(4);
     expect(verification.residual).toEqual([{ id: "F-1", reason_class: "design-gap" }]);
-    expect((verification.axis_b as { open?: unknown }).open).toEqual({ critical: 1, high: 2, medium: 0, low: 3 });
+    expect(verification.findings).toEqual({ kept: 1, dropped: 5 });
+    expect(verification.red_tests).toEqual(["test/r-2.test.ts > red"]);
     expect(verification.frozen_denominator).toEqual({ round: 3, req_ac: 7 });
     // The camelCase keys of `Round` must not survive into the projection: the validator reads
     // snake_case, and a whole-object dump validates vacuously.
@@ -302,14 +308,13 @@ describe("FR-NODE-169 AC-9 / FR-NODE-170 AC-5 — the verdict map, and the void 
     expect(cleanLine.verdict).toBe("pass");
     expect(cleanLine.invalid_round, "a valid round declares nothing").toBeUndefined();
 
-    // A terminal verdict is the case `truncated-residual` is live on, so the residual list must
-    // enumerate the open rows — one open MEDIUM row, which `normal` mode does not treat as blocking,
-    // so the gate is still met and the verdict is `pass-with-residual`.
+    // One dropped finding does not block the gate, so with a carried residual the verdict is
+    // `pass-with-residual`.
     const withResidual = await record(
       round({
         rows: [
-          { id: "R-1", verdict: "pass", severity: "MEDIUM" },
-          { id: "R-2", verdict: "mismatch", severity: "MEDIUM" }
+          { id: "R-1", verdict: "pass", kept: false, verifier: V },
+          { id: "R-2", verdict: "mismatch", kept: false, verifier: V }
         ],
         residual: [{ id: "F-1", reasonClass: "design-gap" }]
       })
@@ -326,8 +331,8 @@ describe("FR-NODE-169 AC-9 / FR-NODE-170 AC-5 — the verdict map, and the void 
         cap: 8,
         roundIndex: 1,
         rows: [
-          { id: "R-1", verdict: "mismatch", severity: "HIGH" },
-          { id: "R-2", verdict: "pass", severity: "LOW" }
+          { id: "R-1", verdict: "mismatch", kept: true, evidence: "test/r-1.test.ts > red", verifier: V },
+          { id: "R-2", verdict: "pass", kept: false, verifier: V }
         ]
       })
     );
@@ -343,8 +348,8 @@ describe("FR-NODE-169 AC-9 / FR-NODE-170 AC-5 — the verdict map, and the void 
         cap: 1,
         roundIndex: 1,
         rows: [
-          { id: "R-1", verdict: "mismatch", severity: "HIGH" },
-          { id: "R-2", verdict: "pass", severity: "LOW" }
+          { id: "R-1", verdict: "mismatch", kept: true, evidence: "test/r-1.test.ts > red", verifier: V },
+          { id: "R-2", verdict: "pass", kept: false, verifier: V }
         ],
         residual: [{ id: "R-1", reasonClass: "design-gap" }]
       })
@@ -363,8 +368,8 @@ describe("FR-NODE-169 AC-9 / FR-NODE-170 AC-5 — the verdict map, and the void 
         label: "pass-with-residual",
         round: round({
           rows: [
-            { id: "R-1", verdict: "pass", severity: "MEDIUM" },
-            { id: "R-2", verdict: "mismatch", severity: "MEDIUM" }
+            { id: "R-1", verdict: "pass", kept: false, verifier: V },
+            { id: "R-2", verdict: "mismatch", kept: false, verifier: V }
           ],
           residual: [{ id: "F-1", reasonClass: "design-gap" }]
         })
@@ -374,8 +379,8 @@ describe("FR-NODE-169 AC-9 / FR-NODE-170 AC-5 — the verdict map, and the void 
         round: round({
           mode: "max",
           rows: [
-            { id: "R-1", verdict: "pass", severity: "MEDIUM" },
-            { id: "R-2", verdict: "mismatch", severity: "CRITICAL" }
+            { id: "R-1", verdict: "pass", kept: false, verifier: V },
+            { id: "R-2", verdict: "mismatch", kept: true, evidence: "test/r-2.test.ts > red", verifier: V }
           ],
           residual: [{ id: "F-1", reasonClass: "design-gap" }]
         })
@@ -391,8 +396,8 @@ describe("FR-NODE-169 AC-9 / FR-NODE-170 AC-5 — the verdict map, and the void 
           cap: 1,
           roundIndex: 1,
           rows: [
-            { id: "R-1", verdict: "mismatch", severity: "HIGH" },
-            { id: "R-2", verdict: "pass", severity: "LOW" }
+            { id: "R-1", verdict: "mismatch", kept: true, evidence: "test/r-1.test.ts > red", verifier: V },
+            { id: "R-2", verdict: "pass", kept: false, verifier: V }
           ],
           residual: [{ id: "R-1", reasonClass: "design-gap" }]
         })

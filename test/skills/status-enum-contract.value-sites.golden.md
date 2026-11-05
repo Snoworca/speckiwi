@@ -53,8 +53,8 @@ blocked	task-status	kiwi-pm/SKILL.md	이 done 또는 failed 로 확정된 때다
 deprecated	-	_shared/kiwi/auto-option.md	cle-gate-policy-stop", reason: "deprecated / frozen REQ 구현 정책 차단"},
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	evolving, stable, frozen, deprecated, or keep.
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | default | deprecated | required |
-deprecated	-	_shared/kiwi/parallel-waves.md	rements[] 의 요구(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는
-deprecated	-	_shared/kiwi/parallel-waves.md	rements[] 의 요구가 없거나 draft · deprecated · discarded)이며, 거절하면 lock 을
+deprecated	-	_shared/kiwi/parallel-waves.md	t-ready(노드의 요구가 없거나 draft · deprecated · discarded)이며, 거절하면 lock 을
+deprecated	-	_shared/kiwi/parallel-waves.md	waves 가 노드의 요구(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는
 deprecated	-	kiwi-coder/SKILL.md	- deprecated / frozen: §0.G6 lifecycle-g
 deprecated	-	kiwi-coder/SKILL.md	le-gate-deprecated-or-frozen | deprecated / frozen REQ 구현은 정책상 중단 | Phase
 deprecated	-	kiwi-commit-auto-push/SKILL.md	| deprecated | WARN 만 출력하고 trailer 부착 skip
@@ -90,7 +90,7 @@ deprecated	-	kiwi-srs-feasibility/SKILL.md	외: stable/frozen {x}, discarded/dep
 deprecated	-	kiwi-srs-sync/SKILL.md	Q AC 갱신 / (2) 코드 rollback / (3) deprecated 처리 |
 deprecated	-	kiwi-srs-sync/SKILL.md	rd 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에서 허용
 deprecated	-	kiwi-srs-sync/SKILL.md	로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정) 후 본 스킬 재실
-deprecated	-	kiwi-wave-master/SKILL.md	rements[] 의 요구(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는
+deprecated	-	kiwi-wave-master/SKILL.md	waves 가 노드의 요구(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는
 deprecated	alias-deprecated-note	kiwi-commit-auto-pr/SKILL.md	d" // inbound 호환 alias (deprecated). 본 스킬은 반환 시 항상 분리값(gh_cli_not
 deprecated	predecessor-skill-note	kiwi-srs-feasibility/SKILL.md	deprecated 예정인 snoworca-feasibility 의 후계
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	--qna-force (강제) ≠ --qna (deprecated alias): --qna-force 는 모호성이
@@ -133,13 +133,18 @@ discarded	-	kiwi-wave-master/SKILL.md	(없음 · draft · deprecated · discarde
 draft	-	_shared/kiwi/auto-option.md	ecycle-gate-draft 는 철회됐다 — draft 차단은 per-REQ skip 으로 대체되었고(FR-FL
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	then.stability must be one of draft, evolving, stable, frozen
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	| low | default | draft | required for downgrades |
-draft	-	_shared/kiwi/parallel-waves.md	dy(requirements[] 의 요구가 없거나 draft · deprecated · discarded)이
-draft	-	_shared/kiwi/parallel-waves.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) | PW-1 뒤 · PW-2
-draft	-	_shared/kiwi/parallel-waves.md	가 requirements[] 의 요구(없음 · draft · deprecated · discarded)로
-draft	-	_shared/kiwi/parallel-waves.md	나 배정 집합의 요구가 빠졌으면(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — 코드도 테스트도 받지 못한
+draft	-	_shared/kiwi/parallel-waves.md	bility", args: "--req-filter <그 draft 요구> [--auto] [--max] [--mini|--
+draft	-	_shared/kiwi/parallel-waves.md	e status 의 ready[])의 요구 가운데 draft 인 것 — orchestrate wave check
+draft	-	_shared/kiwi/parallel-waves.md	irement-not-ready(노드의 요구가 없거나 draft · deprecated · discarded)이
+draft	-	_shared/kiwi/parallel-waves.md	i|--loops N]" }) 로 올린다. 그 뒤에도 draft 인 요구는 orchestrate schedule wa
+draft	-	_shared/kiwi/parallel-waves.md	schedule waves 가 노드의 요구(없음 · draft · deprecated · discarded)로
+draft	-	_shared/kiwi/parallel-waves.md	있거나 노드의 요구가 빠졌으면(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — 코드도 테스트도 받지 못한
+draft	-	_shared/kiwi/parallel-waves.md	집합이 노드의 요구 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구), 또는 워커 자기 창 리뷰의
+draft	-	_shared/kiwi/parallel-waves.md	한 번 저작과 요구 분해) · FR-FLOW-213(draft 요구의 스케줄 직전 승급) · FR-FLOW-218(
 draft	-	_shared/kiwi/pipeline-v1.md	requirements carry draft stability or unverified implem
 draft	-	_shared/kiwi/run-ledger.md	Status 가 agreed 면 재사용하고, 없거나 draft 면 그 wave 만 다시 부른다 |
 draft	-	_shared/kiwi/verify-loop.md	| feasibility 단계가 draft 로 남긴 REQ | 그 REQ 만 --req-filte
+draft	-	_shared/kiwi/wave-decomposition.md	wave 마다 부르지 않는다. 뒤 wave 의 요구는 draft 로 남겨도 되고, 그 노드를 스케줄하기 직전에 올린다(
 draft	-	kiwi-coder/SKILL.md	- draft: 요구 집합 실행이면 그 REQ 를 집합에서 빼고 보고
 draft	-	kiwi-coder/SKILL.md	--sds 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 NEEDS_USER(seve
 draft	-	kiwi-coder/SKILL.md	spawn 전에 lifecycle gate 를 적용했고, draft REQ 가 여기까지 왔다면 사용자가 override(ki
@@ -149,12 +154,13 @@ draft	-	kiwi-commit-auto-push/SKILL.md	raft | WARN + trailer 부착 skip (draft 
 draft	-	kiwi-commit-auto-push/SKILL.md	| draft | WARN + trailer 부착 skip (draf
 draft	-	kiwi-hot-fix/SKILL.md	speckiwi CLAUDE.md 의 "stability=draft 차단" 규칙은 본 스킬에서 일시 우회 허용 — 단, 종료
 draft	-	kiwi-hot-fix/SKILL.md	명시 시 stability 검사 강제 (§0.12). draft REQ 영향 진입 시 차단 | §0.12 |
-draft	-	kiwi-orchestrator/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — parallel-wave
+draft	-	kiwi-orchestrator/SKILL.md	3.c′ readiness 와 승급: 준비된 노드의 draft 요구를 parallel-waves.md PW-4 대
+draft	-	kiwi-orchestrator/SKILL.md	3.c′ readiness 파생 + 노드의 draft 요구 승급 (/kiwi-srs-feasibility --
+draft	-	kiwi-orchestrator/SKILL.md	wave 마다 부르지 않는다. 뒤 wave 의 요구는 draft 로 남아도 되고, 3.c′ 가 그 노드를 스케줄하기 직
 draft	-	kiwi-orchestrator/SKILL.md	가 그것을 재사용한다 — 다시 저작하지 않는다. 없거나 draft 이면 그 wave 만 다시 부른다.
-draft	-	kiwi-orchestrator/SKILL.md	가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
-draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 draft 인 채로 3.c′ 에 도달하고, requirement
-draft	-	kiwi-orchestrator/SKILL.md	그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
-draft	-	kiwi-orchestrator/SKILL.md	나 배정 집합의 요구가 빠졌으면(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) unallocated-re
+draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
+draft	-	kiwi-orchestrator/SKILL.md	노드를 스케줄하기 직전에 --req-filter <그 draft 요구> 로 올린다(parallel-waves.md
+draft	-	kiwi-orchestrator/SKILL.md	있거나 노드의 요구가 빠졌으면(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) child-pipeline
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-pm/SKILL.md	# draft 만 남은 경우 — SDS 는 나눌 수 없으므로 실행하지
@@ -230,9 +236,8 @@ draft	-	kiwi-srs/SKILL.md	용자 미승인은 Status 가 아니라 Stability=dra
 draft	-	kiwi-srs/SKILL.md	증거 없는 기능 작성 금지. 추정은 stability=draft + [INFERRED:high\|med\|low]
 draft	-	kiwi-srs/SKILL.md	진행은 /kiwi-srs-feasibility 책임. draft → evolving 승급 평가 권장" | pipeline
 draft	-	kiwi-srs/SKILL.md	하는 Status 값은 존재하지 않으며 status: "draft" 는 update_status 가 USAGE 로
-draft	-	kiwi-wave-master/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) — parallel-wav
-draft	-	kiwi-wave-master/SKILL.md	뒤 그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
-draft	-	kiwi-wave-master/SKILL.md	항목 requirements[] 의 요구(없음 · draft · deprecated · discarded)로
+draft	-	kiwi-wave-master/SKILL.md	ge 실행 (§5) — (--sds 면 SDS 작성) → draft 승급 → stage 계획 → 워커 병렬 → 판정 → 병합
+draft	-	kiwi-wave-master/SKILL.md	schedule waves 가 노드의 요구(없음 · draft · deprecated · discarded)로
 draft	cli-flag	kiwi-commit-auto-pr/SKILL.md	# USE_DRAFT: 사용자가 --draft 인자 명시했을 때 메인 에이전트가 1 로 설정 (인자 파
 draft	cli-flag	kiwi-commit-auto-pr/SKILL.md	PR_FLAGS+=(--draft)
 draft	cli-flag	kiwi-commit-auto-pr/SKILL.md	으로 빈 플래그 제거 (USE_DRAFT=0 일 때 --draft 추가 안 됨)
@@ -244,7 +249,7 @@ evolving	-	_shared/kiwi/pipeline-event.md	K_DONE | kiwi-pm (stability ≥ evolvi
 evolving	-	_shared/kiwi/pipeline-v1.md	pm when stability has reached evolving (kiwi-sds when the current k
 evolving	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 evolving	-	kiwi-commit-auto-push/SKILL.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
-evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
+evolving	-	kiwi-orchestrator/SKILL.md	el-waves.md PW-4). 노드의 요구가 전부 evolving 이상이면 그 승급은 건너뛴다 — kiwi-pipeli
 evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-pm — stability ≥ evolving REQ 가 있어 구현 가능
 evolving	-	kiwi-pipeline/SKILL.md	easibility 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility
 evolving	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "evolving",
@@ -357,7 +362,7 @@ frozen	card-frozen-inside	_shared/kiwi/run-ledger.md	ntegration_branch · route 
 frozen	card-frozen-inside	kiwi-orchestrator/SKILL.md	isolation.reason 을 적으며, 그 값은 frozen 안에 있어 invariant_digest 가 덮는다
 frozen	card-frozen-json-key	_shared/kiwi/run-ledger.md	"frozen": {
 frozen	card-frozen-record	kiwi-orchestrator/SKILL.md	n_id}/integration 을 만들거나 채택하고 frozen 에 기록한다.
-frozen	frozen-denominator	_shared/kiwi/verify-loop.md	| 고정 분모 표(frozen denominator table) | 호출자가 계층별
+frozen	frozen-denominator	_shared/kiwi/verify-loop.md	가 없고, 대신 검증자가 호출자가 라운드 전에 고정한 행(frozen denominator)을 모두 열거한다. 열거한
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	. 카드의 포인터(run_contract · frozen.route.lock · frozen.design_lo
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	> frozen.lane_lock 은 현재 wave 의 것만 남
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	SDS 경로. 현재 wave 의 해소된 포인터는 카드의 frozen.lane_lock 에 있으므로 wave 마다 수정하지
@@ -379,7 +384,6 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	.rung 에서 읽고 결코 �
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	3. 카드의 frozen.design_lock 포인터가 새 lock 으로 옮겨가
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ch-Lane trailer 를 운반하는 워커 커밋이 frozen.integration_branch 위에 있고 veri
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ctivity (2) 에서, 그 wave 의 작업이 frozen.integration_branch 에 착지한 뒤에 실행
-frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	e 와 Orch-Lane trailer 로 키잉된 frozen.integration_branch 위 이 wave 의
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	e-base --is-ancestor <워커 head> {frozen.integration_branch} — 이미 조상이면
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ion_branch 에 착지한 뒤에 실행된다. 입력은 frozen.integration_branch 위 그 wave
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	orchestrate resume 은 재개 카드의 frozen.route.rung 을 돌려주고 frozen.rout
@@ -388,7 +392,7 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	un-id 가 이를 덮어쓴�
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	규칙으로 새 route.lock.json 을 쓰고 frozen.route 를 새 lock 으로 옮긴 뒤 invari
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	복구: git rev-parse --verify {frozen.integration_branch} — 있으면 채택,
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	와 구별되는 동사다. 병합을 되돌리는 일이 없으므로 frozen.integration_branch 를 있는 그대로
-frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	의 trailer 붙은 워커 커밋이 워커 브랜치나 frozen.integration_branch 에 이미 있으면
+frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	이후(<base_sha>..)의 워커 브랜치나 frozen.integration_branch 에 이미 있으면
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	재개 시 rung 은 frozen.route.rung 에서 읽고 결코 다시 계산하지 않는
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	저장소 상태에 남는지를 지명하고 run 리포트에 쓴다. frozen.integration_branch 를 그대로 두고 P.
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	카드의 frozen.route.rung 을 돌려주고 frozen.route.probe_digest 를 디스크의 rou
@@ -420,6 +424,7 @@ implemented	-	kiwi-pm/SKILL.md	status 가 REQ status 를 역방향 (예: impleme
 implemented	-	kiwi-pm/SKILL.md	te_status, id=p.req_id, status="implemented")
 implemented	-	kiwi-pm/SKILL.md	| speckiwi REQ status implemented 승급 | T-final mutation | PM (조건
 implemented	-	kiwi-pm/SKILL.md	| update_status("implemented") | kiwi-pm | T-final, 실행이
+implemented	-	kiwi-pm/SKILL.md	가 있으면 lifecycle gate 와 T-final implemented 승급은 집합의 요구를 하나씩 get_requireme
 implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(req-su
 implemented	-	kiwi-pm/SKILL.md	시 요구 집합 중 테스트 충분성 gap 이 없는 요구의 implemented 승급 + add_completed_work(req-sum
 implemented	-	kiwi-pm/SKILL.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸을 때(CLOSE_SAFE) — --sds
@@ -445,7 +450,8 @@ implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented
 implemented	-	kiwi-srs/SKILL.md	태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + AskUserQuestion
 implemented	-	kiwi-srs/SKILL.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi-srs → /kiw
 in_progress	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, implemented, or verified
-in_progress	-	_shared/kiwi/parallel-waves.md	이다. 전이는 두 단계다 — 착지하면 planned/in_progress → implemented, 검증이 pass 이고
+in_progress	-	_shared/kiwi/parallel-waves.md	다). 전이는 두 단계다 — 착지하면 planned/in_progress → implemented, 검증이 pass 이고
+in_progress	-	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 줄을 append 하며, 해소는 언제나 최신
 in_progress	-	kiwi-coder/SKILL.md	- 실행 시작 시 → "in_progress" (kiwi-coder 권한)
 in_progress	-	kiwi-commit-auto-push/SKILL.md	+ list_requirements({status:"in_progress"}) 로 활성 REQ 후보 도출 |
 in_progress	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented | 3.n 에서 그 w
@@ -471,21 +477,17 @@ in_progress	-	kiwi-srs/SKILL.md	ed 상한. 라이브 모드에서 update_status(
 in_progress	-	kiwi-srs/SKILL.md	ng 승급, 착수 시 update_status 로 in_progress/implemented 승격
 in_progress	-	kiwi-srs/SKILL.md	| 위 상태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + Ask
 in_progress	-	kiwi-srs/SKILL.md	≥ 1 | "{N}건 OQ 미해결로 planned → in_progress 차단. OQ 표 참조 후 답변 제공" | §0.G3 t
-in_progress	journal-status	_shared/kiwi/waves-event.md	":1,"target":"wave-1","status":"in_progress","phase":"wave-verify","sds_id"
 in_progress	journal-status	_shared/kiwi/waves-event.md	pending → in_progress → complete
+in_progress	journal-status	_shared/kiwi/waves-event.md	r":1,"target":"5.3.0","status":"in_progress","phase":"wave-verify","sds_id"
 in_progress	journal-status	_shared/kiwi/waves-event.md	| string (enum) | pending / in_progress / complete / failed |
 in_progress	journal-status	kiwi-wave-master/SKILL.md	ispatch 할 때 phase="worker" 인 in_progress 를 1줄씩 append 한다 — 워커 줄에는 lane
-in_progress	journal-status	kiwi-wave-master/SKILL.md	wave 시작 시의 첫 in_progress 에는 phase="srs-authoring" 을 싣
 in_progress	journal-status	kiwi-wave-master/SKILL.md	전에 waves.jsonl 에 status=in_progress · phase="wave-verify" 인 이벤트를
-in_progress	waves-event-name	_shared/kiwi/wave-decomposition.md	on 로 영속하고, 그 경로를 각 wave 의 첫 in_progress 이벤트의 design_baseline 필드에 실
-in_progress	waves-event-name	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 이벤트를 1줄 append 하며, 해소는 언제나 최
-in_progress	waves-event-name	_shared/kiwi/waves-event.md	integrate / stage-close — in_progress 이벤트가 어느 단계에 있는지. sds(SDS 작성)
-in_progress	waves-event-name	kiwi-wave-master/SKILL.md	· target · scope · sds_id · in_progress 타임스탬프 |
+in_progress	waves-event-name	_shared/kiwi/waves-event.md	stage-close / redecompose — in_progress 이벤트가 어느 단계에 있는지. redecompose
+in_progress	waves-event-name	kiwi-wave-master/SKILL.md	· target · scope · sds_id · in_progress 타임스탬프 — orchestrate wave stat
 in_progress	waves-event-name	kiwi-wave-master/SKILL.md	의 sds_id 로 기록된 모든 run 과 in_progress 타임스탬프로 경계 짓는다 — 가장 최근 run 하나로
 in_progress	waves-event-particle	_shared/kiwi/waves-event.md	- wave 시작 시 in_progress 1줄 append.
 in_progress	waves-event-particle	_shared/kiwi/waves-event.md	DS)을 여는 키이기 때문이다. wave 시작 시의 첫 in_progress 에서는 아직 dispatch 하지 않았으므로 생략한다.
-in_progress	waves-event-particle	kiwi-wave-master/SKILL.md	리에서 해석한다(§5.5.1). wave 시작 시의 첫 in_progress 에서는 그 필드를 생략한다 — 그 시점에는 아직
-planned	-	_shared/kiwi/parallel-waves.md	_empty 선언이다. 전이는 두 단계다 — 착지하면 planned/in_progress → implemented,
+planned	-	_shared/kiwi/parallel-waves.md	의 요구 집합 전부다). 전이는 두 단계다 — 착지하면 planned/in_progress → implemented,
 planned	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented
 planned	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "planned",
 planned	-	kiwi-pm/SKILL.md	STATUS_ORDER = ["planned", "in_progress", "implemented",
@@ -569,6 +571,8 @@ verified	-	_shared/kiwi/test-sufficiency.md	| verified 를 쓰기 직전 | 이�
 verified	-	_shared/kiwi/test-sufficiency.md	§3 의 3번 실행(채우기로 더한 테스트)이 맡는다. verified 를 쓰지 않는 호출자의 pass 는 인용이 있다는
 verified	-	_shared/kiwi/test-sufficiency.md	구는 인용을 읽을 뿐 테스트를 실행하지 않는다. 그래서 verified 를 쓰는 호출자는 증거로 쓸 인용의 테스트 파일을 증거
 verified	-	_shared/kiwi/test-sufficiency.md	맡고, 테스트가 실제로 실행·통과했는지는 §4 의 실행(verified 를 쓰는 호출자가 증거로 쓸 인용의 테스트 파일)과 §
+verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 끝난 wave 의 verified 요구 | 그 요구를 고치지 않는다. 뒤 wave 에 후
+verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 현재 wave 의 verified 아닌 요구 | 그 AC 를 고치고 그 wave 를 재진
 verified	-	kiwi-coder/SKILL.md	- (3) skip — verified 닫지 않음
 verified	-	kiwi-coder/SKILL.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
 verified	-	kiwi-coder/SKILL.md	der 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를
@@ -643,6 +647,8 @@ verified	-	kiwi-srs/SKILL.md	th trace link 만 남긴 뒤 6단계 보고에서 "
 verified	-	kiwi-srs/SKILL.md	us = verified | "기존 REQ {X} 는 verified 라 draft demote 를 시도하지 않았음 (u
 verified	-	kiwi-srs/SKILL.md	| 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9
 verified	-	kiwi-wave-master/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 그 뒤 §6 의 complete
+verified	-	kiwi-wave-master/SKILL.md	· 범위 · 의존은 바꾸지 않는다. 끝난 wave 의 verified 동작을 옮기는 길은 후속 요구와 AC 만료뿐이다 (§0
+verified	-	kiwi-wave-master/SKILL.md	이 원칙의 예외로 허용된다. 끝난 wave 의 verified 동작을 옮기는 길은 후속 요구와 AC 만료뿐이다(wa
 verified	verified-changes-adjective	_shared/kiwi/pipeline-v1.md	it-auto-push | Commit and push verified changes with issue/SRS trailers
 
 ## skills/codex
@@ -699,7 +705,7 @@ deprecated	-	MIGRATION_PLAN.md	and remains free of draft or deprecated stability
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	evolving, stable, frozen, deprecated, or keep.
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | default | deprecated | required |
 deprecated	-	_shared/kiwi/parallel-waves.md	does not exist or is draft, deprecated or discarded); a refusal wri
-deprecated	-	_shared/kiwi/parallel-waves.md	irements[] (missing, draft, deprecated, discarded) — the wave stops
+deprecated	-	_shared/kiwi/parallel-waves.md	of the node (missing, draft, deprecated, discarded) — the wave stops
 deprecated	-	kiwi-coder/SKILL.md	- deprecated / frozen: §0.G6 lifecycle-g
 deprecated	-	kiwi-coder/SKILL.md	le-gate-deprecated-or-frozen | deprecated / frozen REQ 구현은 정책상 중단 | Phase
 deprecated	-	kiwi-commit-auto-push/references/extended-workflow.md	| deprecated | WARN 만 출력하고 trailer 부착 skip
@@ -738,7 +744,7 @@ deprecated	-	kiwi-srs-sync/SKILL.md	Q AC 갱신 / (2) 코드 rollback / (3) depr
 deprecated	-	kiwi-srs-sync/SKILL.md	| deprecated-req-mutation | deprecated REQ 변경은 의도된 제거를 되돌릴 수 있음 | §0.1
 deprecated	-	kiwi-srs-sync/references/extended-workflow.md	rd 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에서 허용
 deprecated	-	kiwi-srs-sync/references/extended-workflow.md	로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정) 후 본 스킬 재실
-deprecated	-	kiwi-wave-master/SKILL.md	rements[] 의 요구(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는
+deprecated	-	kiwi-wave-master/SKILL.md	waves 가 노드의 요구(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는
 deprecated	predecessor-skill-note	kiwi-srs-feasibility/SKILL.md	deprecated 예정인 snoworca-feasibility 의 후계
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	--qna-force (강제) ≠ --qna (deprecated alias): --qna-force 는 모호성이
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	<![-\w])--qna-force\b. --qna(deprecated)는 뒤에 -force 가 붙지 않은 정확한 --qn
@@ -782,13 +788,18 @@ draft	-	MIGRATION_PLAN.md	pleted ACs and remains free of draft or deprecated sta
 draft	-	_shared/kiwi/auto-option.md	le-gate-draft is retired — draft blocking was replaced by per-RE
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	then.stability must be one of draft, evolving, stable, frozen
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	| low | default | draft | required for downgrades |
+draft	-	_shared/kiwi/parallel-waves.md	decomposition) · FR-FLOW-213 (draft requirements raised just before
+draft	-	_shared/kiwi/parallel-waves.md	he lock, the host raises every draft requirement of the ready nodes
 draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them — it would stay in
-draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them) | after PW-1 · aft
-draft	-	_shared/kiwi/parallel-waves.md	of requirements[] (missing, draft, deprecated, discarded) —
-draft	-	_shared/kiwi/parallel-waves.md	s[] that does not exist or is draft, deprecated or discarded);
+draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them), or the worker's o
+draft	-	_shared/kiwi/parallel-waves.md	node that does not exist or is draft, deprecated or discarded);
+draft	-	_shared/kiwi/parallel-waves.md	s N]" }). A requirement still draft after that is refused by orch
+draft	-	_shared/kiwi/parallel-waves.md	ty", args: "--req-filter <those draft requirements> [--auto] [--max]
+draft	-	_shared/kiwi/parallel-waves.md	uirement of the node (missing, draft, deprecated, discarded) —
 draft	-	_shared/kiwi/pipeline-v1.md	requirements carry draft stability or unverified implem
 draft	-	_shared/kiwi/run-ledger.md	Status 가 agreed 면 재사용하고, 없거나 draft 면 그 wave 만 다시 부른다 |
 draft	-	_shared/kiwi/verify-loop.md	| feasibility 단계가 draft 로 남긴 REQ | 그 REQ 만 --req-filte
+draft	-	_shared/kiwi/wave-decomposition.md	wave 마다 부르지 않는다. 뒤 wave 의 요구는 draft 로 남겨도 되고, 그 노드를 스케줄하기 직전에 올린다(
 draft	-	kiwi-coder/SKILL.md	- draft: 요구 집합 실행이면 그 REQ 를 집합에서 빼고 보고
 draft	-	kiwi-coder/SKILL.md	--sds 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 NEEDS_USER(seve
 draft	-	kiwi-coder/SKILL.md	spawn 전에 lifecycle gate 를 적용했고, draft REQ 가 여기까지 왔다면 사용자가 override(ki
@@ -797,12 +808,13 @@ draft	-	kiwi-commit-auto-push/references/extended-workflow.md	raft | WARN + trai
 draft	-	kiwi-commit-auto-push/references/extended-workflow.md	| draft | WARN + trailer 부착 skip (draf
 draft	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless t
 draft	-	kiwi-hot-fix/SKILL.md	| lifecycle-gate-draft | draft/deprecated impacted REQ cannot
-draft	-	kiwi-orchestrator/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — parallel-wave
+draft	-	kiwi-orchestrator/SKILL.md	3.c′ readiness 와 승급: 준비된 노드의 draft 요구를 parallel-waves.md PW-4 대
+draft	-	kiwi-orchestrator/SKILL.md	3.c′ readiness 파생 + 노드의 draft 요구 승급 ($kiwi-srs-feasibility --
+draft	-	kiwi-orchestrator/SKILL.md	wave 마다 부르지 않는다. 뒤 wave 의 요구는 draft 로 남아도 되고, 3.c′ 가 그 노드를 스케줄하기 직
 draft	-	kiwi-orchestrator/SKILL.md	가 그것을 재사용한다 — 다시 저작하지 않는다. 없거나 draft 이면 그 wave 만 다시 부른다.
-draft	-	kiwi-orchestrator/SKILL.md	가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
-draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 draft 인 채로 3.c′ 에 도달하고, requirement
-draft	-	kiwi-orchestrator/SKILL.md	그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
-draft	-	kiwi-orchestrator/SKILL.md	나 배정 집합의 요구가 빠졌으면(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) unallocated-re
+draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
+draft	-	kiwi-orchestrator/SKILL.md	노드를 스케줄하기 직전에 --req-filter <그 draft 요구> 로 올린다(parallel-waves.md
+draft	-	kiwi-orchestrator/SKILL.md	있거나 노드의 요구가 빠졌으면(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) child-pipeline
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-pm/SKILL.md	- draft REQ 목록은 skip 목록으로 보고한다 (worklog
@@ -886,9 +898,8 @@ draft	-	kiwi-step/SKILL.md	rements). A step is an isolated draft workspace that 
 draft	-	kiwi-step/SKILL.md	requirements even while still a draft. |
 draft	-	kiwi-step/SKILL.md	statement + acceptance criteria draft).
 draft	-	kiwi-tdd/SKILL.md	e cap — split the task when the draft approaches it.
-draft	-	kiwi-wave-master/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) — parallel-wav
-draft	-	kiwi-wave-master/SKILL.md	뒤 그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
-draft	-	kiwi-wave-master/SKILL.md	항목 requirements[] 의 요구(없음 · draft · deprecated · discarded)로
+draft	-	kiwi-wave-master/SKILL.md	ge 실행 (§5) — (--sds 면 SDS 작성) → draft 승급 → stage 계획 → 워커 병렬 → 판정 → 병합
+draft	-	kiwi-wave-master/SKILL.md	schedule waves 가 노드의 요구(없음 · draft · deprecated · discarded)로
 draft	cli-flag	kiwi-commit-auto-pr/SKILL.md	ks. Supports --auto, --model, --draft, --update-pr-body, --no-pr-comm
 draft	pr-draft-flag-en	kiwi-commit-auto-pr/SKILL.md	a new PR or --update-pr-body, draft a PR body with Summary, Test pl
 draft	pr-draft-flag-en	kiwi-commit-auto-pr/SKILL.md	| draft PR | --draft | off |
@@ -898,7 +909,7 @@ evolving	-	_shared/kiwi/pipeline-event.md	K_DONE | kiwi-pm (stability ≥ evolvi
 evolving	-	_shared/kiwi/pipeline-v1.md	pm when stability has reached evolving (kiwi-sds when the current k
 evolving	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 evolving	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
-evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
+evolving	-	kiwi-orchestrator/SKILL.md	el-waves.md PW-4). 노드의 요구가 전부 evolving 이상이면 그 승급은 건너뛴다 — kiwi-pipeli
 evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-pm — stability ≥ evolving REQ 가 있어 구현 가능
 evolving	-	kiwi-pipeline/SKILL.md	easibility 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility
 evolving	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "evolving",
@@ -998,7 +1009,7 @@ frozen	card-frozen-inside	_shared/kiwi/run-ledger.md	ntegration_branch · route 
 frozen	card-frozen-inside	kiwi-orchestrator/SKILL.md	isolation.reason 을 적으며, 그 값은 frozen 안에 있어 invariant_digest 가 덮는다
 frozen	card-frozen-json-key	_shared/kiwi/run-ledger.md	"frozen": {
 frozen	card-frozen-record	kiwi-orchestrator/SKILL.md	n_id}/integration 을 만들거나 채택하고 frozen 에 기록한다.
-frozen	frozen-denominator	_shared/kiwi/verify-loop.md	| 고정 분모 표(frozen denominator table) | 호출자가 계층별
+frozen	frozen-denominator	_shared/kiwi/verify-loop.md	가 없고, 대신 검증자가 호출자가 라운드 전에 고정한 행(frozen denominator)을 모두 열거한다. 열거한
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	. 카드의 포인터(run_contract · frozen.route.lock · frozen.design_lo
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	> frozen.lane_lock 은 현재 wave 의 것만 남
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	SDS 경로. 현재 wave 의 해소된 포인터는 카드의 frozen.lane_lock 에 있으므로 wave 마다 수정하지
@@ -1020,7 +1031,6 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	.rung 에서 읽고 결코 �
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	3. 카드의 frozen.design_lock 포인터가 새 lock 으로 옮겨가
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ch-Lane trailer 를 운반하는 워커 커밋이 frozen.integration_branch 위에 있고 veri
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ctivity (2) 에서, 그 wave 의 작업이 frozen.integration_branch 에 착지한 뒤에 실행
-frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	e 와 Orch-Lane trailer 로 키잉된 frozen.integration_branch 위 이 wave 의
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	e-base --is-ancestor <워커 head> {frozen.integration_branch} — 이미 조상이면
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ion_branch 에 착지한 뒤에 실행된다. 입력은 frozen.integration_branch 위 그 wave
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	orchestrate resume 은 재개 카드의 frozen.route.rung 을 돌려주고 frozen.rout
@@ -1029,7 +1039,7 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	un-id 가 이를 덮어쓴�
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	규칙으로 새 route.lock.json 을 쓰고 frozen.route 를 새 lock 으로 옮긴 뒤 invari
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	복구: git rev-parse --verify {frozen.integration_branch} — 있으면 채택,
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	와 구별되는 동사다. 병합을 되돌리는 일이 없으므로 frozen.integration_branch 를 있는 그대로
-frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	의 trailer 붙은 워커 커밋이 워커 브랜치나 frozen.integration_branch 에 이미 있으면
+frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	이후(<base_sha>..)의 워커 브랜치나 frozen.integration_branch 에 이미 있으면
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	재개 시 rung 은 frozen.route.rung 에서 읽고 결코 다시 계산하지 않는
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	저장소 상태에 남는지를 지명하고 run 리포트에 쓴다. frozen.integration_branch 를 그대로 두고 P.
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	카드의 frozen.route.rung 을 돌려주고 frozen.route.probe_digest 를 디스크의 rou
@@ -1053,6 +1063,7 @@ implemented	-	kiwi-pm/SKILL.md	atus(id, status) — T-final 조건부 implemente
 implemented	-	kiwi-pm/SKILL.md	rgs) # update_status implemented + add_completed_work(req-summar
 implemented	-	kiwi-pm/SKILL.md	status 가 REQ status 를 역방향 (예: implemented → in_progress) 으로 전이시키는 호출은 PM
 implemented	-	kiwi-pm/SKILL.md	| speckiwi REQ status implemented 승급 | T-final mutation | PM (조건
+implemented	-	kiwi-pm/SKILL.md	가 있으면 lifecycle gate 와 T-final implemented 승급은 집합의 요구를 하나씩 get_requireme
 implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(req-su
 implemented	-	kiwi-pm/SKILL.md	시 요구 집합 중 테스트 충분성 gap 이 없는 요구의 implemented 승급 + add_completed_work(req-sum
 implemented	-	kiwi-pm/references/extended-workflow.md	@req 집합)에 update_status(id, "implemented") + add_completed_work(date,
@@ -1096,6 +1107,7 @@ implemented	-	kiwi-srs/references/extended-workflow.md	update_status 로 in_prog
 implemented	-	kiwi-srs/references/extended-workflow.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi-srs → $kiw
 in_progress	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, implemented, or verified
 in_progress	-	_shared/kiwi/parallel-waves.md	steps — landed moves planned/in_progress → implemented, and a pass
+in_progress	-	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 줄을 append 하며, 해소는 언제나 최신
 in_progress	-	kiwi-coder/references/extended-workflow.md	- 실행 시작 시 → "in_progress" (kiwi-coder 권한)
 in_progress	-	kiwi-commit-auto-push/references/extended-workflow.md	+ list_requirements({status:"in_progress"}) 로 활성 REQ 후보 도출 |
 in_progress	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented | 3.n 에서 그 w
@@ -1122,20 +1134,16 @@ in_progress	-	kiwi-srs/references/extended-workflow.md	(이 표가 비어 있어
 in_progress	-	kiwi-srs/references/extended-workflow.md	004 | priority 기본값? | planned → in_progress 차단 |
 in_progress	-	kiwi-srs/references/extended-workflow.md	ng 승급, 착수 시 update_status 로 in_progress/implemented 승격
 in_progress	-	kiwi-srs/references/extended-workflow.md	≥ 1 | "{N}건 OQ 미해결로 planned → in_progress 차단. OQ 표 참조 후 답변 제공" | §0.G3 t
-in_progress	journal-status	_shared/kiwi/waves-event.md	":1,"target":"wave-1","status":"in_progress","phase":"wave-verify","sds_id"
 in_progress	journal-status	_shared/kiwi/waves-event.md	pending → in_progress → complete
+in_progress	journal-status	_shared/kiwi/waves-event.md	r":1,"target":"5.3.0","status":"in_progress","phase":"wave-verify","sds_id"
 in_progress	journal-status	_shared/kiwi/waves-event.md	| string (enum) | pending / in_progress / complete / failed |
 in_progress	journal-status	kiwi-wave-master/SKILL.md	ispatch 할 때 phase="worker" 인 in_progress 를 1줄씩 append 한다 — 워커 줄에는 lane
-in_progress	journal-status	kiwi-wave-master/SKILL.md	wave 시작 시의 첫 in_progress 에는 phase="srs-authoring" 을 싣
 in_progress	journal-status	kiwi-wave-master/SKILL.md	전에 waves.jsonl 에 status=in_progress · phase="wave-verify" 인 이벤트를
-in_progress	waves-event-name	_shared/kiwi/wave-decomposition.md	on 로 영속하고, 그 경로를 각 wave 의 첫 in_progress 이벤트의 design_baseline 필드에 실
-in_progress	waves-event-name	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 이벤트를 1줄 append 하며, 해소는 언제나 최
-in_progress	waves-event-name	_shared/kiwi/waves-event.md	integrate / stage-close — in_progress 이벤트가 어느 단계에 있는지. sds(SDS 작성)
-in_progress	waves-event-name	kiwi-wave-master/SKILL.md	· target · scope · sds_id · in_progress 타임스탬프 |
+in_progress	waves-event-name	_shared/kiwi/waves-event.md	stage-close / redecompose — in_progress 이벤트가 어느 단계에 있는지. redecompose
+in_progress	waves-event-name	kiwi-wave-master/SKILL.md	· target · scope · sds_id · in_progress 타임스탬프 — orchestrate wave stat
 in_progress	waves-event-name	kiwi-wave-master/SKILL.md	의 sds_id 로 기록된 모든 run 과 in_progress 타임스탬프로 경계 짓는다 — 가장 최근 run 하나로
 in_progress	waves-event-particle	_shared/kiwi/waves-event.md	- wave 시작 시 in_progress 1줄 append.
 in_progress	waves-event-particle	_shared/kiwi/waves-event.md	DS)을 여는 키이기 때문이다. wave 시작 시의 첫 in_progress 에서는 아직 dispatch 하지 않았으므로 생략한다.
-in_progress	waves-event-particle	kiwi-wave-master/SKILL.md	리에서 해석한다(§5.5.1). wave 시작 시의 첫 in_progress 에서는 그 필드를 생략한다 — 그 시점에는 아직
 planned	-	_shared/kiwi/parallel-waves.md	n has two steps — landed moves planned/in_progress → implemented,
 planned	-	_shared/kiwi/worktree-lane.md	4. The gate — is the difference planned?
 planned	-	_shared/kiwi/worktree-lane.md	ry, including one the run never planned. Membership in the
@@ -1221,6 +1229,8 @@ verified	-	_shared/kiwi/test-sufficiency.md	step 1 as it is — there is no veri
 verified	-	_shared/kiwi/test-sufficiency.md	test. So a caller that writes verified runs the test files of the cit
 verified	-	_shared/kiwi/test-sufficiency.md	this run is about to write as verified |
 verified	-	_shared/kiwi/test-sufficiency.md	| immediately before writing verified | the requirements this run is
+verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 끝난 wave 의 verified 요구 | 그 요구를 고치지 않는다. 뒤 wave 에 후
+verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 현재 wave 의 verified 아닌 요구 | 그 AC 를 고치고 그 wave 를 재진
 verified	-	kiwi-coder/SKILL.md	state.failed 이거나 회귀 fail 잔존 — verified 닫기 부적합 (§8.4) | §8.4 |
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
 verified	-	kiwi-coder/SKILL.md	을 자동 채택해 --close-reqs 로 요구를 verified 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에
@@ -1288,6 +1298,8 @@ verified	-	kiwi-srs/references/extended-workflow.md	th trace link 만 남긴 뒤
 verified	-	kiwi-srs/references/extended-workflow.md	us = verified | "기존 REQ {X} 는 verified 라 draft demote 를 시도하지 않았음 (u
 verified	-	kiwi-srs/references/extended-workflow.md	| 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9
 verified	-	kiwi-wave-master/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 그 뒤 §6 의 complete
+verified	-	kiwi-wave-master/SKILL.md	· 범위 · 의존은 바꾸지 않는다. 끝난 wave 의 verified 동작을 옮기는 길은 후속 요구와 AC 만료뿐이다 (§0
+verified	-	kiwi-wave-master/SKILL.md	이 원칙의 예외로 허용된다. 끝난 wave 의 verified 동작을 옮기는 길은 후속 요구와 AC 만료뿐이다(wa
 verified	verified-changes-adjective	_shared/kiwi/pipeline-v1.md	it-auto-push | Commit and push verified changes with issue/SRS trailers
 
 ## skills/etc
@@ -1342,7 +1354,7 @@ blocked	task-status	kiwi-pm/references/extended-workflow.md	이 done 또는 fail
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	evolving, stable, frozen, deprecated, or keep.
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | default | deprecated | required |
 deprecated	-	_shared/kiwi/parallel-waves.md	does not exist or is draft, deprecated or discarded); a refusal wri
-deprecated	-	_shared/kiwi/parallel-waves.md	irements[] (missing, draft, deprecated, discarded) — the wave stops
+deprecated	-	_shared/kiwi/parallel-waves.md	of the node (missing, draft, deprecated, discarded) — the wave stops
 deprecated	-	kiwi-coder/SKILL.md	- deprecated / frozen: §0.G6 lifecycle-g
 deprecated	-	kiwi-coder/SKILL.md	le-gate-deprecated-or-frozen | deprecated / frozen REQ 구현은 정책상 중단 | Phase
 deprecated	-	kiwi-commit-auto-push/references/extended-workflow.md	| deprecated | WARN 만 출력하고 trailer 부착 skip
@@ -1380,7 +1392,7 @@ deprecated	-	kiwi-srs-sync/SKILL.md	Q AC 갱신 / (2) 코드 rollback / (3) depr
 deprecated	-	kiwi-srs-sync/SKILL.md	| deprecated-req-mutation | deprecated REQ 변경은 의도된 제거를 되돌릴 수 있음 | §0.1
 deprecated	-	kiwi-srs-sync/references/extended-workflow.md	rd 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에서 허용
 deprecated	-	kiwi-srs-sync/references/extended-workflow.md	로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정) 후 본 스킬 재실
-deprecated	-	kiwi-wave-master/SKILL.md	rements[] 의 요구(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는
+deprecated	-	kiwi-wave-master/SKILL.md	waves 가 노드의 요구(없음 · draft · deprecated · discarded)로 거절 — 그 wave 는
 deprecated	predecessor-skill-note	kiwi-srs-feasibility/SKILL.md	deprecated 예정인 snoworca-feasibility 의 후계
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	--qna-force (강제) ≠ --qna (deprecated alias): --qna-force 는 모호성이
 deprecated	qna-alias-deprecated	kiwi-srs/SKILL.md	<![-\w])--qna-force\b. --qna(deprecated)는 뒤에 -force 가 붙지 않은 정확한 --qn
@@ -1421,13 +1433,18 @@ discarded	-	kiwi-wave-master/SKILL.md	(없음 · draft · deprecated · discarde
 draft	-	_shared/kiwi/auto-option.md	le-gate-draft is retired — draft blocking was replaced by per-RE
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	then.stability must be one of draft, evolving, stable, frozen
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	| low | default | draft | required for downgrades |
+draft	-	_shared/kiwi/parallel-waves.md	decomposition) · FR-FLOW-213 (draft requirements raised just before
+draft	-	_shared/kiwi/parallel-waves.md	he lock, the host raises every draft requirement of the ready nodes
 draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them — it would stay in
-draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them) | after PW-1 · aft
-draft	-	_shared/kiwi/parallel-waves.md	of requirements[] (missing, draft, deprecated, discarded) —
-draft	-	_shared/kiwi/parallel-waves.md	s[] that does not exist or is draft, deprecated or discarded);
+draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them), or the worker's o
+draft	-	_shared/kiwi/parallel-waves.md	node that does not exist or is draft, deprecated or discarded);
+draft	-	_shared/kiwi/parallel-waves.md	s N]" }). A requirement still draft after that is refused by orch
+draft	-	_shared/kiwi/parallel-waves.md	ty", args: "--req-filter <those draft requirements> [--auto] [--max]
+draft	-	_shared/kiwi/parallel-waves.md	uirement of the node (missing, draft, deprecated, discarded) —
 draft	-	_shared/kiwi/pipeline-v1.md	requirements carry draft stability or unverified implem
 draft	-	_shared/kiwi/run-ledger.md	Status 가 agreed 면 재사용하고, 없거나 draft 면 그 wave 만 다시 부른다 |
 draft	-	_shared/kiwi/verify-loop.md	| feasibility 단계가 draft 로 남긴 REQ | 그 REQ 만 --req-filte
+draft	-	_shared/kiwi/wave-decomposition.md	wave 마다 부르지 않는다. 뒤 wave 의 요구는 draft 로 남겨도 되고, 그 노드를 스케줄하기 직전에 올린다(
 draft	-	kiwi-coder/SKILL.md	- draft: 요구 집합 실행이면 그 REQ 를 집합에서 빼고 보고
 draft	-	kiwi-coder/SKILL.md	--sds 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 NEEDS_USER(seve
 draft	-	kiwi-coder/SKILL.md	spawn 전에 lifecycle gate 를 적용했고, draft REQ 가 여기까지 왔다면 사용자가 override(ki
@@ -1436,12 +1453,13 @@ draft	-	kiwi-commit-auto-push/references/extended-workflow.md	raft | WARN + trai
 draft	-	kiwi-commit-auto-push/references/extended-workflow.md	| draft | WARN + trailer 부착 skip (draf
 draft	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless t
 draft	-	kiwi-hot-fix/SKILL.md	| lifecycle-gate-draft | draft/deprecated impacted REQ cannot
-draft	-	kiwi-orchestrator/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — parallel-wave
+draft	-	kiwi-orchestrator/SKILL.md	3.c′ readiness 와 승급: 준비된 노드의 draft 요구를 parallel-waves.md PW-4 대
+draft	-	kiwi-orchestrator/SKILL.md	3.c′ readiness 파생 + 노드의 draft 요구 승급 ($kiwi-srs-feasibility --
+draft	-	kiwi-orchestrator/SKILL.md	wave 마다 부르지 않는다. 뒤 wave 의 요구는 draft 로 남아도 되고, 3.c′ 가 그 노드를 스케줄하기 직
 draft	-	kiwi-orchestrator/SKILL.md	가 그것을 재사용한다 — 다시 저작하지 않는다. 없거나 draft 이면 그 wave 만 다시 부른다.
-draft	-	kiwi-orchestrator/SKILL.md	가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
-draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 draft 인 채로 3.c′ 에 도달하고, requirement
-draft	-	kiwi-orchestrator/SKILL.md	그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
-draft	-	kiwi-orchestrator/SKILL.md	나 배정 집합의 요구가 빠졌으면(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) unallocated-re
+draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
+draft	-	kiwi-orchestrator/SKILL.md	노드를 스케줄하기 직전에 --req-filter <그 draft 요구> 로 올린다(parallel-waves.md
+draft	-	kiwi-orchestrator/SKILL.md	있거나 노드의 요구가 빠졌으면(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) child-pipeline
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-pm/SKILL.md	- draft REQ 목록은 skip 목록으로 보고한다 (worklog
@@ -1523,9 +1541,8 @@ draft	-	kiwi-step/SKILL.md	requirements even while still a draft. |
 draft	-	kiwi-step/SKILL.md	statement + acceptance criteria draft).
 draft	-	kiwi-step/SKILL.md	thoring). A step is an isolated draft workspace later promoted into b
 draft	-	kiwi-tdd/SKILL.md	e cap — split the task when the draft approaches it.
-draft	-	kiwi-wave-master/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) — parallel-wav
-draft	-	kiwi-wave-master/SKILL.md	뒤 그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
-draft	-	kiwi-wave-master/SKILL.md	항목 requirements[] 의 요구(없음 · draft · deprecated · discarded)로
+draft	-	kiwi-wave-master/SKILL.md	ge 실행 (§5) — (--sds 면 SDS 작성) → draft 승급 → stage 계획 → 워커 병렬 → 판정 → 병합
+draft	-	kiwi-wave-master/SKILL.md	schedule waves 가 노드의 요구(없음 · draft · deprecated · discarded)로
 draft	pr-draft-flag-en	kiwi-commit-auto-pr/SKILL.md	a new PR or --update-pr-body, draft a PR body with Summary, Test pl
 draft	pr-draft-flag-en	kiwi-commit-auto-pr/SKILL.md	| draft PR | --draft | off |
 evolving	-	_shared/kiwi/feasibility-policy-schema-v1.md	ility must be one of draft, evolving, stable, frozen, deprecat
@@ -1534,7 +1551,7 @@ evolving	-	_shared/kiwi/pipeline-event.md	K_DONE | kiwi-pm (stability ≥ evolvi
 evolving	-	_shared/kiwi/pipeline-v1.md	pm when stability has reached evolving (kiwi-sds when the current k
 evolving	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 evolving	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
-evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
+evolving	-	kiwi-orchestrator/SKILL.md	el-waves.md PW-4). 노드의 요구가 전부 evolving 이상이면 그 승급은 건너뛴다 — kiwi-pipeli
 evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-pm — stability ≥ evolving REQ 가 있어 구현 가능
 evolving	-	kiwi-pipeline/SKILL.md	easibility 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility
 evolving	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "evolving",
@@ -1628,7 +1645,7 @@ frozen	card-frozen-inside	_shared/kiwi/run-ledger.md	ntegration_branch · route 
 frozen	card-frozen-inside	kiwi-orchestrator/SKILL.md	isolation.reason 을 적으며, 그 값은 frozen 안에 있어 invariant_digest 가 덮는다
 frozen	card-frozen-json-key	_shared/kiwi/run-ledger.md	"frozen": {
 frozen	card-frozen-record	kiwi-orchestrator/SKILL.md	n_id}/integration 을 만들거나 채택하고 frozen 에 기록한다.
-frozen	frozen-denominator	_shared/kiwi/verify-loop.md	| 고정 분모 표(frozen denominator table) | 호출자가 계층별
+frozen	frozen-denominator	_shared/kiwi/verify-loop.md	가 없고, 대신 검증자가 호출자가 라운드 전에 고정한 행(frozen denominator)을 모두 열거한다. 열거한
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	. 카드의 포인터(run_contract · frozen.route.lock · frozen.design_lo
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	> frozen.lane_lock 은 현재 wave 의 것만 남
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	SDS 경로. 현재 wave 의 해소된 포인터는 카드의 frozen.lane_lock 에 있으므로 wave 마다 수정하지
@@ -1650,7 +1667,6 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	.rung 에서 읽고 결코 �
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	3. 카드의 frozen.design_lock 포인터가 새 lock 으로 옮겨가
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ch-Lane trailer 를 운반하는 워커 커밋이 frozen.integration_branch 위에 있고 veri
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ctivity (2) 에서, 그 wave 의 작업이 frozen.integration_branch 에 착지한 뒤에 실행
-frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	e 와 Orch-Lane trailer 로 키잉된 frozen.integration_branch 위 이 wave 의
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	e-base --is-ancestor <워커 head> {frozen.integration_branch} — 이미 조상이면
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ion_branch 에 착지한 뒤에 실행된다. 입력은 frozen.integration_branch 위 그 wave
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	orchestrate resume 은 재개 카드의 frozen.route.rung 을 돌려주고 frozen.rout
@@ -1659,7 +1675,7 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	un-id 가 이를 덮어쓴�
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	규칙으로 새 route.lock.json 을 쓰고 frozen.route 를 새 lock 으로 옮긴 뒤 invari
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	복구: git rev-parse --verify {frozen.integration_branch} — 있으면 채택,
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	와 구별되는 동사다. 병합을 되돌리는 일이 없으므로 frozen.integration_branch 를 있는 그대로
-frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	의 trailer 붙은 워커 커밋이 워커 브랜치나 frozen.integration_branch 에 이미 있으면
+frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	이후(<base_sha>..)의 워커 브랜치나 frozen.integration_branch 에 이미 있으면
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	재개 시 rung 은 frozen.route.rung 에서 읽고 결코 다시 계산하지 않는
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	저장소 상태에 남는지를 지명하고 run 리포트에 쓴다. frozen.integration_branch 를 그대로 두고 P.
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	카드의 frozen.route.rung 을 돌려주고 frozen.route.probe_digest 를 디스크의 rou
@@ -1682,6 +1698,7 @@ implemented	-	kiwi-pm/SKILL.md	atus(id, status) — T-final 조건부 implemente
 implemented	-	kiwi-pm/SKILL.md	rgs) # update_status implemented + add_completed_work(req-summar
 implemented	-	kiwi-pm/SKILL.md	status 가 REQ status 를 역방향 (예: implemented → in_progress) 으로 전이시키는 호출은 PM
 implemented	-	kiwi-pm/SKILL.md	| speckiwi REQ status implemented 승급 | T-final mutation | PM (조건
+implemented	-	kiwi-pm/SKILL.md	가 있으면 lifecycle gate 와 T-final implemented 승급은 집합의 요구를 하나씩 get_requireme
 implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(req-su
 implemented	-	kiwi-pm/references/extended-workflow.md	@req 집합)에 update_status(id, "implemented") + add_completed_work(date,
 implemented	-	kiwi-pm/references/extended-workflow.md	R = ["planned", "in_progress", "implemented", "verified"]
@@ -1723,6 +1740,7 @@ implemented	-	kiwi-srs/references/extended-workflow.md	update_status 로 in_prog
 implemented	-	kiwi-srs/references/extended-workflow.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi-srs → $kiw
 in_progress	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, implemented, or verified
 in_progress	-	_shared/kiwi/parallel-waves.md	steps — landed moves planned/in_progress → implemented, and a pass
+in_progress	-	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 줄을 append 하며, 해소는 언제나 최신
 in_progress	-	kiwi-coder/references/extended-workflow.md	- 실행 시작 시 → "in_progress" (kiwi-coder 권한)
 in_progress	-	kiwi-commit-auto-push/references/extended-workflow.md	+ list_requirements({status:"in_progress"}) 로 활성 REQ 후보 도출 |
 in_progress	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented | 3.n 에서 그 w
@@ -1749,20 +1767,16 @@ in_progress	-	kiwi-srs/references/extended-workflow.md	(이 표가 비어 있어
 in_progress	-	kiwi-srs/references/extended-workflow.md	004 | priority 기본값? | planned → in_progress 차단 |
 in_progress	-	kiwi-srs/references/extended-workflow.md	ng 승급, 착수 시 update_status 로 in_progress/implemented 승격
 in_progress	-	kiwi-srs/references/extended-workflow.md	≥ 1 | "{N}건 OQ 미해결로 planned → in_progress 차단. OQ 표 참조 후 답변 제공" | §0.G3 t
-in_progress	journal-status	_shared/kiwi/waves-event.md	":1,"target":"wave-1","status":"in_progress","phase":"wave-verify","sds_id"
 in_progress	journal-status	_shared/kiwi/waves-event.md	pending → in_progress → complete
+in_progress	journal-status	_shared/kiwi/waves-event.md	r":1,"target":"5.3.0","status":"in_progress","phase":"wave-verify","sds_id"
 in_progress	journal-status	_shared/kiwi/waves-event.md	| string (enum) | pending / in_progress / complete / failed |
 in_progress	journal-status	kiwi-wave-master/SKILL.md	ispatch 할 때 phase="worker" 인 in_progress 를 1줄씩 append 한다 — 워커 줄에는 lane
-in_progress	journal-status	kiwi-wave-master/SKILL.md	wave 시작 시의 첫 in_progress 에는 phase="srs-authoring" 을 싣
 in_progress	journal-status	kiwi-wave-master/SKILL.md	전에 waves.jsonl 에 status=in_progress · phase="wave-verify" 인 이벤트를
-in_progress	waves-event-name	_shared/kiwi/wave-decomposition.md	on 로 영속하고, 그 경로를 각 wave 의 첫 in_progress 이벤트의 design_baseline 필드에 실
-in_progress	waves-event-name	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 이벤트를 1줄 append 하며, 해소는 언제나 최
-in_progress	waves-event-name	_shared/kiwi/waves-event.md	integrate / stage-close — in_progress 이벤트가 어느 단계에 있는지. sds(SDS 작성)
-in_progress	waves-event-name	kiwi-wave-master/SKILL.md	· target · scope · sds_id · in_progress 타임스탬프 |
+in_progress	waves-event-name	_shared/kiwi/waves-event.md	stage-close / redecompose — in_progress 이벤트가 어느 단계에 있는지. redecompose
+in_progress	waves-event-name	kiwi-wave-master/SKILL.md	· target · scope · sds_id · in_progress 타임스탬프 — orchestrate wave stat
 in_progress	waves-event-name	kiwi-wave-master/SKILL.md	의 sds_id 로 기록된 모든 run 과 in_progress 타임스탬프로 경계 짓는다 — 가장 최근 run 하나로
 in_progress	waves-event-particle	_shared/kiwi/waves-event.md	- wave 시작 시 in_progress 1줄 append.
 in_progress	waves-event-particle	_shared/kiwi/waves-event.md	DS)을 여는 키이기 때문이다. wave 시작 시의 첫 in_progress 에서는 아직 dispatch 하지 않았으므로 생략한다.
-in_progress	waves-event-particle	kiwi-wave-master/SKILL.md	리에서 해석한다(§5.5.1). wave 시작 시의 첫 in_progress 에서는 그 필드를 생략한다 — 그 시점에는 아직
 planned	-	_shared/kiwi/parallel-waves.md	n has two steps — landed moves planned/in_progress → implemented,
 planned	-	_shared/kiwi/worktree-lane.md	4. The gate — is the difference planned?
 planned	-	_shared/kiwi/worktree-lane.md	ry, including one the run never planned. Membership in the
@@ -1842,6 +1856,8 @@ verified	-	_shared/kiwi/test-sufficiency.md	step 1 as it is — there is no veri
 verified	-	_shared/kiwi/test-sufficiency.md	test. So a caller that writes verified runs the test files of the cit
 verified	-	_shared/kiwi/test-sufficiency.md	this run is about to write as verified |
 verified	-	_shared/kiwi/test-sufficiency.md	| immediately before writing verified | the requirements this run is
+verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 끝난 wave 의 verified 요구 | 그 요구를 고치지 않는다. 뒤 wave 에 후
+verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 현재 wave 의 verified 아닌 요구 | 그 AC 를 고치고 그 wave 를 재진
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
 verified	-	kiwi-coder/SKILL.md	을 자동 채택해 --close-reqs 로 요구를 verified 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에
 verified	-	kiwi-coder/SKILL.md	중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 verified 를 쓰지 않는다 — 그 쓰기는 kiwi-review-
@@ -1909,6 +1925,8 @@ verified	-	kiwi-srs/references/extended-workflow.md	th trace link 만 남긴 뒤
 verified	-	kiwi-srs/references/extended-workflow.md	us = verified | "기존 REQ {X} 는 verified 라 draft demote 를 시도하지 않았음 (u
 verified	-	kiwi-srs/references/extended-workflow.md	| 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9
 verified	-	kiwi-wave-master/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 그 뒤 §6 의 complete
+verified	-	kiwi-wave-master/SKILL.md	· 범위 · 의존은 바꾸지 않는다. 끝난 wave 의 verified 동작을 옮기는 길은 후속 요구와 AC 만료뿐이다 (§0
+verified	-	kiwi-wave-master/SKILL.md	이 원칙의 예외로 허용된다. 끝난 wave 의 verified 동작을 옮기는 길은 후속 요구와 AC 만료뿐이다(wa
 verified	verified-changes-adjective	_shared/kiwi/pipeline-v1.md	it-auto-push | Commit and push verified changes with issue/SRS trailers
 
 ## .agents/skills
@@ -1964,7 +1982,7 @@ blocked	task-status	kiwi-pm/references/extended-workflow.md	이 done 또는 fail
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	evolving, stable, frozen, deprecated, or keep.
 deprecated	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | default | deprecated | required |
 deprecated	-	_shared/kiwi/parallel-waves.md	does not exist or is draft, deprecated or discarded); a refusal wri
-deprecated	-	_shared/kiwi/parallel-waves.md	irements[] (missing, draft, deprecated, discarded) — the wave stops
+deprecated	-	_shared/kiwi/parallel-waves.md	of the node (missing, draft, deprecated, discarded) — the wave stops
 deprecated	-	kiwi-coder/SKILL.md	- deprecated / frozen: §0.G6 lifecycle-g
 deprecated	-	kiwi-coder/SKILL.md	le-gate-deprecated-or-frozen | deprecated / frozen REQ 구현은 정책상 중단 | Phase
 deprecated	-	kiwi-commit-auto-push/references/extended-workflow.md	| deprecated | WARN 만 출력하고 trailer 부착 skip
@@ -2044,13 +2062,18 @@ discarded	-	kiwi-srs/references/extended-workflow.md	— 이번 실행이 추가
 draft	-	_shared/kiwi/auto-option.md	le-gate-draft is retired — draft blocking was replaced by per-RE
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	then.stability must be one of draft, evolving, stable, frozen
 draft	-	_shared/kiwi/feasibility-policy-schema-v1.md	| low | default | draft | required for downgrades |
+draft	-	_shared/kiwi/parallel-waves.md	decomposition) · FR-FLOW-213 (draft requirements raised just before
+draft	-	_shared/kiwi/parallel-waves.md	he lock, the host raises every draft requirement of the ready nodes
 draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them — it would stay in
-draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them) | after PW-1 · aft
-draft	-	_shared/kiwi/parallel-waves.md	of requirements[] (missing, draft, deprecated, discarded) —
-draft	-	_shared/kiwi/parallel-waves.md	s[] that does not exist or is draft, deprecated or discarded);
+draft	-	_shared/kiwi/parallel-waves.md	kiwi-sds left out of scope, draft among them), or the worker's o
+draft	-	_shared/kiwi/parallel-waves.md	node that does not exist or is draft, deprecated or discarded);
+draft	-	_shared/kiwi/parallel-waves.md	s N]" }). A requirement still draft after that is refused by orch
+draft	-	_shared/kiwi/parallel-waves.md	ty", args: "--req-filter <those draft requirements> [--auto] [--max]
+draft	-	_shared/kiwi/parallel-waves.md	uirement of the node (missing, draft, deprecated, discarded) —
 draft	-	_shared/kiwi/pipeline-v1.md	requirements carry draft stability or unverified implem
 draft	-	_shared/kiwi/run-ledger.md	Status 가 agreed 면 재사용하고, 없거나 draft 면 그 wave 만 다시 부른다 |
 draft	-	_shared/kiwi/verify-loop.md	| feasibility 단계가 draft 로 남긴 REQ | 그 REQ 만 --req-filte
+draft	-	_shared/kiwi/wave-decomposition.md	wave 마다 부르지 않는다. 뒤 wave 의 요구는 draft 로 남겨도 되고, 그 노드를 스케줄하기 직전에 올린다(
 draft	-	kiwi-coder/SKILL.md	- draft: 요구 집합 실행이면 그 REQ 를 집합에서 빼고 보고
 draft	-	kiwi-coder/SKILL.md	--sds 단독 실행이면 이 SDS 를 구현하지 않고 draft REQ 목록을 보고한 뒤 NEEDS_USER(seve
 draft	-	kiwi-coder/SKILL.md	spawn 전에 lifecycle gate 를 적용했고, draft REQ 가 여기까지 왔다면 사용자가 override(ki
@@ -2059,12 +2082,13 @@ draft	-	kiwi-commit-auto-push/references/extended-workflow.md	raft | WARN + trai
 draft	-	kiwi-commit-auto-push/references/extended-workflow.md	| draft | WARN + trailer 부착 skip (draf
 draft	-	kiwi-hot-fix/SKILL.md	draft or deprecated, halt unless t
 draft	-	kiwi-hot-fix/SKILL.md	| lifecycle-gate-draft | draft/deprecated impacted REQ cannot
-draft	-	kiwi-orchestrator/SKILL.md	q 합집합이 배정 집합과 다름(kiwi-sds 가 draft 등으로 범위에서 뺀 요구 — parallel-wave
+draft	-	kiwi-orchestrator/SKILL.md	3.c′ readiness 와 승급: 준비된 노드의 draft 요구를 parallel-waves.md PW-4 대
+draft	-	kiwi-orchestrator/SKILL.md	3.c′ readiness 파생 + 노드의 draft 요구 승급 ($kiwi-srs-feasibility --
+draft	-	kiwi-orchestrator/SKILL.md	wave 마다 부르지 않는다. 뒤 wave 의 요구는 draft 로 남아도 되고, 3.c′ 가 그 노드를 스케줄하기 직
 draft	-	kiwi-orchestrator/SKILL.md	가 그것을 재사용한다 — 다시 저작하지 않는다. 없거나 draft 이면 그 wave 만 다시 부른다.
-draft	-	kiwi-orchestrator/SKILL.md	가 대상이 된다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
-draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 홉이 없으면 3.b 가 저작한 요구가 draft 인 채로 3.c′ 에 도달하고, requirement
-draft	-	kiwi-orchestrator/SKILL.md	그 wave 의 요구 중 stability 가 draft 이거나 implementability 가 미검증인 것이
-draft	-	kiwi-orchestrator/SKILL.md	나 배정 집합의 요구가 빠졌으면(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) unallocated-re
+draft	-	kiwi-orchestrator/SKILL.md	게 여기 적는다. 그 스킬이 구현 가능성을 낮게 판정해 draft 로 남기면 3.c′ 는 여전히 멈추며, 그때 멈추는 것
+draft	-	kiwi-orchestrator/SKILL.md	노드를 스케줄하기 직전에 --req-filter <그 draft 요구> 로 올린다(parallel-waves.md
+draft	-	kiwi-orchestrator/SKILL.md	있거나 노드의 요구가 빠졌으면(kiwi-sds 가 draft 등으로 범위에서 뺀 요구) child-pipeline
 draft	-	kiwi-pipeline/SKILL.md	bility 는 conditional(조건부) 단계이며, draft/미검증 요구가 없으면 건너뛴다.
 draft	-	kiwi-pipeline/SKILL.md	kiwi-srs 가 방금 작성·갱신한 요구사항이 draft stability 이거나 implementabilit
 draft	-	kiwi-pm/SKILL.md	- draft REQ 목록은 skip 목록으로 보고한다 (worklog
@@ -2152,7 +2176,7 @@ evolving	-	_shared/kiwi/pipeline-event.md	K_DONE | kiwi-pm (stability ≥ evolvi
 evolving	-	_shared/kiwi/pipeline-v1.md	pm when stability has reached evolving (kiwi-sds when the current k
 evolving	-	kiwi-coder/SKILL.md	- evolving / stable: 진행 가능.
 evolving	-	kiwi-commit-auto-push/references/extended-workflow.md	| evolving / stable | 정상 진행 | 정상 진행 (TA
-evolving	-	kiwi-orchestrator/SKILL.md	를 TARGET=wave-{n} 으로 부른다. 전부 evolving 이상이면 건너뛴다 — kiwi-pipeline 의
+evolving	-	kiwi-orchestrator/SKILL.md	el-waves.md PW-4). 노드의 요구가 전부 evolving 이상이면 그 승급은 건너뛴다 — kiwi-pipeli
 evolving	-	kiwi-pipeline/SKILL.md	(A) kiwi-pm — stability ≥ evolving REQ 가 있어 구현 가능
 evolving	-	kiwi-pipeline/SKILL.md	easibility 를 실행한다. 신규 요구사항이 모두 evolving 이상 + 구현 가능성 확인 상태면 feasibility
 evolving	-	kiwi-pm/SKILL.md	"REQ-CORE-001": "evolving",
@@ -2252,7 +2276,7 @@ frozen	card-frozen-inside	_shared/kiwi/run-ledger.md	ntegration_branch · route 
 frozen	card-frozen-inside	kiwi-orchestrator/SKILL.md	isolation.reason 을 적으며, 그 값은 frozen 안에 있어 invariant_digest 가 덮는다
 frozen	card-frozen-json-key	_shared/kiwi/run-ledger.md	"frozen": {
 frozen	card-frozen-record	kiwi-orchestrator/SKILL.md	n_id}/integration 을 만들거나 채택하고 frozen 에 기록한다.
-frozen	frozen-denominator	_shared/kiwi/verify-loop.md	| 고정 분모 표(frozen denominator table) | 호출자가 계층별
+frozen	frozen-denominator	_shared/kiwi/verify-loop.md	가 없고, 대신 검증자가 호출자가 라운드 전에 고정한 행(frozen denominator)을 모두 열거한다. 열거한
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	. 카드의 포인터(run_contract · frozen.route.lock · frozen.design_lo
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	> frozen.lane_lock 은 현재 wave 의 것만 남
 frozen	frozen-field-path	_shared/kiwi/run-ledger.md	SDS 경로. 현재 wave 의 해소된 포인터는 카드의 frozen.lane_lock 에 있으므로 wave 마다 수정하지
@@ -2274,7 +2298,6 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	.rung 에서 읽고 결코 �
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	3. 카드의 frozen.design_lock 포인터가 새 lock 으로 옮겨가
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ch-Lane trailer 를 운반하는 워커 커밋이 frozen.integration_branch 위에 있고 veri
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ctivity (2) 에서, 그 wave 의 작업이 frozen.integration_branch 에 착지한 뒤에 실행
-frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	e 와 Orch-Lane trailer 로 키잉된 frozen.integration_branch 위 이 wave 의
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	e-base --is-ancestor <워커 head> {frozen.integration_branch} — 이미 조상이면
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ion_branch 에 착지한 뒤에 실행된다. 입력은 frozen.integration_branch 위 그 wave
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	orchestrate resume 은 재개 카드의 frozen.route.rung 을 돌려주고 frozen.rout
@@ -2283,7 +2306,7 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	un-id 가 이를 덮어쓴�
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	규칙으로 새 route.lock.json 을 쓰고 frozen.route 를 새 lock 으로 옮긴 뒤 invari
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	복구: git rev-parse --verify {frozen.integration_branch} — 있으면 채택,
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	와 구별되는 동사다. 병합을 되돌리는 일이 없으므로 frozen.integration_branch 를 있는 그대로
-frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	의 trailer 붙은 워커 커밋이 워커 브랜치나 frozen.integration_branch 에 이미 있으면
+frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	이후(<base_sha>..)의 워커 브랜치나 frozen.integration_branch 에 이미 있으면
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	재개 시 rung 은 frozen.route.rung 에서 읽고 결코 다시 계산하지 않는
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	저장소 상태에 남는지를 지명하고 run 리포트에 쓴다. frozen.integration_branch 를 그대로 두고 P.
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	카드의 frozen.route.rung 을 돌려주고 frozen.route.probe_digest 를 디스크의 rou
@@ -2307,6 +2330,7 @@ implemented	-	kiwi-pm/SKILL.md	atus(id, status) — T-final 조건부 implemente
 implemented	-	kiwi-pm/SKILL.md	rgs) # update_status implemented + add_completed_work(req-summar
 implemented	-	kiwi-pm/SKILL.md	status 가 REQ status 를 역방향 (예: implemented → in_progress) 으로 전이시키는 호출은 PM
 implemented	-	kiwi-pm/SKILL.md	| speckiwi REQ status implemented 승급 | T-final mutation | PM (조건
+implemented	-	kiwi-pm/SKILL.md	가 있으면 lifecycle gate 와 T-final implemented 승급은 집합의 요구를 하나씩 get_requireme
 implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(req-su
 implemented	-	kiwi-pm/SKILL.md	시 요구 집합 중 테스트 충분성 gap 이 없는 요구의 implemented 승급 + add_completed_work(req-sum
 implemented	-	kiwi-pm/references/extended-workflow.md	@req 집합)에 update_status(id, "implemented") + add_completed_work(date,
@@ -2350,6 +2374,7 @@ implemented	-	kiwi-srs/references/extended-workflow.md	update_status 로 in_prog
 implemented	-	kiwi-srs/references/extended-workflow.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi-srs → $kiw
 in_progress	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, implemented, or verified
 in_progress	-	_shared/kiwi/parallel-waves.md	steps — landed moves planned/in_progress → implemented, and a pass
+in_progress	-	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 줄을 append 하며, 해소는 언제나 최신
 in_progress	-	kiwi-coder/references/extended-workflow.md	- 실행 시작 시 → "in_progress" (kiwi-coder 권한)
 in_progress	-	kiwi-commit-auto-push/references/extended-workflow.md	+ list_requirements({status:"in_progress"}) 로 활성 REQ 후보 도출 |
 in_progress	-	kiwi-orchestrator/SKILL.md	| planned / in_progress | implemented | 3.n 에서 그 w
@@ -2376,12 +2401,10 @@ in_progress	-	kiwi-srs/references/extended-workflow.md	(이 표가 비어 있어
 in_progress	-	kiwi-srs/references/extended-workflow.md	004 | priority 기본값? | planned → in_progress 차단 |
 in_progress	-	kiwi-srs/references/extended-workflow.md	ng 승급, 착수 시 update_status 로 in_progress/implemented 승격
 in_progress	-	kiwi-srs/references/extended-workflow.md	≥ 1 | "{N}건 OQ 미해결로 planned → in_progress 차단. OQ 표 참조 후 답변 제공" | §0.G3 t
-in_progress	journal-status	_shared/kiwi/waves-event.md	":1,"target":"wave-1","status":"in_progress","phase":"wave-verify","sds_id"
 in_progress	journal-status	_shared/kiwi/waves-event.md	pending → in_progress → complete
+in_progress	journal-status	_shared/kiwi/waves-event.md	r":1,"target":"5.3.0","status":"in_progress","phase":"wave-verify","sds_id"
 in_progress	journal-status	_shared/kiwi/waves-event.md	| string (enum) | pending / in_progress / complete / failed |
-in_progress	waves-event-name	_shared/kiwi/wave-decomposition.md	on 로 영속하고, 그 경로를 각 wave 의 첫 in_progress 이벤트의 design_baseline 필드에 실
-in_progress	waves-event-name	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 이벤트를 1줄 append 하며, 해소는 언제나 최
-in_progress	waves-event-name	_shared/kiwi/waves-event.md	integrate / stage-close — in_progress 이벤트가 어느 단계에 있는지. sds(SDS 작성)
+in_progress	waves-event-name	_shared/kiwi/waves-event.md	stage-close / redecompose — in_progress 이벤트가 어느 단계에 있는지. redecompose
 in_progress	waves-event-particle	_shared/kiwi/waves-event.md	- wave 시작 시 in_progress 1줄 append.
 in_progress	waves-event-particle	_shared/kiwi/waves-event.md	DS)을 여는 키이기 때문이다. wave 시작 시의 첫 in_progress 에서는 아직 dispatch 하지 않았으므로 생략한다.
 planned	-	_shared/kiwi/parallel-waves.md	n has two steps — landed moves planned/in_progress → implemented,
@@ -2466,6 +2489,8 @@ verified	-	_shared/kiwi/test-sufficiency.md	step 1 as it is — there is no veri
 verified	-	_shared/kiwi/test-sufficiency.md	test. So a caller that writes verified runs the test files of the cit
 verified	-	_shared/kiwi/test-sufficiency.md	this run is about to write as verified |
 verified	-	_shared/kiwi/test-sufficiency.md	| immediately before writing verified | the requirements this run is
+verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 끝난 wave 의 verified 요구 | 그 요구를 고치지 않는다. 뒤 wave 에 후
+verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 현재 wave 의 verified 아닌 요구 | 그 AC 를 고치고 그 wave 를 재진
 verified	-	kiwi-coder/SKILL.md	state.failed 이거나 회귀 fail 잔존 — verified 닫기 부적합 (§8.4) | §8.4 |
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
 verified	-	kiwi-coder/SKILL.md	을 자동 채택해 --close-reqs 로 요구를 verified 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에

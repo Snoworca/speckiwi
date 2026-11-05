@@ -20,11 +20,16 @@ function documents(rendering: string): Array<[string, string]> {
   ];
 }
 
-/** `scope → the backticked field names of its row`, from rows whose first cell opens with the scope. */
+/**
+ * `scope → the backticked field names of its row`, from rows whose first cell opens with the scope and
+ * its parenthesised definition. A scope row reads "`result` (`event = "result"`)"; the field table of
+ * `waves-event.md` §2.2 also holds a bare "`result`" row since FR-NODE-250 AC-3 added that field, and
+ * that row names a field, not a scope.
+ */
 function documentedSets(text: string): Map<string, string[][]> {
   const out = new Map<string, string[][]>();
   for (const row of tableRows(text)) {
-    const scope = SCOPES.find((name) => (row.cells[0] ?? "").startsWith(`\`${name}\``));
+    const scope = SCOPES.find((name) => (row.cells[0] ?? "").startsWith(`\`${name}\` (`));
     if (scope === undefined) continue;
     const fields = [...(row.cells[1] ?? "").matchAll(/`([a-z_]+)`/g)].map((match) => match[1] as string);
     out.set(scope, [...(out.get(scope) ?? []), fields]);

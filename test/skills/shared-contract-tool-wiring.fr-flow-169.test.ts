@@ -672,7 +672,8 @@ describe("FR-FLOW-169 the denominator and the map", () => {
       cap: 5,
       streakBefore: 0,
       frozenDenominator: 1,
-      rows: [{ id: "R-1", verdict: "pass", severity: "LOW" }],
+      verifiers: ["verifier-1"],
+      rows: [{ id: "R-1", verdict: "pass", kept: false, verifier: "verifier-1" }],
       fixAppliedThisRound: false,
       regression: { failingTests: [], baselineFailingTests: [], exitCode: 0 },
       residual: []

@@ -30,6 +30,14 @@ node -e "const f=require('fs').readFileSync(process.argv[1],'latin1').replace(/\
 
 ---
 
+## 핵심 규칙 — 요구 사이 의존 (FR-FLOW-208)
+
+요구 사이의 의존은 의존하는 요구에서 의존받는 요구로 `add_trace_link {type: "Requirement", relation: "depends_on"}` 하나로 적는다. 의존을 Requirement · Rationale · AC · 노트 문장에만 적지 않는다 — 문장에 적은 의존에는 같은 Trace Link 를 함께 단다.
+
+검증 라운드마다 `validate_spec` 이 이번 실행이 추가하거나 바꾼 요구에 낸 FR-PARSE-045 경고(산문에만 적은 의존, Type 이 `Requirement` 가 아닌 `depends_on` 행)는 하나하나 도구 진단이 붙은 kept finding 으로 keep 한다 — 그런 경고가 하나라도 남은 라운드는 통과하지 않는다.
+
+---
+
 신규 요구사항을 받아 **기존 코드 + 기존 speckiwi SRS**와 교차 분석하여 **4-way 분류** → **feasibility 판정** → **speckiwi MCP를 SSOT로 SRS 증분 작성·갱신**하는 스킬.
 
 **규칙 진술 원칙**: 본 문서의 모든 규칙은 **현재 적용되는 동작**만 declarative하게 기술한다. 연혁/정정/이관 주석은 git history 로 추적한다 (본문에 변경 이력 섹션 없음). 에이전트는 본문을 시간 차원 없이 그대로 적용한다.
@@ -63,7 +71,7 @@ pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` �
 | §0.15 | **Fabricated AC → OQ 강제**. AC 항목에 코드 증거 없거나 사용자 prompt 에 명시 없는 구체 값(예: 400-error body shape, 특정 timeout 초)이 포함되면 AC 라인에 포함 금지 — 대신 §6 Open Questions 에 `[NEEDS-USER]` 라벨로 등재. AC는 결정 가능 명제만. **Canonical placeholder grammar**: AC 본문이 OQ 결정을 참조하면 `{{OQ-N}}` 형식만 허용. `<default per OQ-1>`, `pending decision`, `TBD` 등 자유 형식 금지 |
 | §0.16 | **Discarded/Draft 마커 정책**. kiwi-srs 는 본문 마커(strikethrough / `[DISCARDED]` / `[DRAFT]`) 적용을 skip — speckiwi `Status=discarded` + `add_completed_work` Change Notes 기록을 SSOT 로 간주. 인덱스 (`00.index.md`) `(discarded)`/`(draft)` 접미사도 speckiwi mutation 이 자동 처리 |
 | §0.17 | **finding_hash 정확화**. `finding_hash = sha1(utf8_bytes(f"{req_id or '_'}|{axis}|{evidence_path or '_'}"))` — lowercase hex digest 40자 결과 문자열, 포뮬러 리터럴(`"sha1('...')"`) 금지. **Test vector**: `sha1_hex("FR-TODO-004|ac|src/api.ts:7-11")` = `29430d304a3a6670c054ab111dca51e5b27fed3d`. 평가자는 동일 입력으로 디지스트 계산 → 불일치 시 자체 거절 |
-| §0.18 | **Canonical relation encoding**. REQ 간 의존성은 `add_trace_link { type: "Requirement", relation: "depends_on\|supersedes\|conflicts_with\|extends\|regression-only" }` 만 SSOT. `tags: ["depends_on:X"]` 같은 tag 형식 금지. **방향 SSOT**: trace_link 는 항상 `id: {신규 REQ} → reference: {기존 REQ}` 방향. e.g. `supersedes`: `{NEW-ID} supersedes {OLD-ID}` |
+| §0.18 | **Canonical relation encoding**. REQ 간 의존성은 `add_trace_link { type: "Requirement", relation: "depends_on\|supersedes\|conflicts_with\|extends\|regression-only" }` 만 SSOT. `tags: ["depends_on:X"]` 같은 tag 형식 금지. **방향 SSOT**: `depends_on` 은 신규·기존과 무관하게 의존하는 요구 → 의존받는 요구(`id: {의존하는 REQ} → reference: {의존받는 REQ}`) 방향이다(FR-FLOW-208). 그 밖의 relation 은 항상 `id: {신규 REQ} → reference: {기존 REQ}` 방향. e.g. `supersedes`: `{NEW-ID} supersedes {OLD-ID}` |
 | §0.19 | **외부 모듈 수정 시 사용자 확인 의무**. 작업 대상은 cwd 하위 모듈로 한정. cwd 외부 경로(상위 디렉토리, 형제 프로젝트, 외부 패키지, monorepo 다른 워크스페이스) 수정 신호 감지 시 즉시 중단 + AskUserQuestion. 상세는 §0.G2 결정표 |
 | §0.20 | **검증 서브에이전트 모델 정책 SSOT**. SRS 만족도 평가자 등 평가·검증은 **단일(single) 검증 서브에이전트**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 Opus×1+Sonnet×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 검증 서브에이전트 구성 외 pass/fail 게이트·라운드 상한은 불변 |
 | §0.21 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 기존 `--auto` 시맨틱 (`kiwi-prd` 가 질문 없이 PRD 작성 + AskUserQuestion 발동 대신 **차단** — §1.2 4번째 bullet) 은 유지되며, 차단 대상 게이트(외부 모듈 §0.G2 / scope-boundary §0.G4 / combined §0.G5)는 본 §0.G6 critical_gates 에 인라인된다. `--auto` 와 `--qna` 동시 명시 ERROR 시맨틱(§1.2) 도 critical. 본 스킬의 `critical_gates[]` 는 §0.G6 (아래) 참조 |
@@ -487,6 +495,7 @@ scope-boundary 변경을 Open Questions 에만 기록하고 진행 = §0.7 위�
 
 작성자 Opus 서브에이전트에게 전달:
 - PRD 경로(요약 금지) — 요구마다 Rationale 에 인용한 PRD 항목(`AC-n ← PRD-m`)이나 `fills:` 근거를 적는다(핵심 규칙 블록)
+- 요구 사이 의존 — `depends_on` Trace Link 로 적는다(핵심 규칙 블록 FR-FLOW-208)
 - Phase 1/2/3 산출물
 - `existing_srs_context.json` (관련 REQ 전체 내용)
 - 신규 REQ 초안 (Phase 2의 proposed_*)
@@ -536,7 +545,7 @@ scope-boundary 변경을 Open Questions 에만 기록하고 진행 = §0.7 위�
      ```
 
      CLI 는 `--github-issue` 로 같은 값을 준다. 값은 번호가 아니라 위 형식의 URL 이다 — SRS-MD 규칙 §12.3 의 `GitHub Issue` 행이 URL 을 요구하고, 그 형식을 벗어나면 `links check` 가 `SRS-W004` 를 낸다.
-2. `add_trace_link` — 관련 REQ 의존성 (`depends_on` / `extends`, 방향: NEW-ID → 기존 REQ; §0.18)
+2. `add_trace_link` — 관련 REQ 의존성. `depends_on` 은 의존하는 요구 → 의존받는 요구로 적는다(기존 REQ 가 NEW-ID 에 기대면 기존 REQ → NEW-ID). `extends` 는 NEW-ID → 기존 REQ (§0.18)
    - cross-REQ AC 재진술 시 `notes: "{base}; re_stated_from: REQ-X#ACn"` provenance 필수
 3. `validate_spec` — pre-check
 4. **Markdown sync** (§9.4)
@@ -711,7 +720,7 @@ finding 은 증거가 붙을 때만 keep 한다(핵심 규칙 블록 **종료**)
 
 | 처분 | 증거 | 예 |
 |---|---|---|
-| **keep** | 도구 진단 — `validate_spec` · `links check` 가 이번 변경으로 새로 낸 진단 | REQ-ID 중복, trace path 비존재 |
+| **keep** | 도구 진단 — `validate_spec` · `links check` 가 이번 변경으로 새로 낸 진단, 그리고 이번 실행이 추가하거나 바꾼 요구에 남은 FR-PARSE-045 경고(이미 있던 것도, 핵심 규칙 블록 FR-FLOW-208) | REQ-ID 중복, trace path 비존재 |
 | **keep** | 실패한 검사 — 입력만 있으면 답이 하나로 정해지는 대조 | 필수 MCP 호출 누락(`srs_delta.json` ↔ §9.2), 황금률 위반(axis 10), conflict 인데 `conflicts_with` 없음, update 인데 supersede·Change Notes 없음, `{{OQ-N}}` ↔ §6 불일치 |
 | **keep** | 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9 b/c/e) |
 | **drop** | 증거 없음 — 사유와 함께 보고만 한다 | 분류 rationale 약함, 모호 어휘, 제목·tag·Change Notes 형식, wording |

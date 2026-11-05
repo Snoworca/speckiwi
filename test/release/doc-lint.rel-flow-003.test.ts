@@ -353,7 +353,8 @@ describe("REL-FLOW-003 — the whole document is clean", () => {
     expect(truth.commandPaths.size).toBeGreaterThanOrEqual(148);
     // 91 since 5.2.0 added `rename_scope` (IR-MCP-006) and `expire_acceptance_criterion` (FR-NODE-243 AC-6).
     // 97 since 5.2.0 added the six PRD tools (FR-NODE-240, FR-NODE-241, FR-NODE-242).
-    expect(truth.toolNames.size).toBe(97);
+    // 102 since 5.3.0 added the five work-graph and preservation tools (IR-MCP-008).
+    expect(truth.toolNames.size).toBe(102);
     expect([...truth.counts.values()].every((count) => count > 0)).toBe(true);
 
     expect(lintDocument(readme, truth)).toEqual([]);

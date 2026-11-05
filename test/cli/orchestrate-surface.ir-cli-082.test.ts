@@ -136,8 +136,9 @@ describe("IR-CLI-082 AC-1 — exactly the registered rows", () => {
     ]);
 
     // IR-CLI-082 AC-1 (4.1.0) — a row a later requirement registers is declared beside the phase rows,
-    // not inside them: IR-CLI-104 adds `wave status`.
-    expect([...ORCHESTRATE_LATER_VERB_ROWS]).toEqual(["wave status"]);
+    // not inside them: IR-CLI-104 adds `wave status`; 5.3.0 adds the work-graph readers (IR-CLI-114,
+    // FR-NODE-251, FR-NODE-246, FR-NODE-247) and `preservation check` (FR-NODE-252).
+    expect([...ORCHESTRATE_LATER_VERB_ROWS]).toEqual(["wave status", "wave show", "wave actions", "wave check", "wave propose", "preservation check"]);
     expect(ORCHESTRATE_REGISTERED_VERB_ROWS).toContain("wave status");
 
     const leaves = orchestrateLeafPaths();

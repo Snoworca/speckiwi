@@ -106,7 +106,7 @@ describe("FR-NODE-213 AC-6 — who stamps the schema version", { timeout: 60_000
 
     const round = {
       loop: "D", scope: "design", roundIndex: 1, mode: "normal", cap: 5, streakBefore: 0, frozenDenominator: 1,
-      rows: [{ id: "R-1", verdict: "pass", severity: "MEDIUM" }], fixAppliedThisRound: false,
+      verifiers: ["verifier-1"], rows: [{ id: "R-1", verdict: "pass", kept: false, verifier: "verifier-1" }], fixAppliedThisRound: false,
       regression: { failingTests: [], baselineFailingTests: [], exitCode: 0 }, residual: []
     };
     const recorded = await orchestrate(root, ["round", "record", "--run-id", "run-a", "--payload", JSON.stringify(round), "--proof", JSON.stringify({ kind: "digest", ref: "sha256:0123456789abcdef" })]);

@@ -37,19 +37,30 @@ lane holding an MCP handle still cannot touch its own worktree through it.
 
 ## 2. Creating one — never trust the default head
 
-```
-git worktree add <lane-root> -b kiwi/orch/{run_id}/{laneId} <base_sha>
-```
+**This section alone owns lane-branch preparation.** `parallel-waves.md` PW-6 step 1 and the PW-8 retry, and the worktree procedures of `kiwi-orchestrator` and `kiwi-wave-master`, do not write the commands again; they follow this section. `<branch>` is the lane branch `kiwi/orch/{run_id}/{laneId}`.
+
+Every case starts with the **ancestor test** — `git merge-base --is-ancestor` exits 0 when the lane branch exists and this `<base_sha>` is its ancestor. On 0 it is a resume after an interruption, or a PW-8 retry, so **attach and leave the branch where it is**. Otherwise — no lane branch, or `<base_sha>` is not its ancestor (a first dispatch, or a re-entry `r{m}`) — **create or recreate the branch at `<base_sha>`** (case 3 at the failed lane branch's tip). A first dispatch and its re-entry share the lane id, so an existing branch alone does not mean a resume. On an attached branch, the `REQ` · `Commit-Kind` trailer commits in `<base_sha>..` are `parallel-waves.md §6`'s resume cursor.
+
+1. **The host creates the worktree.**
+   - Test: `git merge-base --is-ancestor <base_sha> <branch>`
+   - Attach: `git worktree add <lane-root> <branch>`
+   - Create or recreate: `git worktree add <lane-root> -B <branch> <base_sha>`
+2. **A runtime handed you the worktree already made** — a single command is not possible.
+   - Test: `git -C <lane-root> merge-base --is-ancestor <base_sha> <branch>`
+   - Attach: `git -C <lane-root> switch -C <branch> <branch>` leaves the branch where it is.
+   - Create or recreate: `git -C <lane-root> switch -C <branch> <base_sha>`
+3. **The retry branch** (a PW-8 verdict retry, or a PW-9 merge retry) — `<branch>-r2` starts at the tip of the failed lane branch, not at the base: made at the base, it holds no trailer commit for the resume cursor to read.
+   - Test: `git merge-base --is-ancestor <base_sha> <branch>-r2`
+   - Attach: leave the existing `<branch>-r2` where it is (the retry worker resuming after an interruption).
+   - Create or recreate: `git branch -f <branch>-r2 <branch>` — at the failed lane branch's tip. A PW-8 verdict retry runs on the same `<base_sha>`, so that tip has the base as its ancestor: the retry worker, taking `<branch>-r2` as its lane branch, attaches through the test of case 1 or 2 and resumes at the failed requirement through `parallel-waves.md §6`'s resume cursor. A merge-conflict or post-merge-regression retry (PW-9) runs on a new base, which is not that tip's ancestor, so the test of case 1 or 2 recreates `<branch>-r2` at the new base.
+
+Either way HEAD stays ATTACHED to the branch. `checkout <sha>` is never the answer.
 
 **Pass the base as the third argument — never split this into two commands.** `add -b BR` followed by a
 separate `checkout <base_sha>` creates the branch at the current tip and then DETACHES HEAD from it.
 The lane's commits pile up on a detached HEAD while the branch stays put — reproduced. The "commits on
 its own branch" that §1 lists as the lane's property then do not exist, §5's `base..head` check reads
 zero for a lane that did work, and removing the worktree leaves those commits unreferenced.
-
-Where a single command is not possible — a runtime handed you the worktree already made — use
-`git -C <lane-root> switch -C <branch> <base_sha>`, which moves the branch to the base and leaves HEAD
-ATTACHED to it. `checkout <sha>` is never the answer.
 
 **Naming the base is itself not optional.** Measured: a runtime-created worktree opened at
 `origin/<default-branch>`, **114 commits behind** the branch under work. A diff produced on that base

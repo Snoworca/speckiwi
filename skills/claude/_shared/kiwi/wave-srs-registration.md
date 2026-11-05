@@ -1,23 +1,33 @@
 # kiwi wave-srs-registration v1.0.0
 
-wave(또는 그에 준하는 단위)마다 `/kiwi-srs` 를 호출해 전용 target 의 SRS 를 저작할 때의 **호출 계약** SSOT. `kiwi-wave-master` §4 에서 **등록 계약 줄만** 이동해 만들었으며, `kiwi-wave-master` 와 `kiwi-orchestrator` 가 **모두 본 문서를 참조**한다 — 규칙을 텍스트가 아니라 참조로 중복시키기 위해서다.
-
-target 등록 자체(범위 한정, 미등록 target 의 생성 옵션 등록)는 호출자의 본문에 남는다. 본 문서는 **저작 입력**과 **멱등 표식**만 규정한다. 아래 이동된 본문이 `§4` · `§5` 를 가리킬 때 그것은 **호출자의** 절이다.
+run 이 SRS 를 쓰는 `kiwi-srs` 호출의 **계약** SSOT. `kiwi-wave-master` 와 `kiwi-orchestrator` 가 이 문서를 참조한다. 호출은 **둘뿐이다** — run 당 한 번의 처음 저작(§1)과 워커 델타의 증분 저작(§2). wave 마다 target 을 만들거나 wave 마다 저작하는 호출은 없다. 두 호출 모두 호스트가 run root 에서 하나씩 부른다 — 요구 ID 발급 · SRS 락 · 활성 target 이 run root 하나의 전역 상태이기 때문이다(`parallel-waves.md §1`).
 
 ---
 
-## 1. 저작 입력 — 무엇을 넘기는가
+## 1. 처음 저작 — run 당 한 번, 분해 앞
 
-wave 진입 시 `carried_into` 가 이 wave 인 residual 을 **전량** 수집해 증분 **저작 입력**에 포함한다 — 이월된 결함은 이 wave 의 REQ/AC 분모에 들어가지 않으면 다시 검출되지 않고 조용히 종결된다.
+```
+Skill({ skill: "kiwi-srs", args: "PRD_PATH=<run 의 PRD> TARGET=<제품 target> --research-doc <입력 문서> --constraints-doc <constraints_path> [--auto] [--max] [--mini|--loops N]" })
+```
 
-이때 `/kiwi-srs` 호출의 **리서치 문서** 인자(`--research-doc`)로 그 wave 의 `design_baseline` 이 가리키는 `excerpt_path` 를 전달하고, 원본 `source_file` 도 함께 넘긴다. wave 본문을 **인라인**으로 넘기는 것만으로는 리서치 검증·개선 루프가 작동하지 않는다 — 그 루프는 경로로 지정된 문서를 분모로 삼기 때문이다. 좌표 매핑 JSON(`design_baseline.path` 가 가리키는 `design-baseline.json`)을 대신 넘기는 것도 같은 이유로 부족하다 — 대조할 산문이 없으면 그 루프가 갭을 만들지 못한다. 전달하는 경로는 `waves.jsonl` 에 기록한 것과 **같은** 경로다 — 증거 번들과 저작 입력이 갈라지면 두 계층이 서로 다른 설계를 본다.
+`--constraints-doc` 은 `wave-decomposition.md §1` 의 `constraints_path` 아티팩트다 — 저작 입력에 없는 제약은 검증에서 잡혀도 반영할 근거가 없다. `existing_modules` 도 같은 호출의 **저작 입력**으로 넘긴다 — 검증자만 읽는 목록은 무엇이 저작되는지를 바꾸지 못한다. `--research-doc` 은 입력이 연구·설계 문서일 때만 준다. 미등록 제품 target 을 생성 옵션과 함께 등록하는 것은 이 호출의 정상 경로다. 재개는 이 호출을 다시 돌리지 않는다 — 그래프가 커밋되어 있으면 저작은 끝났다.
 
-같은 호출에 `constraints_path` 아티팩트를 `--constraints-doc` 인자로 전달한다 — 저작 입력에 없는 제약은 검증에서 잡혀도 반영할 근거가 없고, 인라인 전달은 §4 가 바로 앞에서 부정한 경로다.
+## 2. 증분 저작 — stage 당 한 번, PW-10 재생 뒤 · PW-13 검증 앞
 
-그 wave 의 `existing_modules` 도 같은 호출의 **저작 입력**으로 전달한다 — 검증자만 읽는 목록은 무엇이 저작되는지를 바꾸지 못한다.
+워커는 매니페스트의 `srs_deltas[]` 로 빠졌거나 틀린 요구를 보고하고 멈추지 않는다(`parallel-waves.md` PW-6). 호스트는 `evidence` 가 red 테스트나 명령 출력이 아닌 델타를 버리고 그 델타를 보고에 적는다. 남은 델타를 `{artifact_root}waves/stage-{s}/srs-deltas.md` 에 모아 한 번 부른다:
 
----
+```
+Skill({ skill: "kiwi-srs", args: "REQ_PATH={artifact_root}waves/stage-{s}/srs-deltas.md PRD_PATH=<run 의 PRD> TARGET=<제품 target> [--auto] [--max] [--mini|--loops N]" })
+```
 
-## 2. 저작 완료 표식 — 멱등 재개
+PRD 항목도 `fills:` 도 인용하지 않는 확장은 `prd-residual-user-decision` 으로 멈춘다(`kiwi-srs` 의 PRD 판정). 델타가 없으면 이 호출을 건너뛴다. 저작 뒤 `wave-decomposition.md §5` 의 PRD 커버리지를 다시 돈다.
 
-그 wave 의 이벤트 중 `srs_authored` = `true` 를 실은 줄이 **하나라도** 있으면 본 절과 target 등록을 건너뛰고 곧바로 그 다음 단계 — 선언 갱신과 스케줄링(`requirements[]` 채우기와 `parallel-waves.md` PW-3 부터, `--sds` 면 PW-2 SDS 작성부터) — 로 들어간다 — 저작은 이미 끝났고, 다시 돌리면 같은 요구를 두 번 저작한다. 저작을 마친 직후 `phase="srs-authoring"` 이벤트에 그 표식을 실어 append 하며, **표식 없는 줄**은 `srs-authoring` 줄만 저작 진행 중으로 읽는다 — wave-verify 줄에는 그 표식이 없는 것이 정상이므로, 최신 줄 하나로 판정하면 검증 기록 뒤마다 저작이 되살아난다.
+델타는 종류마다 이렇게 간다.
+
+| 델타 | 처리 |
+|---|---|
+| `new-requirement` | 저작이 돌려준 ID 를 `wave-decomposition.md §6` 의 R1 ~ R5 로 배치한다 |
+| `ac-change` — 현재 wave 의 `verified` 아닌 요구 | 그 AC 를 고치고 그 wave 를 재진입 `r{m}` 으로 다시 돈다(`parallel-waves.md §3`) |
+| `ac-change` — 끝난 wave 의 `verified` 요구 | 그 요구를 고치지 않는다. 뒤 wave 에 후속 요구를 저작하고, 옛 AC 를 그 후속 요구를 지명해 만료한다(MCP `expire_acceptance_criterion`) |
+| 옛 동작 자체가 틀림 | `wave-verify-cross-wave-fix-required` 로 멈춘다. 하향 · 수정 · 재승급은 사용자가 결정한 뒤에만 한다 |
+| `residual` | 저작이 돌려준 ID 로 받는 wave 에 넣는다 |

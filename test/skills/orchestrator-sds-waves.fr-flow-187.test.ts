@@ -77,14 +77,19 @@ describe("FR-FLOW-187 AC-2 — step 3.c invokes kiwi-sds for each wave", () => {
   }
 });
 
-describe("FR-FLOW-187 AC-3 — allocation and grounding read the SDS", () => {
+describe("FR-FLOW-187 AC-3 — the SDS union check and grounding read the SDS", () => {
+  // Rewritten 2026-11-05: the `unallocated-req-id` gate over `requirements[]` expired with FR-FLOW-212 AC-4 —
+  // the `orchestrate wave check` partition (FR-NODE-246) replaced it, and its absence is pinned in
+  // wave-srs-first.fr-flow-212.test.ts. The SDS half of the check stays and stops at
+  // `child-pipeline-needs-user-or-failed`; `files-not-grounded` still covers the SDS Files.
   for (const bundle of BUNDLES) {
-    it(`FR-FLOW-187 AC-3 ${bundle}: unallocated-req-id checks the SDS @req set and files-not-grounded the SDS Files`, () => {
+    it(`FR-FLOW-187 AC-3 ${bundle}: child-pipeline-needs-user-or-failed checks the SDS @req set and files-not-grounded the SDS Files`, () => {
       const rows = criticalGateRows(body(bundle, "kiwi-orchestrator"));
-      const allocation = rows.find((r) => r.gateId === "unallocated-req-id");
-      expect(allocation, bundle).toBeDefined();
-      expect((allocation as { reason: string }).reason, bundle).toMatch(/SDS[^|]*@req/);
-      expect((allocation as { reason: string }).reason.includes("sidecar"), `${bundle}: sidecar`).toBe(false);
+      const union = rows.find((r) => r.gateId === "child-pipeline-needs-user-or-failed");
+      expect(union, bundle).toBeDefined();
+      expect((union as { reason: string }).reason, bundle).toMatch(/SDS[^|]*@req/);
+      expect((union as { reason: string }).reason.includes("sidecar"), `${bundle}: sidecar`).toBe(false);
+      expect(rows.some((r) => r.gateId === "unallocated-req-id"), `${bundle}: the replaced gate is declared again`).toBe(false);
       const grounding = rows.find((r) => r.gateId === "files-not-grounded");
       expect(grounding, bundle).toBeDefined();
       expect((grounding as { reason: string }).reason, bundle).toMatch(/SDS[^|]*Files/);

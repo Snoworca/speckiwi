@@ -140,9 +140,9 @@ verb 마다 세 번 쓴다. **동작 앞에 의도(intent) 1줄, 동작 뒤에 �
 | `decompose-waves` | pure-reauthor | 다시 수행 |
 | `author-convergence-registry` | pure-reauthor | 다시 수행 |
 | `verify-convergence-registry` | idempotent-by-key | 라운드 재수행 |
-| `author-wave-design` | pure-reauthor | 다시 수행 |
-| `verify-wave-design` | idempotent-by-key | 라운드 재수행 |
-| `register-wave-srs` | externally-visible | `/kiwi-srs` 가 요구사항을 저작했을 수 있다. `list_requirements --target wave-{n}` 와 `srs_authored` 표식(`wave-srs-registration.md §2`)을 먼저 확인 |
+| `author-wave-design` | pure-reauthor | 다시 수행 — 5.3.0 부터 생산하지 않는다(wave 설계 문서가 없다, FR-FLOW-215). 옛 run 의 줄을 읽을 때만 본다 |
+| `verify-wave-design` | idempotent-by-key | 라운드 재수행 — 5.3.0 부터 생산하지 않는다(FR-FLOW-215). 옛 run 의 줄을 읽을 때만 본다 |
+| `register-wave-srs` | externally-visible | `/kiwi-srs` 의 처음 저작(`wave-srs-registration.md §1`)이나 증분 저작(§2)이 요구를 저작했을 수 있다. `list_requirements --target <제품 target>` 과 커밋된 그래프를 먼저 확인 |
 | `sds-wave` | externally-visible | `--sds` 일 때만 도는 verb — `/kiwi-sds` 가 `docs/sds/{sds_id}.sds.md` 를 썼을 수 있다. 그 파일이 있고 Status 가 `agreed` 면 재사용하고, 없거나 `draft` 면 그 wave 만 다시 부른다 |
 | `derive-readiness` | idempotent-by-key | 새 스냅샷 위의 순수 재계산 |
 | `commit-wave-inputs` | externally-visible | `Orch-Run` + `Orch-Verb: commit-wave-inputs` + `Orch-Wave` trailer 커밋 확인 |
@@ -162,6 +162,7 @@ verb 마다 세 번 쓴다. **동작 앞에 의도(intent) 1줄, 동작 뒤에 �
 | `promote-requirements` | externally-visible | `update_status` / `add_verification_evidence`. `get_requirement` 를 먼저 확인 |
 | `final-verify` | idempotent-by-key | 라운드 재수행 |
 | `emit-and-finish` | idempotent-by-key | `pipeline.jsonl` 은 키 기준 멱등. 재개는 `{run_id}#r{n}` 을 키로 쓴다 |
+| `node-complete-action` | externally-visible | 노드의 `complete` 뒤 완료 행동 하나(`parallel-waves.md §5.1`). 행동이 바깥에 닿았을 수 있다 — `orchestrate wave actions` 가 그 행동을 `interrupted` 로 보고하면 다시 보내지 않고 사용자에게 보고한다 |
 | `abort-run` | externally-visible | 종결. `halt` 의 동의어가 **아니다** — 사용자가 남겨받는 저장소 상태를 호명해 run 보고서에 쓴다 |
 
 `halt` 는 이 enum 의 **유일한 종결 항목**이며 recovery class 를 선언하지 않는다 — 아무 동작도 하지 않으므로 중단될 수 없다. 위 표의 모든 verb 는 종결 항목이 아니며 각각 세 class 중 하나를 정확히 하나 선언한다.

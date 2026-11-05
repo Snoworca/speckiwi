@@ -36,6 +36,7 @@ description: "사용자 요청을 조사·질문보다 먼저 원문 그대로 P
 - `Kind=intent` 항목은 적어도 하나 있어야 한다 — 단 `--auto` 로 `Status` 행이 `unapproved` 이고 요청에 목적이 없을 때만, `Reason` 이 `inferred intent:` 로 시작하는 proposal 이 그 자리를 대신한다.
 - `Kind=exclusion` 항목만 `Exclusion Class` 행을 갖고, 값은 `already-implemented` · `superseded` · `external-ownership` · `user-excluded` · `non-normative` 가운데 하나다.
 - proposal 이 아닌 항목은 `Source` 가 가리키는 `U` 블록에 그대로 있는 구절을 인용 블록 하나로 옮긴다. `Source` 는 `U-<n>` 을 쉼표로 나열한다. 인용은 사용자 자신의 말이어야 한다 — `U-1` 이 아니고 `답:` 줄이 있는 `U` 블록에서 `질문:` 줄부터 다음 `답:` 줄 앞까지는 에이전트의 질문이므로 인용이 될 수 없다.
+- 요청이 설계·연구 문서이면 그 문서의 규범 문장(시스템이 해야 하는 일이나 범위 안팎을 정하는 문장) 하나마다 항목 하나를 만들어 그 문장을 그대로 인용하고, 규범 문장 둘을 한 항목에 합치지 않는다.
 - 에이전트가 채운 것은 모두 `Kind=proposal` 과 `Reason` 행으로 적고, 사용자가 받아들여도 `State` 만 `confirmed` 로 바꾸며 `Kind=proposal` 은 그대로 둔다.
 - proposal 은 확정되면 무엇을 더하는지 밝히는 `Effect` 행을 갖고, 값은 `in-scope` · `exclusion` 가운데 하나다 — 확정된 proposal 은 `Effect` 가 in-scope 이면 in-scope 항목처럼, exclusion 이면 exclusion 항목처럼 판정된다.
 - PRD 에는 Requirement ID · AC 줄 · `SHALL` 문장을 쓰지 않고, 맨 위에 입력 기록이며 요구 원본은 `docs/spec` 이라고 적는다. (`U` 블록, proposal 이 아닌 항목이 `U` 블록에서 옮긴 인용, `## 3. Approval` 의 승인 인용만 사용자의 말이므로 무엇이 들어 있어도 그대로 두고 검사를 통과시키려고 고쳐 쓰지 않는다 — proposal 의 인용 줄과 승인 절의 인용 밖 줄을 포함한 나머지는 모두 검사한다.)

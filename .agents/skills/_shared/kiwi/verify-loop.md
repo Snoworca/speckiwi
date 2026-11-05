@@ -1,10 +1,10 @@
 # kiwi verify-loop v1.0.0
 
-두 검증자 상호검증 루프(cross-verification loop)의 **공용 엔진** SSOT. `kiwi-wave-master` §5.5 에서 **텍스트를 이동**해 만들었으며, 본 문서를 참조하는 모든 스킬은 아래 규칙을 read-time 에 동일하게 적용한다.
+wave 종료 검증과 최종 검증의 **공용 엔진** SSOT. `kiwi-wave-master` §5.5 · §5.6 과 `kiwi-orchestrator` 의 loop P · loop F 가 이 문서를 고치지 않고 그대로 따른다. 판정은 실행이 입증한 **kept finding** 하나로만 한다 — 등급을 매겨 통과를 가르지 않는다.
 
-**본 엔진은 분모-불가지(denominator-agnostic)** 하다 — 고정 분모를 **입력으로 받으며**, wave 고유·lane 고유의 분모를 스스로 하나도 두지 않는다. 호출자마다 자기 분모 표를 공급한다.
+**본 엔진은 분모-불가지(denominator-agnostic)** 하다 — 검증 범위를 **입력으로 받으며**, wave 고유·lane 고유의 분모를 스스로 하나도 두지 않는다.
 
-본 계약 안의 `§n` 은 이 파일의 절을 가리킨다. 아래 이동된 본문이 `§0.G` · `§5.5` · `§6` 를 가리킬 때 그것은 **호출자의** 절이다 — 이동 전 문장을 그대로 옮겼기 때문이다.
+본 계약 안의 `§n` 은 이 파일의 절을 가리킨다. 아래 본문이 `§0.G` · `§5.5` · `§6` 를 가리킬 때 그것은 **호출자의** 절이다.
 
 ---
 
@@ -12,94 +12,78 @@
 
 | 입력 | 규칙 |
 |---|---|
-| **고정 분모 표**(frozen denominator table) | 호출자가 계층별 `expected` 를 **외부에서** 고정해 넘긴다. 엔진은 이 값을 산정하지 않는다 |
-| **증거 번들 행** | 호출자가 §2 규칙에 따라 행 목록을 공급하고, 그중 어느 행이 **필수**인지도 호출자가 선언한다 |
+| **검증 범위** | wave 의 요구 ID 와 AC(`orchestrate wave show` 의 `acs`), PRD 항목(`prd_items`), 통합 항목(§3), PRD 의 제외 항목, wave 의 diff 창. 최종 검증은 run 의 모든 AC 와 모든 통합 항목이다 |
 | **라운드 상한** | `../_shared/kiwi/loop-option.md` v1.0 |
 | **저널 기록기** | 라운드마다 verdict 를 append 하는 주체. 저널 schema 는 호출자의 SSOT 를 따른다 |
-| **critical 게이트 id** | 잔여 CRITICAL/HIGH · `fail-cap` · `fail-residual` · 진동에서 중단할 게이트 이름 |
+| **중단 게이트 id** | kept finding 이 남은 종료 · `fail-cap` · `fail-residual` · 진동에서 중단할 게이트 이름 |
 
 **범위 밖**: hunk 단위 코드 리뷰는 본 계층의 범위 밖이며 `kiwi-review-fix-loop` 가 이미 소유한다 — 여기서 재수행하지 않는다. 본 계층이 값을 하는 조건은 diff 가 아니라 **wave 단위 증거**를 보는 것이다.
 
----
-
-## 2. 증거 번들 (양 검증자 공통) — kiwi-wave-master §5.5.1 에서 이동
-
-**정확히 2기의 검증 서브에이전트**를 spawn 하고, 두 검증자에게 **동일한 증거 번들**을 준다. 증거를 둘로 **나눠** 주는 것은 **금지**한다 — 공유하는 증거가 없으면 확인도 반박도 원리적으로 불가능해 상호검증이 성립하지 않는다.
-
-호출자가 **필수**로 선언한 증거 행은 생략할 수 없다 — 번들에 없는 증거는 어느 stance 에서도 보이지 않으므로, 검증이 코드가 스스로 선언한 범위 안에서만 돌게 된다.
-
-**산문은 읽는 자료이지 판정 대상이 아니다.** 번들에 연구 노트·intake·설계 문서가 들어가더라도 그것은 검증자가 **참조할** 자료이며, 그 서술 자체에 finding 을 걸지 않는다(§9). 호출자는 번들과 함께 이 사실을 두 검증자에게 **같이** 준다 — 한쪽에만 주면 §2 의 증거 분할 금지를 깨고, 아예 주지 않으면 산문 finding 이 §4 의 add-only 아래에서 닫을 길 없이 쌓인다. 다만 그 산문이 **이 창 안에서 변경된** 경우는 §3 보존 계층의 대상이다. 단언을 낮추는 편집이 거기서 어떻게 판정되는지는 §3 이 정하며, **이 선언이 그것을 면제하지 않는다.** 설계 기준선에서 제약 한 줄을 덜어내 갭을 없애는 편집이 정확히 그 경우이고, §3 이 가장 값싼 우회로라고 이름 붙인 동작이다.
-
-증거 창은 호출자가 지정한 **모든** run 과 진입 타임스탬프로 경계 짓는다. 스킬별 **분석 산출물**은 같은 창 안의 그 스킬 이벤트가 실어 보낸 **자신의** `artifacts.analysis_dir` 에서 해석하며, `*` 글롭으로 대신하지 않는다.
+**코드가 없는 루프** — `kiwi-orchestrator` 의 loop D(설계)와 수렴 레지스트리 검증도 이 엔진을 쓴다. 그 루프에는 §2 의 기계 검사와 §4 의 테스트가 없고, 대신 검증자가 호출자가 라운드 전에 고정한 행(frozen denominator)을 **모두** 열거한다. 열거한 행 수가 고정 분모와 다르면 그 라운드는 **무효**이며 cap 은 소비하되 연속 통과 스트릭은 0 으로 되돌린다. finding 은 해소 가능한 포인터(존재하는 `file:line` 또는 명령 출력)가 입증할 때만 남고, 통과 조건은 §5 에서 회귀 조건을 뺀 것이다.
 
 ---
 
-## 3. 두 검증자 (stance 분리) — kiwi-wave-master §5.5.2 에서 이동
+## 2. 기계 검사가 먼저다
 
-| | 검증자 1 | 검증자 2 |
+병합 뒤 `complete` 줄 앞에서, 검증자를 띄우기 전에 호스트가 아래 검사를 차례로 돈다. 실패는 그 행의 경로로 먼저 고치고, 모두 통과한 뒤에야 §4 의 라운드에 들어간다.
+
+| 검사 | 명령 | 실패하면 |
 |---|---|---|
-| stance | wave SRS **의도 실현** + **과정 적합**(process conformance) | **결과물 품질** + **교차 wave 회귀** 위험 |
-| roll-up | `ALL_MATCH` / `GAPS` | `substantive_clean` |
-| 산출 | REQ/AC 행마다 `intent_match` + 증거 포인터 | finding 마다 `severity` + `severity_class` |
+| 분할 | `speckiwi orchestrate wave check --waves <그래프> --run-id {run_id} --json` | 그래프를 고쳐 다시 check 한다(`wave-decomposition.md §6`) |
+| PRD 커버리지 | `speckiwi prd coverage <PRD> --target <제품 target> --json` | `wave-decomposition.md §5` 로 멈춘다 |
+| AC 인용 | wave 의 AC 에 대해 `speckiwi coverage --tests --ids <wave 의 요구 ID> --json`(MCP `check_test_sufficiency`) | `test-sufficiency.md` 대로 인용 공백을 채운다 |
+| 테스트 우선 | 착지한 요구마다 `Commit-Kind: test` 커밋이 `Commit-Kind: implementation` 커밋의 조상인가(`parallel-waves.md` PW-8) | 그 요구를 재진입으로 다시 구현한다(§7) |
+| 보존 | `speckiwi orchestrate preservation check --base <wave 의 base_sha> --head <wave head> --json` | 보고된 행마다 그 변경을 요구하는 AC 가 없거나 테스트 약화면 재진입으로 되돌린다(§7) |
+| 회귀 | 호출자가 pin 한 회귀 명령 — `failing_tests ⊆ baseline_failing_tests`, 기준선 캡처에 실패했으면 exit 0 | `kiwi-review-fix-loop` 위임(§7) |
 
-각 행의 판정은 `intended-improvement` / `unapproved-damage` 두 값 enum 이며 자유 서술은 판정이 아니다. 결과는 `preservation_layer` 에 싣는다.
-
-`intended-improvement` 는 그 변경을 요구하는 **REQ** 또는 (있으면) wave SDS 의 **SDS-AC** 가 있을 때에만 쓰며, 그 근거를 행의 `evidence` 에 REQ-ID 또는 SDS-AC id 로 적는다.
-
-근거를 대지 못한 행은 `unapproved-damage` 다 — 근거 없는 재량을 남겨두면 wave 를 끝내려는 국소 이해가 그대로 verdict 가 된다.
-
-단, **약화는** REQ 또는 SDS-AC 근거가 있어도 `intended-improvement` 로 **기록하지 않는다** — 언제나 `unapproved-damage` 다. SDS 안에서 단언을 낮추는 것이 이 루프에서 가장 값싼 우회로이고, 하위 루프의 PASS 가 wave 게이트를 충족하지 않는다는 §5.5.5 의 규칙과도 어긋나기 때문이다.
-
-열거한 **행 수가** 고정 분모의 개수와 다른 라운드는 두 검증자 **모두**에 대해 **무효**이며, cap 은 소비하되 연속 clean 스트릭은 0 으로 되돌린다.
-
-분모는 **라운드 도중** 늘어나지 않는다 — 증분 저작·수정으로 생긴 항목은 **다음 라운드** 진입에서 다시 freeze 하며, 그 재freeze 라운드는 **무효가 아니다**.
-
-산문은 줄일 수 있어도 호명은 줄일 수 없다 — 분모를 외부에서 고정하는 것이 "훑고 PASS"를 막는 유일한 기계적 장치다.
-
-두 검증자의 **분모**는 호출자가 외부에서 고정해 넘긴 값이며, **검증자가 스스로 정하지 않는다**. **모든** 항목을 행으로 열거하고 `checked == expected` 를 대조한다. 표본·발췌·상위 N 은 분모가 아니다. 실현으로 표시한 행에는 **해소 가능한** 증거 포인터(존재하는 `file:line` 또는 존재하는 test id)를 붙인다. 개수 불일치 또는 미해소 포인터가 있으면 그 라운드는 **무효**이며, cap 은 소비하되 연속 clean 스트릭은 0 으로 되돌린다.
-
-분모는 라운드 진입 시 freeze 하고 그 개수를 `frozen_denominator` 에 계층별로 기록한다 — 계층의 이름과 개수는 호출자의 분모 표가 정한다.
+기계 검사가 판정한 것을 검증자에게 다시 묻지 않는다. 검증자에게 남는 것은 인용된 테스트가 그 AC 를 정말 검증하는가, wave 를 가로지르는 통합 동작, PRD 제외 항목의 침범, 그리고 `preservation check` 가 보지 않는다고 적은 단언 약화(바뀐 기대값, 느슨해진 술어)다.
 
 ---
 
-## 4. 라운드 구조 (상호검증) — kiwi-wave-master §5.5.3 에서 이동
+## 3. 검증자 — 라운드마다 새로
 
-**한 라운드는 아래 세 단계 전부**다 — 단계 1 만 수행하고 종료 조건을 판정하는 것은 라운드가 아니다. `--loops 1` 도 세 단계를 모두 포함한 1 라운드를 뜻한다.
+라운드마다 검증자를 **새로** 하나 띄운다 — `--max` 면 서로 다른 관점의 둘이다. 같은 컨텍스트를 다시 쓰면 다음 라운드의 통과가 "앞 검증자가 자기 자신에게 동의한 것"이 되어 아무것도 뜻하지 않는다.
 
-1. **단계 1 — 독립·격리**: 두 검증자를 서로 독립적으로 수행한다. 메인 세션의 결론·정당화도, 상대 검증자의 산출도 전달하지 않는다.
-2. **단계 2 — 교차반박**: 각자에게 상대의 finding 목록을 **주장과 증거 포인터만** 담은 형태로 전달한다(rationale · verdict · confidence 제외). 여기서 가능한 동작은 **추가(add)와 확인(confirm)뿐이다 — `add-only`**. 상대의 finding 을 **기각할 수 없다**. 이 단계를 건너뛴 라운드는 **무효**이며 종료 조건 판정에 쓸 수 없다.
-3. **단계 3 — 병합**: **기계적 합집합**. 검증자에게도 메인 세션에도 재량이 없다.
+검증자에게 주는 것은 PRD 경로와 wave 의 PRD 항목(`prd_items`), wave 의 요구 ID 와 AC, wave 의 diff 창, 통합 항목, PRD 의 제외 항목, run 의 제약 파일(`constraints_path`)뿐이다. 호스트의 결론도 앞 검증자의 산출도 주지 않는다 — 결론을 받은 검증자는 그 결론을 확인하는 쪽으로 기운다.
 
-기각 권한을 주면 담합 보상이 생긴다 — 두 검증자의 국소 이해가 모두 "wave 를 끝내는 것"을 가리키므로 최단 경로가 **상호 기각**이 된다. add-only 는 기각으로 얻는 것을 없애고, 상대가 놓친 것을 찾는 행위만 남긴다.
+통합 항목은 서로 다른 노드의 요구 사이에 있는 `Requirement` / `depends_on` 링크와, 양 끝 노드가 서로 다른 요구를 가진 그래프 간선이다 — 항목마다 그 간선의 `reason` 을 설명으로 싣는다. 검증자가 스스로 고르지 않는다.
 
-두 번째 라운드부터는 검증자를 **새로 spawn** 한다. 같은 컨텍스트를 재사용하면 두 번째 clean 라운드가 "첫 검증자가 자기 자신에게 동의한 것"이 되어 연속 clean 이 아무것도 뜻하지 않는다.
+**산문은 읽는 자료이지 판정 대상이 아니다.** 연구 노트·intake·설계 문서가 입력에 들어가도 검증자는 그 서술에 finding 을 걸지 않는다(§9). 다만 그 산문이 **이 창 안에서 변경된** 경우는 §2 의 보존 검사 대상이다.
 
-finding 을 닫는 경로는 셋뿐이다. (i)/(ii) 의 "제기한 쪽"은 **인스턴스가 아니라 stance** 를 뜻한다 — 라운드마다 새 인스턴스를 쓰므로 인스턴스로 읽으면 (ii) 는 실행 불가능해진다: (i) 수정 후 **제기한 stance 의 검증자**(새 인스턴스)가 재검증하여 clean, (ii) **제기한 stance 의 검증자**가 반대 증거와 함께 철회, (iii) 양 검증자 만장일치 재분류 — 단 (iii)이 포함된 라운드는 연속 clean 스트릭에 **산입하지 않는다**(기각에 라운드 비용을 물려 유인을 역전). (iii)은 한 검증자의 **일방적 기각이 아니다** — 양측 합의와 기록된 사유를 요구하므로 add-only 를 깨지 않는 유일한 오탐 배출구다. 다만 스트릭 제외만으로는 대가가 되지 않는다(Normal 모드에는 스트릭 자체가 없다). 따라서 재분류가 일어난 라운드는 **모드와 무관하게** 반드시 검증 **라운드를 더** 돌고 나서야 PASS 할 수 있으며 — 수정이 적용된 라운드와 같은 취급이다 — 재분류 건은 사유와 함께 `verification.residual` 에 남긴다.
+---
+
+## 4. 라운드 — red 테스트만 finding 으로 남는다
+
+검증자는 결함을 드러낸다고 보는 테스트를 하나씩 임시 파일에 쓰고, 테스트마다 `<REQ-ID> AC-<n>` · 통합 항목 · `PRD-<n>` · 선언된 제약(`constraints_path` 의 항목 `id`) 가운데 하나를 인용한다. 호스트가 그 테스트를 돌려 red 인 것만 finding 으로 남기고(kept), green 인 테스트와 아무것도 인용하지 않은 테스트는 버린다(dropped). `--max` 면 두 검증자의 kept finding 을 합집합으로 합친다 — 한 검증자가 다른 검증자의 finding 을 지우지 못한다.
+
+finding 을 닫는 길은 그 테스트를 green 으로 만드는 수정 하나뿐이다(§7). 다음 라운드의 새 검증자가 같은 결함을 다시 쓰면 그 결함은 닫히지 않은 것이다.
+
+라운드의 기록(§5 의 `round record`)에서 행은 검증자가 쓴 테스트 하나당 하나이며 `{id, verdict, kept, evidence, verifier}` 다: red 면 `kept: true` 와 그 red 출력을 `evidence` 로, green 이거나 아무것도 인용하지 않으면 `kept: false` 다. `verifiers` 에는 그 라운드의 검증자 이름을 — 기본 하나, `--max` 둘 — 싣고, `frozenDenominator` 는 호스트가 검증자의 테스트 파일을 받은 시점에 센 테스트 수다. 라운드 도중 증분 저작이나 수정으로 요구가 늘어도 그 라운드의 범위는 늘지 않는다 — 늘어난 요구는 다음 라운드의 검증자가 받고, 그 라운드는 무효가 아니다. 행에 등급 필드를 싣지 않는다 — 도구가 그런 행을 거절한다.
 
 ---
 
 ## 5. 종료 조건 — kiwi-wave-master §5.5.4 에서 이동
 
+새 검증자가 red 테스트를 하나도 쓰지 않았고 그 라운드에 수정이 적용되지 않은 라운드에서만 통과한다. 통과 조건은 kept finding 0, 그 라운드에 적용한 수정 0, 회귀의 신규 실패 0 이다 — 회귀는 `failing_tests ⊆ baseline_failing_tests` 이고, 기준선 **캡처에 실패**해 `baseline_failing_tests` 가 없으면 `exit_code`=0 으로 격하된다.
+
 | 모드 | PASS |
 |---|---|
-| Normal | 병합 결과 `CRITICAL=0` + `HIGH=0` + 검증자 1 `ALL_MATCH`, **그리고 그 라운드에서 수정이 적용되지 않았을 것**, 그리고 wave head 회귀에 **신규 실패 0 건**(`failing_tests ⊆ baseline_failing_tests`, 기준선 부재 시 `exit_code`=0), 그리고 `unapproved-damage` **0 건** |
-| `--max` | 위 조건 + `MEDIUM=0` 을 **2라운드 연속** |
+| Normal | 위 통과 조건을 만족한 라운드 하나 — **그 라운드에서 수정이 적용되지 않았을 것** |
+| `--max` | 위 통과 조건을 만족한 라운드가 **2라운드 연속** |
+
+`--max` 는 이 조건을 **2라운드 연속** 요구한다 — 엔진 `orchestrate round record` 의 스트릭과 같은 값이다. **스트릭 요구치는** Normal **1** 라운드, `--max` **2** 라운드다.
 
 **수정이 적용되지 않은 라운드**에서만 통과한다는 조항이 저비용 상한을 안전하게 만든다 — 검증자가 읽은 적 없는 상태에 PASS 를 찍는 것을 막고, 수정이 있었다면 반드시 재검증 라운드가 돌게 한다.
-
-기준선 **캡처에 실패**해 `baseline_failing_tests` 가 없으면 이 회귀 조건은 `exit_code`=0 으로 격하된다 — 기준선이 없으면 신규 실패를 분리할 수 없다.
 
 라운드 상한(`../_shared/kiwi/loop-option.md` v1.0): 기본 **5**, `--max` **8**, `--mini` 3. `--mini` 와 `--loops N` 동시 지정 시 **`--loops` 우선**(비치명 **WARN**).
 
 재개 시점에 **남은 라운드**(`cap - rounds`)가 그 모드의 **스트릭 요구치**보다 작으면 PASS 가 산술적으로 불가능하므로, 라운드를 더 돌지 않고 `fail-cap` 으로 기록하고 사용자 결정을 받는다.
 
-**cap 소진은 PASS 가 아니다.** 상한에 닿으면 verdict 를 `fail-cap` 으로 기록하고, `complete` 를 append 하지 않으며, 잔여 finding 을 **전량** 보고한 뒤 사용자 결정을 받는다. 상한은 무한 에스컬레이션을 멈출 뿐 CRITICAL 을 은폐하지 않는다. **Normal 모드에서만** 상한에 닿기 전 Normal 게이트를 만족한 시점에 종료하며, 이때 남은 MEDIUM/LOW 는 `residual` 에 기록하고 `complete` 로 진행한다. `--max` 에서는 이 조기 종료가 없다 — 그 모드의 유일한 통과 경로는 위 `--max` 행의 연속 스트릭이다.
+**cap 소진은 PASS 가 아니다.** 상한에 닿으면 verdict 를 `fail-cap` 으로 기록하고, `complete` 를 append 하지 않으며, kept finding 을 **전량** 보고한 뒤 사용자 결정을 받는다. 상한은 무한 에스컬레이션을 멈출 뿐 결함을 은폐하지 않는다.
 
-**Normal 조기 종료**의 MEDIUM/LOW 잔여는 `pass` + `residual` 이며 **사용자 결정을 받지 않는다**. 그 밖의 미해소 finding 을 남긴 채 상한 전에 끝난 경우만 `fail-residual` 이고, 그때는 §0.G `wave-verify-fail-residual` 로 중단해 사용자 결정을 받는다. 두 경우를 한 문장으로 읽으면 조기 종료마다 무인 실행이 멈추거나, 반대로 `fail-residual` 이 조용히 통과한다.
+kept finding 을 남긴 채 상한 전에 끝난 경우 — 교차 wave HALT, 사용자 중단, 코드로 닫을 수 없는 요구 수준 잔여 — 는 `fail-residual` 이고, 그때는 호출자의 `fail-residual` 게이트로 중단해 사용자 결정을 받는다. 통과한 라운드가 이월이나 재진입으로 넘긴 항목을 `residual` 에 남기는 것은 `pass` + `residual` 이며 사용자 결정을 받지 않는다.
 
-**스트릭 요구치는** Normal **1** 라운드, `--max` **2** 라운드다 — 위 "남은 라운드" 판정이 비교하는 값이 이것이다.
-
-**이 표의 PASS 조건을 손으로 대조하지 않는다.** 라운드마다 MCP `orchestrate_round_record` 로 그 라운드의 verdict 를 받는다 — CLI 대체는 `speckiwi orchestrate round record --run-id <id> --payload <payload> --proof <payload>` 이고, 그 한 호출이 분모 일치와 `unapproved-damage` 와 회귀 부분집합과 그 라운드의 수정 적용 여부와 스트릭·cap 을 함께 판정해 저널 줄을 만든다. 라운드 scope 가 닫힌 어휘 밖이거나 선언한 loop 의 것이 아니면 그 호출이 `invalid-run-scope-option` 으로 거절한다. `--proof` 에 실을 증명의 종류는 `waves-event.md` 의 `proof_kind` 가 정하고, 저널 밖에서 재계산되는 종류를 하나도 싣지 않은 라운드 줄은 같은 호출이 `run-invariant-drift` 로 거절한다.
+**이 표의 PASS 조건을 손으로 대조하지 않는다.** 라운드마다 MCP `orchestrate_round_record` 로 그 라운드의 verdict 를 받는다 — CLI 대체는 `speckiwi orchestrate round record --run-id <id> --payload <payload> --proof <payload>` 이고, 그 한 호출이 kept 행 · 그 라운드의 수정 적용 여부 · 회귀 부분집합 · 검증자 수 · 스트릭과 cap 을 함께 판정해 저널 줄을 만든다. 라운드 scope 가 닫힌 어휘 밖이거나 선언한 loop 의 것이 아니면 그 호출이 `invalid-run-scope-option` 으로 거절한다. `--proof` 에 실을 증명의 종류는 `waves-event.md` 의 `proof_kind` 가 정하고, 저널 밖에서 재계산되는 종류를 하나도 싣지 않은 라운드 줄은 같은 호출이 `run-invariant-drift` 로 거절한다.
 
 저널을 되읽는 것으로 이 호출을 대신할 수 없다. 저널 검사는 착지한 줄의 일부 규칙만 보며, 수정이 적용된 라운드인지를 담는 필드가 저널에 없어 위 표의 그 조항은 저널 쪽에서 구조적으로 판정되지 않는다.
 
@@ -107,7 +91,7 @@ finding 을 닫는 경로는 셋뿐이다. (i)/(ii) 의 "제기한 쪽"은 **인
 
 ## 6. 진동(oscillation) 감지
 
-같은 `finding_id` 가 **2 라운드 이상**에 걸쳐 닫혔다가 다시 열리거나, 같은 hunk 가 되돌려졌다가 다시 적용되면 두 stance 는 진짜로 충돌하는 중이고 라운드를 더 돌아도 얻는 것이 없다. cap 을 태우지 말고 **즉시 종료한다** — `verdict` 를 `fail-residual` 로, `reason_class` 를 `"oscillation"` 으로 기록하고 `verification-oscillation` 을 critical 로 올린다.
+같은 `finding_id` — 같은 결함을 드러낸 red 테스트 — 가 **2 라운드 이상**에 걸쳐 닫혔다가 다시 열리거나(green 이 되었다가 다시 red), 같은 hunk 가 되돌려졌다가 다시 적용되면 수정이 진짜로 충돌하는 중이고 라운드를 더 돌아도 얻는 것이 없다. cap 을 태우지 말고 **즉시 종료한다** — `verdict` 를 `fail-residual` 로, `reason_class` 를 `"oscillation"` 으로 기록하고 `verification-oscillation` 을 critical 로 올린다.
 
 진동은 cap 소진과 **다른 사건**이다 — cap 소진은 라운드를 다 쓴 결과이고 진동은 라운드를 더 써도 수렴하지 않는다는 증거이므로, 진동을 `fail-cap` 으로 기록하지 않는다. 진동으로 끝난 루프는 cap 을 소진하지 않았어도 `complete` 를 append 하지 않는다.
 
@@ -115,27 +99,26 @@ finding 을 닫는 경로는 셋뿐이다. (i)/(ii) 의 "제기한 쪽"은 **인
 
 ## 7. 개선 위임 (수정 주체) — kiwi-wave-master §5.5.5 에서 이동
 
-본 스킬은 상위 오케스트레이터이므로 **전용 fixer 를 신설하지** 않는다 — 직접 요구사항을 저작하거나 코드를 구현하지 않는다는 본 문서 서두의 성격을 유지한다. 수정은 finding 종류로 라우팅한다.
+본 스킬은 상위 오케스트레이터이므로 **전용 fixer 를 신설하지** 않는다 — 직접 요구사항을 저작하거나 코드를 구현하지 않는다는 본 문서 서두의 성격을 유지한다. 수정은 kept finding 의 종류로 라우팅한다.
 
 | finding 종류 | 처리 |
 |---|---|
-| 품질 · 회귀 · 구현 결함 | `kiwi-review-fix-loop` 위임. **명시 범위**(`--base`/`--head` 또는 `--commits`)를 함께 전달한다 — 그 wave 의 작업이 이미 커밋됐으면 working-tree diff 가 비어 clean 오보가 난다 |
-| 검증자 1 의 갭 중 **wave 의 요구(와 있으면 SDS)가 덮지 않은** 것 | 그 wave 의 **재진입** — 갭의 `--req-filter` 범위로 원래 워커가 아닌 새 워커를 띄운다(`parallel-waves.md` PW-13). 이미 `--sds` 로 opt-in 한 run 이면 `$kiwi-sds` 로 그 갭의 새 SDS 도 쓴다. 코드 리뷰어는 요구도 SDS 항목도 만들어낼 수 없다 |
-| 코드로 닫을 수 없는 SRS 수준 finding (증거 부재 등) | `residual` 로 이관 + 사용자 결정 |
+| kept 코드 결함 | `kiwi-review-fix-loop` 위임. **명시 범위**(`--base`/`--head` 또는 `--commits`)를 함께 전달한다 — 그 wave 의 작업이 이미 커밋됐으면 working-tree diff 가 비어 clean 오보가 난다 |
+| kept 요구 갭 | wave 의 요구(와 있으면 SDS)가 덮지 않은 것 — `srs_deltas[]` 와 같은 모양의 델타로 `wave-srs-registration.md §2` 의 증분 저작에 넣는다(FR-FLOW-218). 새 요구는 `wave-decomposition.md §6` 대로 배치되고, 현재 wave 의 요구를 고친 것이면 그 wave 의 **재진입** — 갭의 `--req-filter` 범위로 원래 워커가 아닌 새 워커를 띄운다(`parallel-waves.md` PW-13) |
+| 기계 검사의 테스트 우선 · 보존 실패 | 그 wave 의 **재진입** — 그 요구의 `--req-filter` 범위로 새 워커를 띄운다 |
+| 코드로 닫을 수 없는 요구 수준 finding (증거 부재 등) | `residual` 로 이관 + 사용자 결정 |
 | **이전 wave** 의 완료 target 을 건드려야 하는 것 | `wave-verify-cross-wave-fix-required` critical HALT (§0.G) |
-| **산문 문서 자체**의 finding (연구 노트·intake·설계 문서의 서술) | §9 로 이 루프의 대상이 아니다. `kiwi-review-fix-loop` 으로 보내지 않는다 — 그 스킬은 코드만 보므로 리뷰할 것이 없다. **애초에 제기되지 않게 §2 가 막는다** — 그 절이 산문을 읽는 자료로 선언한다. 이미 제기된 것은 §4 (iii) 양측 만장일치 재분류로만 닫는다 — 메인 세션이 목록에서 덜어내는 넷째 경로를 열지 않는다. §4 는 닫는 경로가 셋뿐이라고 못박았고, 대가가 붙은 (iii) 옆에 대가 없는 출구를 두면 그것이 최단 경로가 된다 |
-| **설계 기준선에는 있으나** wave SRS 에 없는 것 | 그 wave target 에 `$kiwi-srs` **증분** 저작 재진입 → 이어서 스케줄링 단계부터(`--sds` 면 SDS 작성 단계부터) 그 wave **재진입** |
 | feasibility 단계가 draft 로 남긴 REQ | 그 REQ 만 `--req-filter` (`<REQ-ID[,…]>`) 로 지정해 `$kiwi-srs-feasibility` 재실행 후 스케줄링 단계부터(`--sds` 면 SDS 작성 단계부터) 재진입; 승급 실패 시 `reason_class="draft-stability-skip"` 로 residual |
 
-**금지**: fixer 는 **AC 본문**을 수정하지 않는다. 기존 **테스트를 약화하거나 삭제**하지 않는다(`kiwi-coder §0.20` 확장 — 판정 기준은 그 절의 closed list 를 그대로 따른다). `severity_class` 는 그 finding 을 제기한 검증자만 작성하며 fixer 도 메인 세션도 손대지 않는다. 결함을 고치는 대신 기준을 낮추는 것이 이 루프에서 가장 값싼 우회로이므로 셋 다 명시적으로 막는다.
+kept 테스트는 고친 뒤 그 wave 의 회귀 테스트로 커밋한다 — 임시 파일에 남은 테스트는 다음 wave 가 같은 결함을 다시 만들어도 잡지 못한다.
 
-`kiwi-review-fix-loop` **자신의 PASS 는 wave 게이트를 충족하지 않는다** — wave 수준 finding 은 오직 두 검증자의 재검증으로만 닫힌다. 그렇지 않으면 "하위 루프가 TASK_DONE 을 반환했으니 wave 검증도 통과"라는 다른 게이트의 판정으로 이 게이트를 대신하는 우회가 열린다.
+**금지**: fixer 는 **AC 본문**을 수정하지 않는다. 기존 **테스트를 약화하거나 삭제**하지 않는다(`kiwi-coder §0.20` 확장 — 판정 기준은 그 절의 closed list 를 그대로 따른다). 검증자가 쓴 red 테스트를 지우거나 고쳐 green 으로 만들지 않는다. 결함을 고치는 대신 기준을 낮추는 것이 이 루프에서 가장 값싼 우회로이므로 셋 다 명시적으로 막는다.
 
-wave 재진입은 명시 범위를 함께 전달한다 — **미해소 요구사항 필터**(그 라운드에 미대응으로 남은 REQ 목록)를 `--req-filter` 로, 재진입 단위 id 를 kiwi-pm `--run-id {run_id}-wave-{n}-r{m}` 로 넘긴다(`parallel-waves.md §3`). `--sds-id` 는 이미 `--sds` 로 opt-in 한 run 에서만 더한다 — 그때 기존 sds-id 를 **재사용**하는지 여부를 `--sds-id` 로 넘기며, 중단된 재진입을 이어갈 때만 그 id 를 재사용한다. opt-in 없는 run 의 재진입은 SDS 인자를 붙이지 않는다. 범위 없이 재진입하면 이미 통과한 요구까지 다시 돌아 한 라운드의 비용이 wave 전체로 불어난다. 재진입의 수정은 원래 워커가 아니라 새 워커나 독립 서브에이전트가 한다.
+`kiwi-review-fix-loop` **자신의 PASS 는 wave 게이트를 충족하지 않는다** — wave 수준 finding 은 그 red 테스트가 green 이 되고 다음 라운드의 새 검증자가 red 테스트를 쓰지 않을 때만 닫힌다. 그렇지 않으면 "하위 루프가 TASK_DONE 을 반환했으니 wave 검증도 통과"라는 다른 게이트의 판정으로 이 게이트를 대신하는 우회가 열린다.
+
+wave 재진입은 명시 범위를 함께 전달한다 — **미해소 요구사항 필터**(그 라운드에 kept finding 이 남은 REQ 목록)를 `--req-filter` 로, 재진입 단위 id 를 kiwi-pm `--run-id {run_id}-wave-{n}-r{m}` 로 넘긴다(`parallel-waves.md §3`). `--sds-id` 는 이미 `--sds` 로 opt-in 한 run 에서만 더한다 — 그때 기존 sds-id 를 **재사용**하는지 여부를 `--sds-id` 로 넘기며, 중단된 재진입을 이어갈 때만 그 id 를 재사용한다. opt-in 없는 run 의 재진입은 SDS 인자를 붙이지 않는다. 범위 없이 재진입하면 이미 통과한 요구까지 다시 돌아 한 라운드의 비용이 wave 전체로 불어난다. 재진입의 수정은 원래 워커가 아니라 새 워커나 독립 서브에이전트가 한다.
 
 증분 저작이 완료된 이전 wave 의 target 을 건드려야 하면 `wave-verify-cross-wave-fix-required` 게이트가 그대로 적용된다 — 재진입 경로가 완료 불가역성을 우회하는 통로가 되지 않게 한다.
-
-설계 계층 갭의 자동 처리는 `--auto` 에서도 **허용한다** — 근거가 추론이 아니라 기록된 설계 기준선이기 때문이다. 무엇을 저작할지가 문서로 고정되어 있으므로 위원회 판단이 끼어들 자리가 없다.
 
 하위 스킬이 **skip·보류한 REQ** 는 `verification.residual` 에 `reason_class` 와 함께 올라온다 — 부분 진행은 기록으로 드러나야 하고, 드러나지 않으면 다음 wave 가 그것을 완료로 딛고 선다.
 
@@ -147,7 +130,7 @@ wave 재진입은 명시 범위를 함께 전달한다 — **미해소 요구사
 
 이전 wave 의 **요구사항을 바꿔야** 하는 finding 도 이월을 먼저 시도하고, 남은 wave 와 신규 wave 양쪽이 **모두 불가능할 때에만** HALT 한다 — 완료된 target 을 되돌리는 일이기 때문이다.
 
-이전 wave 가 만든 **코드를 바꿔야** 하는 finding 은 남은 wave — SRS 저작을 아직 시작하지 않은 wave(`parallel-waves.md §3`) — 의 scope 로 이월한다. 남은 wave 가 없으면 §0.5 예외에 따라 새 wave 를 추가하고 거기로 이월한다.
+이전 wave 가 만든 **코드를 바꿔야** 하는 finding 은 남은 wave — 아직 dispatch 하지 않은 노드(`wave-decomposition.md §6`) — 의 scope 로 이월한다. 남은 wave 가 없으면 §0.5 예외에 따라 새 wave 를 추가하고 거기로 이월한다.
 
 이월은 `cross_wave` = true 와 `carried_into` = 이월한 wave id 로 `verification.residual` 에 남긴다. 이월은 이전 wave 의 `complete` 이벤트를 수정하거나 되돌리지 않는다 — 저널은 append-only 이고, 되돌림은 §0.6 재개 규약을 무너뜨린다.
 

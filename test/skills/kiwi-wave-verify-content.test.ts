@@ -70,7 +70,7 @@ function sectionUnder(body: string, headingRe: RegExp): string {
  * property this helper exists for.
  */
 function verifySection(body: string): string {
-  return `${sectionUnder(body, /^#{2,3}\s.*(?:상호검증|cross-verif)/i)}\n${moduleRegion(body, "verify-loop")}`;
+  return `${sectionUnder(body, /^#{2,3}\s.*(?:상호검증|종료 검증|cross-verif)/i)}\n${moduleRegion(body, "verify-loop")}`;
 }
 
 /** The critical_gates declaration section. */
@@ -96,25 +96,7 @@ function headingLine(body: string, re: RegExp): number {
 // Shared tokens. Every variant is host-language-adapted (claude/codex Korean, etc English/Korean
 // mixed), so prose concepts key on bilingual regexes while technical identifiers key on literals.
 // --------------------------------------------------------------------------------------------------
-/** Every variant states the verifier count with the literal "정확히 2" so the etc single-worker
- * profile can render it as "2 verification axes" without weakening the count itself. The negative
- * lookahead matters: "정확히 2기 이상" reads as at-least-two, which breaks the two-party premise the
- * add-only merge rests on — and on the etc host it would license the fanout its profile forbids. */
-const EXACTLY_TWO = /정확히\s*2\s*(?:기|개)(?!\s*이상)|exactly\s+two(?!\s+or\s+more)/i;
-const AT_LEAST_TWO = /정확히\s*2\s*(?:기|개)?\s*이상|two\s+or\s+more/i;
-const SAME_BUNDLE = /동일한?\s*(?:증거\s*)?번들|same\s+(?:evidence\s+)?bundle/i;
-const DISJOINT_FORBIDDEN = /(?:나눠|분리해|쪼개)[^\n]*(?:금지|안 된다|불가)|disjoint[^\n]*(?:prohibit|forbidden)/i;
-const ALL_MATCH = /ALL_MATCH/;
-const GAPS_ROLLUP = /\bGAPS\b/;
-const SUBSTANTIVE_CLEAN = /substantive_clean/;
 const LIST_REQUIREMENTS = /list_requirements/;
-const CHECKED_EQ_EXPECTED = /checked\s*(?:==|===|=|는)?\s*(?:must\s+equal\s+)?expected|checked\s*(?:와|과)\s*expected/i;
-const RESOLVABLE_POINTER = /해소\s*가능한|resolvable/i;
-const ADD_ONLY = /add-only|추가(?:만|-only)/i;
-const NO_DISMISS = /기각(?:할 수 없|하지 못|불가|은 금지)|(?:never|not)\s+dismiss|dismiss[^\n]*(?:금지|forbidden|prohibit)/i;
-const MECHANICAL_UNION = /기계적\s*합집합|mechanical\s+union/i;
-const FRESH_SPAWN = /새로\s*spawn|새로운?\s*검증자|fresh(?:ly)?\s*spawn/i;
-const STRIPPED = /주장(?:과|\s*및)?\s*증거\s*포인터만|stripped|rationale[^\n]*(?:제외|없이|without)/i;
 /** The out-of-scope declaration must name the granularity it excludes. A bare "재수행하지 않는다"
  * alternation survived deleting the hunk clause, so the granularity token is required. */
 const OUT_OF_SCOPE_REVIEW = /(?:hunk|헝크)[^\n]*(?:범위 밖|out of scope)/i;
@@ -123,7 +105,6 @@ const REVIEW_FIX_LOOP = /kiwi-review-fix-loop/;
 const NO_FIX_ROUND = /수정(?:이)?\s*(?:적용되지|없)[^\n]*(?:라운드|round)|round[^\n]*no\s+fixes/i;
 const MINI_FLAG = /--mini\b/;
 const LOOPS_FLAG = /--loops\b/;
-const MAX_FLAG = /--max\b/;
 const FAIL_CAP = /fail-cap/;
 const NO_TRUNCATION = /(?:truncat|잘라내|절단)[^\n]*(?:금지|없이|never|not)|전량/i;
 const OWN_FIXER_FORBIDDEN = /(?:전용|자체|고유)\s*fixer[^\n]*(?:금지|신설하지|없)|own\s+fixer[^\n]*(?:not|never|forbidden)/i;
@@ -150,7 +131,7 @@ function sentenceWith(text: string, re: RegExp): string {
 const GATE_IDS = [
   "run-root-preflight-mismatch",
   "child-pipeline-needs-user-or-failed",
-  "wave-verify-residual-critical",
+  "wave-verify-kept-finding",
   "wave-verify-cross-wave-fix-required",
 ] as const;
 
@@ -165,7 +146,7 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
         expect(section, `${variant}: a cross-verification section must exist`).not.toBe("");
 
         // The step must sit between the stage-execution section and the waves.jsonl section.
-        const verifyAt = headingLine(body, /(?:상호검증|cross-verif)/i);
+        const verifyAt = headingLine(body, /(?:상호검증|종료 검증|cross-verif)/i);
         const stageAt = headingLine(body, /Phase 3\b[^\n]*stage\s*(?:실행|execution)/i);
         const wavesAt = headingLine(body, /waves\.jsonl/i);
         expect(stageAt, `${variant}: the Phase 3 stage-execution section must exist`).toBeGreaterThan(-1);
@@ -216,84 +197,19 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
           `${variant}: the start rule must say the merge alone is not enough`,
         ).toBe(true);
       });
-
-      it("FR-FLOW-044 AC-2: spawns exactly two verifiers over one shared evidence bundle", () => {
-        const section = verifySection(skillBody(readWaveSkill(variant)));
-        expect(EXACTLY_TWO.test(section), `${variant}: the verifier count must be stated exactly`).toBe(true);
-        expect(AT_LEAST_TWO.test(section), `${variant}: the count must be exactly two, never at-least-two`).toBe(false);
-        expect(SAME_BUNDLE.test(section), `${variant}: both verifiers must read the same evidence bundle`).toBe(true);
-        expect(
-          DISJOINT_FORBIDDEN.test(section),
-          `${variant}: splitting the evidence between the two verifiers must be explicitly prohibited`,
-        ).toBe(true);
-        expect(
-          HEDGE.test(sentenceWith(section, DISJOINT_FORBIDDEN)),
-          `${variant}: the disjoint-evidence prohibition must be absolute, not hedged with an exception`,
-        ).toBe(false);
-        // A same-line hedge is caught above, but an escape clause added as a NEIGHBOURING paragraph
-        // ("비용이 큰 wave 에서는 두 번째 검증자를 생략한다") was not. Nothing in the section may
-        // license dropping a verifier or an axis.
-        expect(
-          /(?:검증자|검증 축)[^\n]{0,40}생략|생략[^\n]{0,20}(?:검증자|검증 축)|단독 수행/.test(section),
-          `${variant}: nothing in the section may license running only one verifier`,
-        ).toBe(false);
-      });
-
-      it("FR-FLOW-044 AC-3: differentiates the two verifiers by stance with distinct roll-ups", () => {
-        const section = verifySection(skillBody(readWaveSkill(variant)));
-        expect(ALL_MATCH.test(section), `${variant}: the intent verifier must roll up as ALL_MATCH`).toBe(true);
-        expect(GAPS_ROLLUP.test(section), `${variant}: the intent verifier must roll up as GAPS on failure`).toBe(true);
-        expect(
-          SUBSTANTIVE_CLEAN.test(section),
-          `${variant}: the quality verifier must roll up as substantive_clean`,
-        ).toBe(true);
-        expect(
-          /과정\s*적합|process\s+conformance/i.test(section),
-          `${variant}: verifier 1 must cover process conformance, not intent alone`,
-        ).toBe(true);
-        expect(
-          /교차\s*wave\s*회귀|cross-wave\s+regression|이전\s*wave[^\n]*회귀/i.test(section),
-          `${variant}: verifier 2 must cover cross-wave regression risk`,
-        ).toBe(true);
-
-        // Column-bound, not section-wide. Presence checks alone let the two stance columns be
-        // swapped, which silently makes verifier 1 the quality axis while §5.5.2's denominator
-        // paragraph, §5.5.4's PASS row and §0.G's gate reason all still say "검증자 1 ALL_MATCH".
-        const cells = (row: RegExp): string[] => {
-          const line = section.split("\n").find((l) => /^\|/.test(l) && row.test(l)) ?? "";
-          return line.split("|").map((c) => c.trim());
-        };
-        const stance = cells(/의도\s*실현|process\s+conformance|과정\s*적합/);
-        const rollup = cells(/ALL_MATCH/);
-        expect(stance.length >= 4 && rollup.length >= 4, `${variant}: §5.5.2 must be a two-column stance table`).toBe(
-          true,
-        );
-        expect(
-          /의도\s*실현/.test(at(stance, 2)) && /과정\s*적합|process\s+conformance/i.test(at(stance, 2)),
-          `${variant}: the FIRST stance column must be intent realization plus process conformance`,
-        ).toBe(true);
-        expect(
-          /품질/.test(at(stance, 3)) && /회귀/.test(at(stance, 3)),
-          `${variant}: the SECOND stance column must be artifact quality plus regression risk`,
-        ).toBe(true);
-        expect(
-          ALL_MATCH.test(at(rollup, 2)) && GAPS_ROLLUP.test(at(rollup, 2)),
-          `${variant}: the FIRST roll-up column must be ALL_MATCH / GAPS`,
-        ).toBe(true);
-        expect(
-          SUBSTANTIVE_CLEAN.test(at(rollup, 3)),
-          `${variant}: the SECOND roll-up column must be substantive_clean`,
-        ).toBe(true);
-      });
-
-      // Revised in 4.0.0: the wave SDS replaces the plan and sidecar (FR-FLOW-185 AC-1), the worker's
-      // own review report replaces the per-wave pipeline review (FR-FLOW-188 AC-2), and the window is
-      // bounded by sds_id rather than by a pipeline_run_id.
-      it("FR-FLOW-044 AC-4: enumerates a wave-evidence bundle that reaches the execution record", () => {
+      // FR-FLOW-044 AC-3 (two stances, ALL_MATCH / substantive_clean) expired 2026-11-05 → FR-FLOW-220 AC-2 · AC-3.
+      // FR-FLOW-044 AC-4 as rewritten for 5.3.0 (FR-FLOW-220 AC-2): the verifier is given only the
+      // facts, and the evidence bundle is what the host reads for its machine checks and `complete`.
+      it("FR-FLOW-044 AC-4: the verifier gets only the facts, and the host's evidence bundle reaches the execution record", () => {
         // Scoped to the bundle sub-section: a section-wide `includes` stayed green after the
         // review-fix-loop report row was deleted, because §5.5.5 names the skill three more times.
-        const bundle = sectionUnder(verifySection(skillBody(readWaveSkill(variant))), /^#{3,4}\s.*증거 번들/);
+        const bundle = sectionUnder(verifySection(skillBody(readWaveSkill(variant))), /^#{3,4}\s.*검증자 입력/);
         expect(bundle, `${variant}: an evidence-bundle sub-section must exist`).not.toBe("");
+        const inputs = sentenceWith(bundle, /검증자에게 주는 것은/);
+        for (const fact of ["`verify-loop.md §3` 의 목록뿐", "`prd_items`", "`acs`", "PRD 경로와 그 PRD 의 제외 항목", "diff 창", "통합 항목", "run 의 제약 파일(`constraints_path`)"]) {
+          expect(inputs, `${variant}: the verifier input names ${fact}`).toContain(fact);
+        }
+        expect(bundle, `${variant}: the bundle is the host's, never the verifier's`).toContain("검증자에게 넘기지 않는다");
         // Each artifact is a ROW of the bundle table, not a token somewhere in the prose around it.
         const rows = bundle.split("\n").filter((l) => /^\|/.test(l) && !/^\|\s*-/.test(l));
         const row = (re: RegExp): string => rows.find((r) => re.test(r)) ?? "";
@@ -324,7 +240,6 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
         expect(LIST_REQUIREMENTS.test(row(LIST_REQUIREMENTS)), `${variant}: the bundle must include the wave target requirement list`).toBe(
           true,
         );
-        expect(row(/diff/i), `${variant}: the bundle must include the wave-window diff`).not.toBe("");
         // The plan, the sidecar and the per-wave pipeline window are gone.
         expect(/sidecar|plan\.md|plan_file/i.test(bundle), `${variant}: the bundle must not read the retired plan or sidecar`).toBe(
           false,
@@ -356,117 +271,7 @@ describe("FR-FLOW-044 — end-of-wave two-verifier cross-verification", () => {
         ).toBe(true);
       });
 
-      it("FR-FLOW-044 AC-5: sources the intent denominator externally and requires resolvable evidence", () => {
-        const section = verifySection(skillBody(readWaveSkill(variant)));
-        expect(
-          windowsAround(section, LIST_REQUIREMENTS, 400).some((w) => /분모|denominator/i.test(w)),
-          `${variant}: the denominator must be sourced from list_requirements rather than chosen by the verifier`,
-        ).toBe(true);
-        // Token co-occurrence alone let the rule be inverted to "검증자가 스스로 정한다". The external
-        // denominator is what makes a skim-and-PASS mechanically detectable, so require the negation.
-        expect(
-          /검증자가 스스로 정하지 않는다|not chosen by the verifier/i.test(section),
-          `${variant}: the section must state that the verifier does NOT choose its own denominator`,
-        ).toBe(true);
-        // The window check was satisfied by the bundle table alone, so swapping the SOURCE to "메인
-        // 세션이 판단한 부분집합" — the skim-and-PASS bypass AC-5 exists to block — survived. Pin the
-        // rule sentence to name list_requirements as the source.
-        const denomRule = sentenceWith(section, /검증자가 스스로 정하지 않는다/);
-        expect(
-          /`list_requirements`/.test(denomRule),
-          `${variant}: the denominator rule itself must name list_requirements as the source`,
-        ).toBe(true);
-        expect(
-          /메인 세션|부분집합|subset/.test(denomRule),
-          `${variant}: the denominator must be the full target requirement set, not a curated subset`,
-        ).toBe(false);
-        expect(CHECKED_EQ_EXPECTED.test(section), `${variant}: checked must be reconciled against expected`).toBe(true);
-        // Quantifier weakening ("주요 REQ/AC 를 표본으로") turns the fixed denominator into a sample,
-        // which is the skim-and-PASS bypass this AC exists to block.
-        expect(
-          /\*\*모든\*\* REQ\/AC 를 행으로 열거/.test(section),
-          `${variant}: the denominator must be every requirement and criterion, not a sample`,
-        ).toBe(true);
-        // Reject the sampling CONSTRUCTION, not the word: the text legitimately names 표본/발췌 in
-        // order to forbid them ("표본·발췌·상위 N 은 분모가 아니다").
-        expect(
-          /(?:표본|샘플|발췌)(?:으?로|을)\s*(?:행에\s*)?열거/.test(section),
-          `${variant}: no sampling qualifier may weaken the enumeration`,
-        ).toBe(false);
-        // AC-level detail is opt-in on list_requirements, so the instruction must say how to get it
-        // or an agent counts requirements and never reads a criterion.
-        expect(
-          /compact projection|get_requirement/.test(section),
-          `${variant}: the text must say how to obtain acceptance-criterion detail, not just the requirement list`,
-        ).toBe(true);
-        expect(RESOLVABLE_POINTER.test(section), `${variant}: each realized row needs a resolvable evidence pointer`).toBe(
-          true,
-        );
-        expect(
-          /무효|invalid/i.test(section),
-          `${variant}: a count mismatch or unresolvable pointer must invalidate the round`,
-        ).toBe(true);
-      });
-
-      it("FR-FLOW-044 AC-6: isolates round 1 and re-spawns fresh verifiers for later rounds", () => {
-        const section = verifySection(skillBody(readWaveSkill(variant)));
-        // A bare /격리/ presence check was satisfied by the surviving "r1 — 독립·격리" heading while
-        // the rule underneath was inverted to hand round 1 the orchestrator's own conclusions.
-        // Assert the prohibition itself, and that it is not hedged.
-        const isolationRule = sentenceWith(section, /메인 세션의 결론/);
-        expect(isolationRule, `${variant}: round 1 must state what it is isolated from`).not.toBe("");
-        expect(
-          /전달하지 않는다/.test(isolationRule),
-          `${variant}: round 1 must be denied the main session's conclusions and the other verifier's output`,
-        ).toBe(true);
-        expect(
-          HEDGE.test(isolationRule),
-          `${variant}: the round-1 isolation rule must be absolute, not hedged`,
-        ).toBe(false);
-        expect(
-          /격리|isolat/i.test(section),
-          `${variant}: round 1 must be isolated from the main session's conclusions`,
-        ).toBe(true);
-        expect(FRESH_SPAWN.test(section), `${variant}: rounds 2+ must spawn fresh verifiers`).toBe(true);
-        expect(STRIPPED.test(section), `${variant}: later rounds receive stripped claims, not rationale or verdicts`).toBe(
-          true,
-        );
-      });
-
-      it("FR-FLOW-044 AC-7: makes the cross-refutation round add-only with a mechanical union merge", () => {
-        const section = verifySection(skillBody(readWaveSkill(variant)));
-        // A round is all three steps. Labelling them r1/r2 read as two ROUNDS, which made the
-        // cross-refutation step look like something a clean first round could skip — and the Normal
-        // PASS row is satisfiable from a step-1 merge alone.
-        expect(
-          /\*\*한 라운드는 아래 세 단계 전부\*\*/.test(section),
-          `${variant}: the section must state that one round comprises all three steps`,
-        ).toBe(true);
-        expect(
-          /이 단계를 건너뛴 라운드는 \*\*무효\*\*/.test(section),
-          `${variant}: a round that skips the cross-refutation step must be invalid`,
-        ).toBe(true);
-        // Order matters and was unasserted: swapping steps 2 and 3 runs the merge before the
-        // cross-refutation, so findings added there never reach it and add-only becomes void.
-        const stepOrder = ["단계 1 — 독립", "단계 2 — 교차반박", "단계 3 — 병합"].map((s) => section.indexOf(s));
-        expect(
-          stepOrder.every((i) => i > -1) && at(stepOrder, 0) < at(stepOrder, 1) && at(stepOrder, 1) < at(stepOrder, 2),
-          `${variant}: the three steps must appear in order — isolate, cross-refute, then merge`,
-        ).toBe(true);
-        expect(ADD_ONLY.test(section), `${variant}: the cross-refutation round must be add-only`).toBe(true);
-        expect(NO_DISMISS.test(section), `${variant}: a verifier must never dismiss the other's finding`).toBe(true);
-        expect(MECHANICAL_UNION.test(section), `${variant}: the merge must be a mechanical union`).toBe(true);
-        // The unanimous-reclassification close path is the only remaining dismissal channel. Pricing
-        // it purely by streak exclusion is a no-op in the default mode, which has no streak — so the
-        // shipped default is the configuration where mutual dismissal costs nothing.
-        expect(
-          windowsAround(section, /재분류/, 400).some(
-            (w) => /모드와 무관|모드 무관|regardless of mode/i.test(w) && /(?:라운드를 더|추가 (?:검증 )?라운드|한 라운드 더)/.test(w),
-          ),
-          `${variant}: a reclassification must force a further verification round regardless of mode`,
-        ).toBe(true);
-      });
-
+      // FR-FLOW-044 AC-7 (add-only cross-refutation, mechanical union) expired 2026-11-05 → FR-FLOW-220 AC-3 (red tests kept, union under --max).
       it("FR-FLOW-044 AC-8: declares per-hunk code review out of scope", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(OUT_OF_SCOPE_REVIEW.test(section), `${variant}: per-hunk code review must be declared out of scope`).toBe(
@@ -495,51 +300,7 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
         ).toBe(true);
         expect(NO_FIX_ROUND.test(section), `${variant}: the pass condition must require a fix-free round`).toBe(true);
       });
-
-      it("FR-FLOW-045 AC-2: states the Normal and --max passing conditions", () => {
-        const section = verifySection(skillBody(readWaveSkill(variant)));
-        expect(/CRITICAL/.test(section) && /HIGH/.test(section), `${variant}: Normal gate is CRITICAL=0 + HIGH=0`).toBe(
-          true,
-        );
-        expect(ALL_MATCH.test(section), `${variant}: Normal gate also requires the full intent roll-up`).toBe(true);
-        // The etc host runs under a single-worker profile whose evaluation loop mandates THREE
-        // consecutive clean evaluations and which turns --max on by default, so copying claude's
-        // "2 consecutive" into etc leaves that variant with two contradictory stop conditions.
-        const streak =
-          variant === "etc"
-            ? /3\s*(?:라운드\s*)?연속|3연속|three consecutive/i
-            : /2\s*(?:라운드\s*)?연속|2연속|two consecutive/i;
-        // Anchored to the --max PASS row. A +/-400 window centred on the explanatory prose overlapped
-        // the table, so flipping the row's own streak value from 3 to 2 stayed green.
-        const maxRow = section.split("\n").find((line) => /^\|\s*`--max`\s*\|/.test(line)) ?? "";
-        expect(maxRow, `${variant}: the PASS table must have a --max row`).not.toBe("");
-        expect(
-          /MEDIUM/.test(maxRow) && streak.test(maxRow),
-          `${variant}: the --max PASS row itself must carry MEDIUM=0 and the streak its host profile mandates`,
-        ).toBe(true);
-        // Exemption widening: turning "Normal 모드에서만 … 조기 종료" into "모든 모드에서" waives the
-        // --max streak from a sentence the PASS-row anchor never reads.
-        expect(
-          /\*\*Normal 모드에서만\*\*/.test(section),
-          `${variant}: the early exit must be confined to the default mode`,
-        ).toBe(true);
-        expect(
-          /`--max` 에서는 이 조기 종료가 없다/.test(section),
-          `${variant}: --max must explicitly have no early exit, so its streak cannot be waived`,
-        ).toBe(true);
-        const maxWindows = windowsAround(section, MAX_FLAG, 400);
-        expect(
-          maxWindows.some((w) => /MEDIUM/.test(w) && streak.test(w)),
-          `${variant}: the --max gate must require MEDIUM=0 across the streak its host profile mandates`,
-        ).toBe(true);
-        if (variant === "etc") {
-          expect(
-            /local-llm-profile|단일 워커 프로파일/i.test(section),
-            "etc: the raised streak must cite the single-worker profile that mandates it",
-          ).toBe(true);
-        }
-      });
-
+      // FR-FLOW-045 AC-2 (CRITICAL=0 + HIGH=0, --max MEDIUM streak) expired 2026-11-05 → FR-FLOW-220 AC-5 and FR-FLOW-221 AC-1, pinned in their own files.
       it("FR-FLOW-045 AC-3: follows the shared loop-option cap contract", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(MINI_FLAG.test(section), `${variant}: --mini must bind this loop`).toBe(true);
@@ -560,7 +321,7 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
         const propagation = sectionUnder(body, /^#{2,4}\s.*(?:--mini|loops)/i);
         expect(propagation, `${variant}: the mini/loops propagation section must exist`).not.toBe("");
         expect(
-          /상호검증|cross-verif|Phase 3\.5/i.test(propagation),
+          /상호검증|종료 검증|cross-verif|Phase 3\.5/i.test(propagation),
           `${variant}: the propagation section must bind the end-of-wave verification loop`,
         ).toBe(true);
       });
@@ -590,13 +351,18 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
         ).toBe(false);
       });
 
+      // FR-FLOW-045 AC-5 as rewritten for 5.3.0 (FR-FLOW-220 AC-4): a kept code defect goes to the
+      // review loop with an explicit scope, a kept requirement gap to the FR-FLOW-218 delta path.
       it("FR-FLOW-045 AC-5: routes remediation by finding class with an explicit review scope", () => {
         const section = verifySection(skillBody(readWaveSkill(variant)));
         expect(REVIEW_FIX_LOOP.test(section), `${variant}: quality findings delegate to kiwi-review-fix-loop`).toBe(true);
         // Anchored to the routing row. A +/-320 window matched the out-of-scope paragraph's own
         // "범위 밖", so the explicit-scope requirement could be deleted from the row undetected.
-        const routingRow =
-          section.split("\n").find((l) => /^\|/.test(l) && REVIEW_FIX_LOOP.test(l) && /위임|delegat/i.test(l)) ?? "";
+        const routingRow = section.split("\n").find((l) => l.startsWith("| kept 코드 결함 |")) ?? "";
+        const gapRow = section.split("\n").find((l) => l.startsWith("| kept 요구 갭 |")) ?? "";
+        expect(gapRow, `${variant}: a kept requirement gap goes to the incremental authoring of the delta path`).toContain(
+          "`wave-srs-registration.md §2` 의 증분 저작",
+        );
         expect(routingRow, `${variant}: the remediation routing table must have a review-fix-loop row`).not.toBe("");
         expect(
           /--base|--commits/.test(routingRow),
@@ -604,7 +370,7 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
         ).toBe(true);
         expect(
           /재진입|re-enter|re-entry/i.test(section),
-          `${variant}: an intent gap with no plan task must escalate to pipeline re-entry`,
+          `${variant}: an intent gap the wave's requirements do not cover must re-enter the wave`,
         ).toBe(true);
         expect(
           /이전\s*wave|previous wave/i.test(section),
@@ -633,13 +399,11 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
           /테스트[^\n]*(?:약화|삭제)|weaken[^\n]*test|test[^\n]*weaken/i.test(section),
           `${variant}: a fixer must not weaken or delete an existing test`,
         ).toBe(true);
-        // A bare `includes("severity_class")` survived deleting the prohibition, because the
-        // verifier-output table also names the field. Require the ownership rule itself.
+        // FR-FLOW-045 AC-7 as rewritten for 5.3.0: with no severity class left, the third shortcut is
+        // turning the verifier's red test green by editing the test instead of the code.
         expect(
-          windowsAround(section, /severity_class/, 220).some(
-            (w) => /제기한[^\n]*검증자|raised[^\n]*(?:it|finding)/i.test(w) && /(?:만|only)/.test(w),
-          ),
-          `${variant}: severity_class must be writable only by the verifier that raised the finding`,
+          /검증자가 쓴 red 테스트를 지우거나 고쳐 green 으로 만들지 않는다/.test(section),
+          `${variant}: a fixer must not delete or edit the verifier's red test to make it green`,
         ).toBe(true);
       });
 
@@ -652,10 +416,11 @@ describe("FR-FLOW-045 — wave verification convergence and delegated remediatio
           `${variant}: the delegated loop's own pass must not by itself close a wave-level finding`,
         ).toBe(true);
         // The window tolerated replacing the MUST-subject ("두 검증자의 재검증" -> "메인 세션의
-        // 재확인"), which hands closure to the party the loop exists to check.
+        // 재확인"), which hands closure to the party the loop exists to check. FR-FLOW-045 AC-8 as
+        // rewritten for 5.3.0: the red test turns green and the next round's new verifier writes none.
         expect(
-          /두 검증자의 재검증으로만 닫힌다/.test(section),
-          `${variant}: only re-verification by the two verifiers may close a wave-level finding`,
+          /그 red 테스트가 green 이 되고 다음 라운드의 새 검증자가 red 테스트를 쓰지 않을 때만 닫힌다/.test(section),
+          `${variant}: only a green test and a clean next round with a new verifier may close a wave-level finding`,
         ).toBe(true);
       });
     });
@@ -688,7 +453,7 @@ describe("FR-FLOW-046 — critical gate declaration and wave verification record
         );
         // The wave SDS resolves from sds_id; the review report resolves from the worker's own review;
         // an absent report is a finding, never replaced by a glob.
-        const bundle = sectionUnder(verifySection(body), /^#{3,4}\s.*증거 번들/);
+        const bundle = sectionUnder(verifySection(body), /^#{3,4}\s.*검증자 입력/);
         expect(/`docs\/sds\/\{sds_id\}\.sds\.md`/.test(bundle), `${variant}: the wave SDS must resolve from sds_id`).toBe(
           true,
         );
@@ -699,17 +464,8 @@ describe("FR-FLOW-046 — critical gate declaration and wave verification record
             /finding/.test(absentRule),
           `${variant}: an absent worker review report must be raised as a finding rather than replaced by a glob`,
         ).toBe(true);
-        // The obligation cannot bind the first in_progress line, which is appended at wave start
-        // before the wave SDS — and therefore its sds_id — exists. What is omitted is the FIELD; the
-        // event itself is still written, carrying phase=srs-authoring.
-        expect(
-          /첫\s*`?in_progress`?\s*\*\*에서는 그 필드를\*\*\s*생략/.test(waves),
-          `${variant}: the exemption must drop the field, not the wave-start event`,
-        ).toBe(true);
-        expect(
-          /생략되는 것은 필드이지 이벤트가 아니다/.test(waves),
-          `${variant}: the text must say explicitly that the wave-start event is still appended`,
-        ).toBe(true);
+        // The wave-start `srs-authoring` line and its sds_id exemption left with the per-wave authoring
+        // (FR-FLOW-212 AC-3); their absence is pinned in wave-srs-first.fr-flow-212.test.ts.
       });
 
       it("AC-3: appends a wave-verify record before the complete event", () => {
@@ -756,10 +512,7 @@ describe("FR-FLOW-046 — critical gate declaration and wave verification record
         const section = verifySection(skillBody(readWaveSkill(variant)));
         const record = sectionUnder(section, /^#{3,4}\s.*기록|^#{3,4}\s.*record/i);
         expect(record, `${variant}: the §5.5.6 record sub-section must exist`).not.toBe("");
-        expect(
-          /첫 `in_progress` 에는 `phase="srs-authoring"` 을 싣는다/.test(record),
-          `${variant}: the wave-start in_progress must carry phase="srs-authoring"`,
-        ).toBe(true);
+        // The wave-start `phase="srs-authoring"` label left with the per-wave authoring (FR-FLOW-212 AC-3).
         const stageRule = sentenceWith(record, /`phase="sds"`/);
         expect(
           /SDS 작성|SDS authoring/i.test(stageRule) && /`phase="worker"`/.test(stageRule) && /dispatch/i.test(stageRule),
@@ -807,32 +560,31 @@ describe("FR-FLOW-046 — critical gate declaration and wave verification record
         ).toBe(false);
       });
 
-      it("FR-FLOW-046 AC-8: halts the whole orchestration under --auto on a residual critical finding", () => {
+      it("FR-FLOW-046 AC-8: halts the whole orchestration under --auto on a kept finding", () => {
         const body = skillBody(readWaveSkill(variant));
         const gates = gateSection(body);
         const section = verifySection(body);
         const scope = `${gates}\n${section}`;
-        const gateWindows = windowsAround(scope, /wave-verify-residual-critical/, 500);
+        const gateWindows = windowsAround(scope, /wave-verify-kept-finding/, 500);
         // Anchored to the dedicated sentence: a +/-500 window reached the §0.G intro's own generic
         // "--auto 라도 ... 중단" line, so inverting this gate to "그 wave 하나만 중단" stayed green.
         expect(
-          /`wave-verify-residual-critical`[^\n]*--auto[^\n]{0,40}(?:라도|로도|무관)[^\n]{0,80}전체를 중단/.test(scope),
+          /`wave-verify-kept-finding`[^\n]*--auto[^\n]{0,40}(?:라도|로도|무관)[^\n]{0,80}전체를 중단/.test(scope),
           `${variant}: the gate must halt the WHOLE orchestration under --auto, not just the current wave`,
         ).toBe(true);
         expect(
           gateWindows.some((w) => AUTO_HALT.test(w)),
-          `${variant}: a residual CRITICAL/HIGH finding must halt even under --auto`,
+          `${variant}: a kept finding left at the end of the loop must halt even under --auto`,
         ).toBe(true);
         // Scoped to the gate window on purpose: checked over the whole scope, GAPS and fail-cap were
         // satisfied by the §5.5.2 roll-up table and the §5.5.4 cap paragraph, so both triggers could
         // be deleted from the gate declaration itself while the check stayed green.
+        // FR-FLOW-221 AC-4: the stop is named for kept findings, and its declaration itself names
+        // the kept finding and cap exhaustion as its triggers.
         expect(
-          gateWindows.some((w) => /GAPS/.test(w)) && gateWindows.some((w) => FAIL_CAP.test(w)),
-          `${variant}: the gate declaration itself must name the gapped roll-up and cap exhaustion as triggers`,
+          gateWindows.some((w) => /kept finding/.test(w)) && gateWindows.some((w) => FAIL_CAP.test(w)),
+          `${variant}: the gate declaration itself must name the kept finding and cap exhaustion as triggers`,
         ).toBe(true);
-        expect(/HIGH/.test(gateWindows.join("\n")), `${variant}: the gate must trigger on HIGH, not only CRITICAL`).toBe(
-          true,
-        );
       });
 
       it("FR-FLOW-046 AC-8: records the --auto activation in the requirement's change notes", () => {

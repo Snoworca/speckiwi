@@ -12,7 +12,7 @@ kiwi-* 스킬의 **검증-개선 루프(verify → improve → re-verify) 라운
 | `--loops N` / `--loops=N` | 명시적 루프 카운터 — 라운드 상한 = N (정수 N ≥ 1) | off (스킬 고유 기본 상한) |
 
 - **라운드(round)** = 1회의 verify → improve 사이클 (평가자 실행 → finding 수정 → 재검증).
-- 라운드 상한은 **상한(upper bound)** 이다. 기존 심각도 게이트(Normal `CRITICAL=0 + HIGH=0` / Max `2연속 MEDIUM-zero`)가 상한 이전에 **조기 종료**할 수 있다. 즉 `--mini` 는 "정확히 3회"가 아니라 **"최대 3라운드"** 다.
+- 라운드 상한은 **상한(upper bound)** 이다. 그 스킬의 통과 조건이 상한 이전에 **조기 종료**할 수 있다 — kept finding 으로 판정하는 스킬은 kept finding 0 이고, 심각도 게이트를 쓰는 스킬은 Normal `CRITICAL=0 + HIGH=0` / Max `2연속 MEDIUM-zero` 다. 즉 `--mini` 는 "정확히 3회"가 아니라 **"최대 3라운드"** 다.
 - `--loops N` 의 N 은 **양의 정수**여야 한다. `N < 1` 또는 비정수는 **오류로 거절**한다(HALT + 사용법 안내).
 
 ## 2. 우선순위 — `--mini` vs `--loops` 동시 지정

@@ -190,7 +190,8 @@ describe("FR-FLOW-185 AC-3 — kiwi-coder implements the SDS test-first and chec
     const caller = lineWith(gate, /`← caller`/);
     expect(caller, `${rendering}: gate (d) must state how a ← caller connection is counted`).toMatch(/정의[^\n]*import[^\n]*밖/);
     expect(HEDGE.test(caller)).toBe(false);
-    expect(g).toMatch(/CRITICAL/);
+    // FR-FLOW-221 AC-3 (5.3.0): a gate violation is a kept finding — the gate output is its proof.
+    expect(g).toMatch(/kept finding/);
   });
 
   it.each(RENDERINGS)("%s: the plan-code gate is gone and its gate id follows", (rendering) => {

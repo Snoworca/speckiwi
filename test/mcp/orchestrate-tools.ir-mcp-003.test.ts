@@ -55,7 +55,17 @@ const DEFERRED_TOOLS = ["orchestrate_lane_audit", "orchestrate_lane_harvest", "o
  * `NAMED_IN_REQUIREMENT` — the twenty-three count is a fact about the phase-1 family and must not
  * drift upward whenever phase 2 lands a row. @req IR-CLI-091
  */
-const REGISTERED_BEYOND_PHASE1 = ["orchestrate_replay_plan", "orchestrate_replay_apply", "orchestrate_wave_status"] as const;
+const REGISTERED_BEYOND_PHASE1 = [
+  "orchestrate_replay_plan",
+  "orchestrate_replay_apply",
+  "orchestrate_wave_status",
+  // 5.3.0 — the work-graph readers and the preservation check (IR-MCP-008).
+  "orchestrate_wave_propose",
+  "orchestrate_wave_check",
+  "orchestrate_wave_show",
+  "orchestrate_wave_actions",
+  "orchestrate_preservation_check"
+] as const;
 
 async function tempRoot(): Promise<string> {
   return mkdtemp(path.join(tmpdir(), "speckiwi-orchestrate-mcp-"));

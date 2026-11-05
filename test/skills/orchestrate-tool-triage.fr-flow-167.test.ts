@@ -30,7 +30,7 @@ import { RENDERINGS, flat, markdownFiles, readRepoFile, scanUnits, sharedKiwiFil
 // Three things, and they lock each other because they live in different files.
 //
 // (1) The triage table. Every `orchestrate_*` tool the bindings register either sits in this
-// requirement's exclusion sentence — the eight the skills already call by their CLI leaf, plus
+// requirement's exclusion sentence — the fourteen the skills already call by their CLI leaf, plus
 // `orchestrate_validate`, which `FR-FLOW-155` owns — or carries a row in the requirement's
 // Implementation Notes with `(a0)`, `(a)`, `(b)` and `(c)` filled in. The denominator is the
 // binding array, so a tool added to the surface has to be triaged or excluded, and the exclusion
@@ -47,8 +47,8 @@ import { RENDERINGS, flat, markdownFiles, readRepoFile, scanUnits, sharedKiwiFil
 //
 // (3) That a gate the map names is one the tool can actually raise. Round 1 shipped
 // `unallocated-req-id` as the gate receiving `orchestrate_readiness_check`'s verdict; that
-// identifier is produced only by `checkWaveAllocation`, which no caller in `src/` reaches and no
-// binding exposes. The provenance reader below takes the tool's own CLI handler body and the
+// identifier came only from `checkWaveAllocation`, which no caller in `src/` reached and no binding
+// exposed, and `FR-NODE-246` has since replaced that kernel with `orchestrate wave check`. The provenance reader below takes the tool's own CLI handler body and the
 // modules its kernel calls are imported from, and asks whether the identifier is defined there.
 //
 // (4) That the input the wired section tells the agent to assemble reaches the gate. `§V.derive-
@@ -92,8 +92,7 @@ import { RENDERINGS, flat, markdownFiles, readRepoFile, scanUnits, sharedKiwiFil
 // it resolves the command tree and the placeholder forms, not the option list.
 //
 // That a gate the section names is raised by that tool. Only the gates the WIRING MAP names are put
-// through the provenance reader; `§V.derive-readiness` still names `unallocated-req-id` on its gate
-// line, correctly, because that section performs the allocation check beside the derivation.
+// through the provenance reader; a gate another line of the section names is not.
 //
 // That the provenance reader sees the whole path. It reads the handler body and the modules the
 // handler's own identifiers are imported from — one hop. An identifier a module carries for an
@@ -259,7 +258,7 @@ const PATH_OF = new Map(ORCHESTRATE_TOOL_BINDINGS.map((binding) => [binding.tool
 /**
  * The tools this requirement excludes, read out of its own denominator note rather than listed here.
  *
- * The note names the eight by their CLI leaf spelling and names `orchestrate_validate` by its tool
+ * The note names the fourteen by their CLI leaf spelling and names `orchestrate_validate` by its tool
  * name. Reading them back means the exclusion set and the row set cannot be shrunk by one edit: the
  * count assertions below pin both ends, and each excluded leaf is checked against the shipped tree.
  */
@@ -419,8 +418,8 @@ function moduleSource(specifier: string): string {
  * Whether `gate` is an identifier this tool's own path can raise.
  *
  * True when the handler refuses with it outright, or when a module the handler's kernel calls come
- * from defines the string. `unallocated-req-id` is neither for `orchestrate_readiness_check`: it is
- * produced by `checkWaveAllocation` in `allocation.ts`, a module no handler in this file imports.
+ * from defines the string. `unallocated-req-id` is neither for `orchestrate_readiness_check`: no
+ * module in `src/` produces it since `FR-NODE-246` removed the allocation kernel.
  */
 function raisesGate(tool: string, gate: string): boolean {
   const segments = PATH_OF.get(tool);
@@ -609,9 +608,10 @@ describe("FR-FLOW-167 the triage table", () => {
   // from the code, the exclusions from the requirement's note with AC-1's rename applied, and the
   // rows plus the tools AC-1 names as departed from the notes and AC-1.
   it("FR-FLOW-167 AC-1: the denominator is the binding array, the exclusion set is the requirement's own, and a tool leaves the judged set only as AC-1 names it", () => {
-    // 4.1.0 added the read-only `orchestrate wave status` leaf (IR-CLI-104), so eight became nine.
-    expect(EXCLUSIONS.leaves, "the denominator note must name the nine excluded CLI leaves").toHaveLength(9);
-    expect(EXCLUSIONS.tools, "nine leaves plus orchestrate_validate is ten exclusions").toHaveLength(10);
+    // 4.1.0 added the read-only `orchestrate wave status` leaf (IR-CLI-104), so eight became nine; 5.3.0
+    // added `wave show`, `wave check`, `wave actions`, `wave propose` and `preservation check`, so fourteen.
+    expect(EXCLUSIONS.leaves, "the denominator note must name the fourteen excluded CLI leaves").toHaveLength(14);
+    expect(EXCLUSIONS.tools, "fourteen leaves plus orchestrate_validate is fifteen exclusions").toHaveLength(15);
     expect(renamedLeaves().size, "AC-1 must name the excluded leaf 4.0.0 renamed").toBeGreaterThan(0);
     for (const [from, to] of renamedLeaves()) {
       expect(EXCLUSIONS.leaves, `the rename AC-1 states must reach the exclusion set: ${from} → ${to}`).toContain(to);
@@ -749,7 +749,7 @@ describe("FR-FLOW-167 the wiring this requirement carries", () => {
   it("every gate the map names is one that tool's own handler can raise", () => {
     // Round 1's `unallocated-req-id` sat in the map, in AC-3 and in all four sections, and no
     // assertion looked at whether `orchestrate_readiness_check` could produce it. It cannot: the
-    // identifier comes from `checkWaveAllocation`, which nothing in `src/` calls.
+    // allocation kernel that produced it had no caller and is gone (`FR-NODE-246`).
     const unreachable = WIRING.flatMap((entry) =>
       entry.gates.filter((gate) => !raisesGate(entry.tool, gate)).map((gate) => `${entry.tool} cannot raise ${gate}`)
     );

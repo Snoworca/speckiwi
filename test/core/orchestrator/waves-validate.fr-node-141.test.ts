@@ -59,10 +59,11 @@ const legalRound: Round = {
   cap: 5,
   streakBefore: 0,
   frozenDenominator: 3,
+  verifiers: ["verifier-1"],
   rows: [
-    { id: "R1", verdict: "pass", severity: "LOW" },
-    { id: "R2", verdict: "match", severity: "LOW" },
-    { id: "R3", verdict: "intended-improvement", severity: "LOW" }
+    { id: "R1", verdict: "pass", kept: false, verifier: "verifier-1" },
+    { id: "R2", verdict: "match", kept: false, verifier: "verifier-1" },
+    { id: "R3", verdict: "intended-improvement", kept: false, verifier: "verifier-1" }
   ],
   fixAppliedThisRound: false,
   regression: { failingTests: [], baselineFailingTests: [], exitCode: 0 },
@@ -242,6 +243,27 @@ const CASES: Record<string, RuleCase> = {
   "vocabulary-retired-in-4-0-0": {
     kind: "journal",
     violating: [...legalJournal(), intent("execute-unit", { schema_version: "2.0.0", engine: "kiwi-wave-master" })]
+  },
+  // @req FR-NODE-250 AC-1 AC-2 AC-3 — the four work-graph rules, each broken once on a legal journal.
+  "journal-graph-malformed": {
+    kind: "journal",
+    violating: mutate(0, { graph: { path: "kiwi/waves.json" } })
+  },
+  "journal-graph-misplaced": {
+    kind: "journal",
+    // The first graph line (FR-NODE-250 AC-1) is line 1; a second graph on a non-redecompose line is misplaced.
+    violating: ((lines) => {
+      lines[0] = waveVerify({ graph: { path: "kiwi/waves.json", digest: "a".repeat(64) } });
+      return lines;
+    })(mutate(1, { graph: { path: "kiwi/waves.json", digest: "b".repeat(64) } }))
+  },
+  "done-when-confirmed-malformed": {
+    kind: "journal",
+    violating: mutate(1, { done_when_confirmed: ["DW-0"] })
+  },
+  "node-complete-action-malformed": {
+    kind: "journal",
+    violating: [...legalJournal(), { ts: "2026-11-04T00:00:00Z", schema_version: "1.3.0", run_id: "run-a", verb: "node-complete-action", wave: "wave-1", action_id: "report" }]
   },
   // The five terminal-review rules. Every fixture bumps the run-close line to 1.5.0 with its writer
   // stamp, because each rule stands down below that version — a fixture left at the baseline's

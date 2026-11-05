@@ -39,7 +39,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 - 결과를 `docs/analysis/kiwi-coder-{run-id}/regression_run.jsonl` 에 append
 
 **6.1.3 회귀 발견 시 처리** — 회귀 여부는 기준선 대비 **델타로 판정**한다:
-- 기준선에서 pass 였는데 이번 실행에서 fail 한 test = **신규 실패**. 이 실행이 만든 회귀이므로 CRITICAL + (Phase 2.c) 재진입
+- 기준선에서 pass 였는데 이번 실행에서 fail 한 test = **신규 실패**. 이 실행이 만든 회귀이므로 kept finding(회귀 출력이 증거) + (Phase 2.c) 재진입
 - 기준선에 이미 있던 **기존 실패**는 그대로 보고하고, 현재 실행의 것으로 **귀속하지 않는다** — 남의 실패를 좇는 동안 이 실행의 루프가 발산한다
 - 기준선에서 fail 이었는데 이번에 pass 한 test 는 회귀가 아니다 (보고만)
 - `state.regression_baseline` 이 null (§3.5 캡처 실패) 이면 델타를 계산하지 않고 실패 전량을 보고하며, 판정이 격하되었음을 함께 적는다
@@ -156,9 +156,9 @@ state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/appe
   "next_resume_hint": "phase-2.c (impl)|phase-1.2 (tdd-review)|phase-3.1 (regression)|...",
   "failed": false,
 
-  "severity_counters": {
-    "phase1": {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 0, "LOW": 0, "rounds": 1},
-    "phase2": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 0, "rounds": 0}
+  "loop_counters": {
+    "phase1": {"kept": 1, "dropped": 0, "rounds": 1},
+    "phase2": {"kept": 0, "dropped": 1, "rounds": 0}
   },
 
   "red_evidence": { "command": "...", "exit_code": 1, "captured_failure": "...", "timestamp": "ISO-8601" },
@@ -210,17 +210,17 @@ state.json 쓰기는 atomic (tmp → rename). 쓰기 실패 시 `.kiwi/logs/appe
 | `phase_start` | §3.2 .kiwi init 완료 직후 | { run_id, sds_path, target, mode, flags } |
 | `run_start` | §4.1.1 실행 시작 | { sds_id } |
 | `tdd_draft_done` | §4.1.3 테스트 작성 완료 후 | { sds_id, iter, file_paths[] } |
-| `tdd_review_done` | §4.2 TDD 검증 결과 통합 후 | { sds_id, iter, severity_summary } |
+| `tdd_review_done` | §4.2 TDD 검증 결과 통합 후 | { sds_id, iter, finding_summary {kept, dropped} } |
 | `tdd_red_confirmed` | §4.4 red 확정 후 | { sds_id, exit_code, test_names[] } |
 | `impl_done` | §5.1.(c) 시니어 구현 완료 후 | { sds_id, iter, files_changed[] } |
-| `formal_review_done` | §5.1.(e) 정형 검사 완료 후 | { sds_id, iter, severity_summary } |
-| `prickly_review_done` | §5.1.(f) 까칠 리뷰 완료 후 | { sds_id, iter, severity_summary } |
+| `formal_review_done` | §5.1.(e) 정형 검사 완료 후 | { sds_id, iter, finding_summary {kept, dropped} } |
+| `prickly_review_done` | §5.1.(f) 까칠 리뷰 완료 후 | { sds_id, iter, finding_summary {kept, dropped} } |
 | `test_green` | §5.1.(h) green 확정 후 | { sds_id, exit_code } |
 | `test_fail` | §5.1.(h) fail 시 ((g) 루프 직전) | { sds_id, exit_code, failed_test_names[] } |
 | `regression_done` | §6.1.2 회귀 스위트 종료 후 | { sds_id, scope, passed, failed } |
 | `mcp_call` | §6.2 각 mutation 호출 직후 | { sds_id, tool, ok } |
 | `run_done` | §6.3 실행 종료 처리 후 | { sds_id, duration_ms } |
-| `run_failed` | §0.G4 4옵션 abandon-run 또는 §6.1.3 회귀 2연속 시 | { sds_id, cause, severity } |
+| `run_failed` | §0.G4 4옵션 abandon-run 또는 §6.1.3 회귀 2연속 시 | { sds_id, cause } |
 | `need_user` | Codex clarification gate 호출 직후 | { sds_id, reason, options[] } |
 | `checkpoint` | `/clear` 사전 또는 사용자 요청 시 강제 1회 | { sds_id, resume_hint } |
 | `phase_end` | §8 통합 테스트 완료 (skip 포함) 후 | { run_id, summary } |
@@ -260,7 +260,7 @@ skip 시(`--skip-integration` 명시 또는 사용자 거부)에도 **§8.3 최�
 1. 의도 추출 (target goal + 요구 집합(--sds 면 SDS `@req` 집합) 요구의 AC 합집합)
 2. 통합 테스트 작성 (high-reasoning 시니어, 모듈 간 연계 / end-to-end / 경계)
 3. 정형 + 까칠 리뷰 (Phase 2.e/f 동일)
-4. 개선 루프 (심각도 카운터, 통합 시도 단위)
+4. 개선 루프 (kept finding 0 까지, 통합 시도 단위)
 5. 실행 → 실패 시 관련 Phase 역순 재진입 (최대 3회)
 6. 4회차 진입 직전 4지선다: 중단 / 추가 1회 / REWORK 모드 (요구 집합 실행이면 `$kiwi-srs` 로 그 요구의 AC 를 다시 쓰도록 권고, --sds 실행이면 `$kiwi-sds` 로 SDS 재작성 권고) / kiwi-srs-research 호출
 
@@ -285,7 +285,7 @@ state_ref: ./state.json
 2. Phase 별 진행 상태
 3. SDS-코드 매핑 결과 (Files · 심볼 · `← caller` 연결)
 4. TDD 검증 통계 (round별)
-5. 까칠 리뷰 findings 통계 (severity별)
+5. 까칠 리뷰 findings 통계 (kept · dropped)
 6. 테스트 결과 (SDS-AC 별 + 통합)
 7. 회귀 결과 (passed/failed/regressed 파일)
 8. MCP mutation 요약 (4종별 호출 수)

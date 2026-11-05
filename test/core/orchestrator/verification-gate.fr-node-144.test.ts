@@ -3,20 +3,32 @@ import { LOOP_MODES, REQUIRED_CLEAN_STREAK, ROUND_VERDICTS } from "../../../src/
 import { evaluateRound, type Round } from "../../../src/core/orchestrator/verification-gate.js";
 
 // FR-NODE-144 — evaluateRound is a pure predicate over one round, given the mode explicitly.
+// FR-NODE-254 replaced the severity rows with keep/drop rows under a declared verifier list: a `--max`
+// round names two verifiers, every other mode one.
+
+const V = "verifier-1";
+const MAX_VERIFIERS = ["verifier-1", "verifier-2"];
+
+/** A finding a run proved: the only kind that blocks the gate. */
+const KEPT = { id: "R1", verdict: "gap", kept: true, evidence: "test/a.test.ts > red", verifier: V };
+/** A finding no run proved: it never blocks the gate. */
+const DROPPED = { id: "R1", verdict: "gap", kept: false, verifier: V };
 
 function round(overrides: Partial<Round> = {}): Round {
+  const mode = overrides.mode ?? "normal";
   return {
     loop: "P",
     scope: "wave-1",
     roundIndex: 2,
-    mode: "normal",
+    mode,
     cap: 5,
     streakBefore: 0,
     frozenDenominator: 3,
+    verifiers: mode === "max" ? MAX_VERIFIERS : [V],
     rows: [
-      { id: "R1", verdict: "pass", severity: "LOW" },
-      { id: "R2", verdict: "match", severity: "LOW" },
-      { id: "R3", verdict: "intended-improvement", severity: "LOW" }
+      { id: "R1", verdict: "pass", kept: false, verifier: V },
+      { id: "R2", verdict: "match", kept: false, verifier: V },
+      { id: "R3", verdict: "intended-improvement", kept: false, verifier: V }
     ],
     fixAppliedThisRound: false,
     regression: { failingTests: [], baselineFailingTests: [], exitCode: 0 },
@@ -48,7 +60,7 @@ describe("FR-NODE-144 evaluateRound", () => {
     expect(invalid.streak).toBe(0);
 
     const failing = evaluateRound(
-      round({ rows: [{ id: "R1", verdict: "gap", severity: "HIGH" }, { id: "R2", verdict: "pass", severity: "LOW" }, { id: "R3", verdict: "pass", severity: "LOW" }] })
+      round({ rows: [KEPT, { id: "R2", verdict: "pass", kept: false, verifier: V }, { id: "R3", verdict: "pass", kept: false, verifier: V }] })
     );
     expect(failing.verdict).toBe("fail-residual");
     // Distinguishable: an invalid round is not a failed round.
@@ -67,7 +79,7 @@ describe("FR-NODE-144 evaluateRound", () => {
   it("AC-4 reports PASS unreachable when the rounds left are fewer than the mode's streak", () => {
     // --max requires two consecutive clean rounds; at round 8 of 8 with a dirty round there is no
     // arithmetic path to a pass.
-    const dirty = { rows: [{ id: "R1", verdict: "gap", severity: "HIGH" as const }], frozenDenominator: 1 };
+    const dirty = { rows: [KEPT], frozenDenominator: 1 };
     const exhausted = evaluateRound(round({ mode: "max", cap: 8, roundIndex: 8, ...dirty }));
 
     expect(exhausted.unreachable).toBe(true);
@@ -80,11 +92,14 @@ describe("FR-NODE-144 evaluateRound", () => {
   });
 
   it("AC-5 can return different verdicts for two calls differing only in mode", () => {
-    const normal = evaluateRound(round({ mode: "normal" }));
-    const max = evaluateRound(round({ mode: "max" }));
+    // Literally identical but for mode: one verifier is the normal count and too few for --max.
+    const value = round({ mode: "normal" });
+    expect(evaluateRound(value).verdict).toBe("pass");
+    expect(evaluateRound({ ...value, mode: "max" }).verdict).toBe("invalid");
 
-    expect(normal.verdict).toBe("pass");
-    // The same clean round under --max needs a second consecutive clean round.
+    // The same clean round under --max, reviewed by its two verifiers, needs a second consecutive
+    // clean round.
+    const max = evaluateRound(round({ mode: "max" }));
     expect(max.verdict).toBe("fail-residual");
     expect(max.streak).toBe(1);
 
@@ -139,28 +154,27 @@ describe("FR-NODE-144 evaluateRound", () => {
     expect(preexisting.verdict).toBe("pass");
   });
 
-  it("blocks a pass on an unapproved-damage row and on an open CRITICAL row", () => {
+  it("blocks a pass on an unapproved-damage row and on a kept row", () => {
     const damaged = evaluateRound(
-      round({ rows: [{ id: "R1", verdict: "unapproved-damage", severity: "LOW" }], frozenDenominator: 1 })
+      round({ rows: [{ id: "R1", verdict: "unapproved-damage", kept: false, verifier: V }], frozenDenominator: 1 })
     );
     expect(damaged.violations).toContain("unapproved-damage");
     expect(damaged.verdict).not.toBe("pass");
 
-    const critical = evaluateRound(round({ rows: [{ id: "R1", verdict: "gap", severity: "CRITICAL" }], frozenDenominator: 1 }));
-    expect(critical.verdict).toBe("fail-residual");
+    expect(evaluateRound(round({ rows: [KEPT], frozenDenominator: 1 })).verdict).toBe("fail-residual");
 
-    // Normal's early exit: an open MEDIUM does not block the Normal gate.
-    const medium = evaluateRound(round({ rows: [{ id: "R1", verdict: "gap", severity: "MEDIUM" }], frozenDenominator: 1 }));
-    expect(medium.verdict).toBe("pass");
-    // --max additionally requires MEDIUM = 0, so the same round does not build a streak there.
-    expect(evaluateRound(round({ mode: "max", streakBefore: 1, rows: [{ id: "R1", verdict: "gap", severity: "MEDIUM" }], frozenDenominator: 1 })).verdict).toBe(
+    // A dropped finding blocks neither gate, so --max differs from normal only by its verifier count
+    // and its streak.
+    expect(evaluateRound(round({ rows: [DROPPED], frozenDenominator: 1 })).verdict).toBe("pass");
+    expect(evaluateRound(round({ mode: "max", streakBefore: 1, rows: [DROPPED], frozenDenominator: 1 })).verdict).toBe("pass");
+    expect(evaluateRound(round({ mode: "max", streakBefore: 1, rows: [KEPT], frozenDenominator: 1 })).verdict).toBe(
       "fail-residual"
     );
   });
 
   it("returns fail-cap once the cap is consumed without a pass", () => {
     const outcome = evaluateRound(
-      round({ roundIndex: 5, cap: 5, rows: [{ id: "R1", verdict: "gap", severity: "HIGH" }], frozenDenominator: 1 })
+      round({ roundIndex: 5, cap: 5, rows: [KEPT], frozenDenominator: 1 })
     );
 
     expect(outcome.verdict).toBe("fail-cap");
