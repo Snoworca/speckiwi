@@ -94,7 +94,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "_shared/kiwi/verify-loop.md\t## 2. 기계 검사가 먼저다\t11\tb95cb790:1 97119924:1 23cca02b:1 511415f7:1 1f56c437:1 35de896a:1 73417659:1 b8518895:1 590ba2c9:1 96ce18aa:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 3. 검증자 — 라운드마다 새로\t5\t9a420a64:1 5c591dab:1 b7e66567:1 34d25ab2:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 4. 라운드 — red 테스트만 finding 으로 남는다\t4\ta59c0356:1 83c31e13:1 acf1b5bb:1 cb3f91d5:1",
-      "_shared/kiwi/verify-loop.md\t## 5. 종료 조건 — kiwi-wave-master §5.5.4 에서 이동\t14\t5c2c7135:1 a6317fb0:1 4199ba45:1 e6521e79:1 1c407825:1 e0ab9cdd:1 9bcfc1f0:1 f5039b61:1 9895f7bb:1 747593ad:1 47707262:1 e8347e6b:1 7f9032f7:1 cb3f91d5:1",
+      "_shared/kiwi/verify-loop.md\t## 5. 종료 조건 — kiwi-wave-master §5.5.4 에서 이동\t14\t5c2c7135:1 a6317fb0:1 4199ba45:1 e6521e79:1 1c407825:1 e0ab9cdd:1 9bcfc1f0:1 f5039b61:1 1324decf:1 747593ad:1 47707262:1 e8347e6b:1 7f9032f7:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 6. 진동(oscillation) 감지\t3\ta4912c68:1 d529dd7d:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 7. 개선 위임 (수정 주체) — kiwi-wave-master §5.5.5 에서 이동\t16\tf8bbf6ec:1 316d63f5:1 4199ba45:1 4761714a:1 24bf9a6a:1 1a8f0bb6:1 4a13e2ab:1 b72adcae:1 8732047a:1 94dd46b8:1 1cbb27b4:1 bc6fadff:1 1b8e8d2a:1 1ab196ca:1 9c56e5e9:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 8. 교차 wave 이월 — kiwi-wave-master §5.5.7 에서 이동\t6\t3fc61461:1 19b7625c:1 27ff7a10:1 05a4e6d4:1 096e8a3d:1 cb3f91d5:1"
@@ -103,7 +103,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "_shared/kiwi/verify-loop.md\t## 2. 기계 검사가 먼저다\t11\tb95cb790:1 97119924:1 23cca02b:1 511415f7:1 1f56c437:1 35de896a:1 73417659:1 b8518895:1 590ba2c9:1 96ce18aa:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 3. 검증자 — 라운드마다 새로\t5\t9a420a64:1 5c591dab:1 b7e66567:1 34d25ab2:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 4. 라운드 — red 테스트만 finding 으로 남는다\t4\ta59c0356:1 83c31e13:1 acf1b5bb:1 cb3f91d5:1",
-      "_shared/kiwi/verify-loop.md\t## 5. 종료 조건 — kiwi-wave-master §5.5.4 에서 이동\t14\t5c2c7135:1 a6317fb0:1 4199ba45:1 e6521e79:1 1c407825:1 e0ab9cdd:1 9bcfc1f0:1 7e87d64a:1 9895f7bb:1 747593ad:1 47707262:1 e8347e6b:1 7f9032f7:1 cb3f91d5:1",
+      "_shared/kiwi/verify-loop.md\t## 5. 종료 조건 — kiwi-wave-master §5.5.4 에서 이동\t14\t5c2c7135:1 a6317fb0:1 4199ba45:1 e6521e79:1 1c407825:1 e0ab9cdd:1 9bcfc1f0:1 7e87d64a:1 1324decf:1 747593ad:1 47707262:1 e8347e6b:1 7f9032f7:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 6. 진동(oscillation) 감지\t3\ta4912c68:1 d529dd7d:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 7. 개선 위임 (수정 주체) — kiwi-wave-master §5.5.5 에서 이동\t16\tf8bbf6ec:1 316d63f5:1 4199ba45:1 4761714a:1 24bf9a6a:1 1a8f0bb6:1 4a13e2ab:1 b72adcae:1 1b2fd315:1 94dd46b8:1 1cbb27b4:1 bc6fadff:1 1b8e8d2a:1 1ab196ca:1 9c56e5e9:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 8. 교차 wave 이월 — kiwi-wave-master §5.5.7 에서 이동\t6\t3fc61461:1 19b7625c:1 27ff7a10:1 05a4e6d4:1 096e8a3d:1 cb3f91d5:1"
@@ -112,7 +112,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "_shared/kiwi/verify-loop.md\t## 2. 기계 검사가 먼저다\t11\tb95cb790:1 97119924:1 23cca02b:1 511415f7:1 1f56c437:1 35de896a:1 73417659:1 b8518895:1 590ba2c9:1 96ce18aa:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 3. 검증자 — 라운드마다 새로\t5\tc3dd28c0:1 5c591dab:1 b7e66567:1 34d25ab2:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 4. 라운드 — red 테스트만 finding 으로 남는다\t4\ta59c0356:1 83c31e13:1 acf1b5bb:1 cb3f91d5:1",
-      "_shared/kiwi/verify-loop.md\t## 5. 종료 조건 — kiwi-wave-master §5.5.4 에서 이동\t14\t5c2c7135:1 a6317fb0:1 4199ba45:1 e6521e79:1 ed0fde8a:1 7bc288ee:1 9bcfc1f0:1 10325de8:1 9895f7bb:1 747593ad:1 47707262:1 e8347e6b:1 7f9032f7:1 cb3f91d5:1",
+      "_shared/kiwi/verify-loop.md\t## 5. 종료 조건 — kiwi-wave-master §5.5.4 에서 이동\t14\t5c2c7135:1 a6317fb0:1 4199ba45:1 6f258fff:1 ed0fde8a:1 ff86abd1:1 9bcfc1f0:1 10325de8:1 1324decf:1 747593ad:1 47707262:1 c9e99fee:1 7f9032f7:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 6. 진동(oscillation) 감지\t3\ta4912c68:1 d529dd7d:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 7. 개선 위임 (수정 주체) — kiwi-wave-master §5.5.5 에서 이동\t16\tf8bbf6ec:1 316d63f5:1 4199ba45:1 4761714a:1 24bf9a6a:1 1a8f0bb6:1 4a13e2ab:1 b72adcae:1 1b2fd315:1 94dd46b8:1 1cbb27b4:1 bc6fadff:1 1b8e8d2a:1 1ab196ca:1 9c56e5e9:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 8. 교차 wave 이월 — kiwi-wave-master §5.5.7 에서 이동\t6\t3fc61461:1 19b7625c:1 27ff7a10:1 05a4e6d4:1 096e8a3d:1 cb3f91d5:1"
@@ -121,7 +121,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "_shared/kiwi/verify-loop.md\t## 2. 기계 검사가 먼저다\t11\tb95cb790:1 97119924:1 23cca02b:1 511415f7:1 1f56c437:1 35de896a:1 73417659:1 b8518895:1 590ba2c9:1 96ce18aa:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 3. 검증자 — 라운드마다 새로\t5\t9a420a64:1 5c591dab:1 b7e66567:1 34d25ab2:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 4. 라운드 — red 테스트만 finding 으로 남는다\t4\ta59c0356:1 83c31e13:1 acf1b5bb:1 cb3f91d5:1",
-      "_shared/kiwi/verify-loop.md\t## 5. 종료 조건 — kiwi-wave-master §5.5.4 에서 이동\t14\t5c2c7135:1 a6317fb0:1 4199ba45:1 e6521e79:1 1c407825:1 e0ab9cdd:1 9bcfc1f0:1 7e87d64a:1 9895f7bb:1 747593ad:1 47707262:1 e8347e6b:1 7f9032f7:1 cb3f91d5:1",
+      "_shared/kiwi/verify-loop.md\t## 5. 종료 조건 — kiwi-wave-master §5.5.4 에서 이동\t14\t5c2c7135:1 a6317fb0:1 4199ba45:1 e6521e79:1 1c407825:1 e0ab9cdd:1 9bcfc1f0:1 7e87d64a:1 1324decf:1 747593ad:1 47707262:1 e8347e6b:1 7f9032f7:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 6. 진동(oscillation) 감지\t3\ta4912c68:1 d529dd7d:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 7. 개선 위임 (수정 주체) — kiwi-wave-master §5.5.5 에서 이동\t16\tf8bbf6ec:1 316d63f5:1 4199ba45:1 4761714a:1 24bf9a6a:1 1a8f0bb6:1 4a13e2ab:1 b72adcae:1 1b2fd315:1 94dd46b8:1 1cbb27b4:1 bc6fadff:1 1b8e8d2a:1 1ab196ca:1 9c56e5e9:1 cb3f91d5:1",
       "_shared/kiwi/verify-loop.md\t## 8. 교차 wave 이월 — kiwi-wave-master §5.5.7 에서 이동\t6\t3fc61461:1 19b7625c:1 27ff7a10:1 05a4e6d4:1 096e8a3d:1 cb3f91d5:1"

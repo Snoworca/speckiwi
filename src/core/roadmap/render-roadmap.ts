@@ -76,7 +76,16 @@ export interface RoadmapItemBlock {
   readonly title: string;
   readonly values: Readonly<Record<RoadmapFieldName, string>>;
   readonly purpose: string;
+  /** Written as a `#### Description` section when given. @req FR-NODE-268 AC-2 */
+  readonly description?: string | undefined;
+  /** Written as a `#### Features` section when given. @req FR-NODE-268 AC-2 */
+  readonly features?: string | undefined;
   readonly history: readonly RoadmapHistoryCells[];
+}
+
+/** A `#### <name>` section: heading, blank line, text, blank line. */
+export function renderRoadmapSection(name: string, text: string): string[] {
+  return [`#### ${name}`, "", ...text.split(/\r?\n/), ""];
 }
 
 /** The lines of one item, from its heading to its last history row. */
@@ -92,10 +101,9 @@ export function renderRoadmapItem(block: RoadmapItemBlock): Result<string[]> {
     "|---|---|",
     ...metadata.value,
     "",
-    "#### Purpose",
-    "",
-    ...block.purpose.split(/\r?\n/),
-    "",
+    ...renderRoadmapSection("Purpose", block.purpose),
+    ...(block.description === undefined ? [] : renderRoadmapSection("Description", block.description)),
+    ...(block.features === undefined ? [] : renderRoadmapSection("Features", block.features)),
     "#### Change History",
     "",
     `| ${ROADMAP_HISTORY_COLUMNS.join(" | ")} |`,

@@ -4,7 +4,7 @@ import { link, lstat, mkdir, open, readFile, rename, rm } from "node:fs/promises
 import path from "node:path";
 import { diagnostic, summarizeDiagnostics } from "../diagnostic.js";
 import type { Diagnostic, MutationResult, ProjectRoot, SrsMutationLockError, SrsMutationLockMetadata } from "../types.js";
-import { refreshSrsStatusCache } from "../status-cache.js";
+import { refreshSrsStatusCache, writeSrsStatusCache, type SrsStatusCache } from "../status-cache.js";
 import { isBusy, retryBusy } from "../lock/busy-retry.js";
 
 export const SRS_LOCK_PATH = "kiwi/.srs.lock";
@@ -507,12 +507,33 @@ function resultWrote(result: MutationResult): boolean {
   return Boolean(result.ok && result.value && typeof result.value === "object" && "written" in result.value && (result.value as { written?: unknown }).written === true);
 }
 
-async function refreshCacheDiagnostics(root: ProjectRoot, lockMetadata: SrsMutationLockMetadata | null): Promise<Diagnostic[]> {
+function cacheWriteWarning(error: unknown): Diagnostic {
+  return diagnostic("SRS-W066", "warning", `SRS status cache write failed: ${(error as Error).message}`, { filePath: "kiwi/.status.json" }, { rebuildable: true });
+}
+
+async function refreshCache(root: ProjectRoot, lockMetadata: SrsMutationLockMetadata | null): Promise<{ cache?: SrsStatusCache; diagnostics: Diagnostic[] }> {
   try {
     const refreshed = await refreshSrsStatusCache(root, lockMetadata);
-    return refreshed.ok ? [] : refreshed.diagnostics;
+    return refreshed.ok && refreshed.value ? { cache: refreshed.value, diagnostics: [] } : { diagnostics: refreshed.diagnostics };
   } catch (error) {
-    return [diagnostic("SRS-W066", "warning", `SRS status cache write failed: ${(error as Error).message}`, { filePath: "kiwi/.status.json" }, { rebuildable: true })];
+    return { diagnostics: [cacheWriteWarning(error)] };
+  }
+}
+
+async function refreshCacheDiagnostics(root: ProjectRoot, lockMetadata: SrsMutationLockMetadata | null): Promise<Diagnostic[]> {
+  return (await refreshCache(root, lockMetadata)).diagnostics;
+}
+
+/**
+ * @req FR-NODE-273 AC-1 AC-2 — a call that wrote nothing puts back the cache it wrote on taking the
+ * lock, without the lock: the SRS files are unchanged, so no reparse is needed.
+ */
+async function clearCacheLock(root: ProjectRoot, cache: SrsStatusCache): Promise<Diagnostic[]> {
+  try {
+    await writeSrsStatusCache(root, { ...cache, lock: { active: false, metadata: null } });
+    return [];
+  } catch (error) {
+    return [cacheWriteWarning(error)];
   }
 }
 
@@ -530,13 +551,17 @@ export async function withSrsMutationLock<T>(root: ProjectRoot, options: SrsMuta
   if (isRefusal(acquired)) return acquired as MutationResult<T>;
   const lock = acquired;
 
-  const preDiagnostics = options.dryRun ? lock.diagnostics : [...lock.diagnostics, ...(await refreshCacheDiagnostics(root, lock.metadata))];
+  const pre = options.dryRun ? undefined : await refreshCache(root, lock.metadata);
+  const preDiagnostics = [...lock.diagnostics, ...(pre?.diagnostics ?? [])];
   let result: MutationResult<T> | undefined;
   let releaseDiagnostics: Diagnostic[] = [];
   try {
     result = await mutate();
   } finally {
-    if (!options.dryRun) releaseDiagnostics = await releaseSrsMutationLock(root, lock.metadata, options.operation);
+    if (!options.dryRun) {
+      if (pre?.cache && !(result && resultWrote(result))) releaseDiagnostics = await clearCacheLock(root, pre.cache);
+      releaseDiagnostics = [...releaseDiagnostics, ...(await releaseSrsMutationLock(root, lock.metadata, options.operation))];
+    }
   }
   const postDiagnostics = !options.dryRun && resultWrote(result) ? await refreshCacheDiagnostics(root, null) : [];
   return mergeDiagnostics(result, [...preDiagnostics, ...releaseDiagnostics, ...postDiagnostics]);

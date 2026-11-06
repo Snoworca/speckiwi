@@ -95,6 +95,12 @@ const FIELD_INPUTS: readonly RoadmapInputBinding[] = [
   { flag: "--lifecycle <lifecycle>", dest: "lifecycle", encoding: "choice", choices: ROADMAP_LIFECYCLES, help: "open, paused or cancelled" }
 ];
 
+/** The prose sections add and update share, keyed as the core's `RoadmapSectionInput`. @req FR-NODE-268 AC-2 AC-3 */
+const SECTION_INPUTS: readonly RoadmapInputBinding[] = [
+  { flag: "--description <text>", dest: "description", encoding: "string", help: "the item's Description section; - empties" },
+  { flag: "--features <text>", dest: "features", encoding: "string", help: "the item's Features section, a list of what it delivers; - empties" }
+];
+
 const LIST_INPUTS: readonly RoadmapInputBinding[] = [
   { flag: "--status <status>", dest: "status", encoding: "choice", choices: ROADMAP_STATUSES, help: "only items with this computed status" },
   { flag: "--kind <kind>", dest: "kind", encoding: "choice", choices: ROADMAP_KINDS, help: "only milestones or only features" },
@@ -109,6 +115,7 @@ const ADD_INPUTS: readonly RoadmapInputBinding[] = [
   { flag: "--kind <kind>", dest: "kind", encoding: "choice", choices: ROADMAP_KINDS, required: true, help: "milestone or feature" },
   { flag: "--title <title>", dest: "title", encoding: "string", required: true, help: "item title" },
   { flag: "--purpose <text>", dest: "purpose", encoding: "string", help: "the item's Purpose section" },
+  ...SECTION_INPUTS,
   ...FIELD_INPUTS,
   { flag: "--from-target <target>", dest: "fromTarget", encoding: "string", help: "make the item of this registered target; its goal becomes the purpose" },
   { ...REASON, required: true },
@@ -116,7 +123,14 @@ const ADD_INPUTS: readonly RoadmapInputBinding[] = [
   IGNORE_LOCK
 ];
 
-const UPDATE_INPUTS: readonly RoadmapInputBinding[] = [{ flag: "--title <title>", dest: "title", encoding: "string", help: "new title" }, ...FIELD_INPUTS, REASON, DRY_RUN, IGNORE_LOCK];
+const UPDATE_INPUTS: readonly RoadmapInputBinding[] = [
+  { flag: "--title <title>", dest: "title", encoding: "string", help: "new title" },
+  ...SECTION_INPUTS,
+  ...FIELD_INPUTS,
+  REASON,
+  DRY_RUN,
+  IGNORE_LOCK
+];
 
 const SYNC_INPUTS: readonly RoadmapInputBinding[] = [
   { flag: "--apply", dest: "apply", encoding: "boolean", help: "write the proposals" },
@@ -165,7 +179,7 @@ export const ROADMAP_BINDINGS: readonly RoadmapBinding[] = [
     tool: "get_roadmap_item",
     kind: "read",
     description:
-      "Returns one roadmap item by its `RM-<n>` ID with its scope requirement IDs, Change History, schedule baseline, `replanCount`, health and `slipDays`, and the earlier dates the SRS records — Status change notes and Completed Work Log rows — as candidates for its actual dates; the same JSON, at `schema: 1`, that `speckiwi roadmap show --json` prints. An ID that names no item is refused with NOT_FOUND. Read-only.",
+      "Returns one roadmap item by its `RM-<n>` ID with its scope requirement IDs, Description and Features text, Change History, schedule baseline, `replanCount`, health and `slipDays`, and the earlier dates the SRS records — Status change notes and Completed Work Log rows — as candidates for its actual dates; the same JSON, at `schema: 1`, that `speckiwi roadmap show --json` prints. An ID that names no item is refused with NOT_FOUND. Read-only.",
     help: "show one roadmap item with its scope, history, schedule and actual-date candidates",
     itemArgument: true,
     inputs: [AS_OF],
@@ -187,7 +201,7 @@ export const ROADMAP_BINDINGS: readonly RoadmapBinding[] = [
     tool: "add_roadmap_item",
     kind: "mutation",
     description:
-      "Allocates the next `RM-<n>` and appends a milestone or feature to `docs/roadmap.md`, creating the file with its banner when it is absent, with a `Created` history row carrying the reason; `fromTarget` makes the item of a registered target, borrowing its goal as the purpose. Refuses a value that would break the document or add a roadmap error. Writes `docs/roadmap.md` under the SRS mutation lock unless `dryRun` is set.",
+      "Allocates the next `RM-<n>` and appends a milestone or feature to `docs/roadmap.md`, creating the file with its banner when it is absent, with its Description and Features sections when given and a `Created` history row carrying the reason; `fromTarget` makes the item of a registered target, borrowing its goal as the purpose. Refuses a value that would break the document or add a roadmap error. Writes `docs/roadmap.md` under the SRS mutation lock unless `dryRun` is set.",
     help: "add a roadmap item; creates docs/roadmap.md when it is absent",
     itemArgument: false,
     inputs: ADD_INPUTS,
@@ -198,7 +212,7 @@ export const ROADMAP_BINDINGS: readonly RoadmapBinding[] = [
     tool: "update_roadmap_item",
     kind: "mutation",
     description:
-      "Changes the title or metadata of one existing roadmap item and appends one Change History row per changed field with its previous value, new value and reason; a schedule, Lifecycle, Milestone or Targets change is refused without a reason, and a call that changes nothing is a no-op. An item is closed by setting Lifecycle to cancelled, never deleted. Writes `docs/roadmap.md` under the SRS mutation lock unless `dryRun` is set.",
+      "Changes the title, metadata, Description or Features of one existing roadmap item and appends one Change History row per changed field or section with its previous value, new value and reason; a schedule, Lifecycle, Milestone or Targets change is refused without a reason, and a call that changes nothing is a no-op. An item is closed by setting Lifecycle to cancelled, never deleted. Writes `docs/roadmap.md` under the SRS mutation lock unless `dryRun` is set.",
     help: "change fields of a roadmap item, with one history row per changed field",
     itemArgument: true,
     inputs: UPDATE_INPUTS,

@@ -274,6 +274,7 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
     "result_summary": "테스트 7개 PASS, 구현 완료",
     "changed": true,
     "commit_sha": null,
+    "commits": [],
     "questions": [],
     "attempts": 1
   },
@@ -307,6 +308,7 @@ speckiwi `apply-patch.ts` 또는 `stability-transition.js` 가 mutation 을 거�
 - `run.status` enum: `pending` | `running` | `done` | `failed` | `blocked`
 - `run.changed` — 이번 실행이 쓰기 집합 안에 commit 이나 작업 트리 변경을 남겼는지 (§10 무동작 판정)
 - `run.commit_sha` — `--commit-lane-work` 가 §1.5 대로 요구마다 만든 테스트 커밋 · 구현 커밋 가운데 마지막 구현 커밋, 없으면 null
+- `run.commits` — 요구마다 `{req_id, test_sha, implementation_sha}` 하나: 요구 ID, 테스트 커밋 sha, 구현 커밋 sha. `--commit-lane-work` 가 §1.5 대로 커밋할 때 요구 순서대로 채운다. `--commit-lane-work` 가 없으면 빈 목록 `[]` 이다 — 실행이 테스트를 먼저 커밋했는지 상태만 보고 확인할 수 있다
 - `run.attempts` — Agent spawn 횟수 (재spawn 포함). §0.G3/§0.G4 카운터
 - `lifecycle_gate_state` — 부팅 T0 평가 결과 캐싱. stability_snapshot 은 부팅 시점의 REQ Stability 스냅샷 (종료 시 drift 감지 가능)
 - `req_coverage` — T-final 단계에 채워짐. REQ-ID 별 `{status_at_start, status_at_end, all_done: bool}`
@@ -397,6 +399,7 @@ FUNCTION MAIN(args):
         state.run.changed = WRITE_SET_CHANGED(state.write_set)      # §6.1
         IF args.commit_lane_work AND state.run.status == "done":
             state.run.commit_sha = COMMIT_PER_REQUIREMENT(state)    # §1.5 — 요구마다 테스트 커밋 뒤 구현 커밋, 값은 마지막 구현 커밋 sha
+            # 같은 호출이 요구마다 {req_id, test_sha, implementation_sha} 를 요구 순서대로 state.run.commits 에 더한다 (§2.2)
         SAVE_STATE(state)
 
     # T-final: 종료 마무리 (§6.2 ~ §6.4)
@@ -826,7 +829,7 @@ FUNCTION VERIFY_SHA_ON_RESUME(state, args):
 
 ### 6.1 실행 결과 판정
 
-kiwi-coder 실행이 끝나면 PM 이 결과를 `run` 에 확정한다. `run.changed` 는 실행 시작 이후 쓰기 집합(`--sds` 면 SDS 쓰기 집합, 아니면 `base_sha` 이후 이 실행이 바꾼 경로 — 워커면 lane 쓰기 집합) 안에 새 commit 이 생겼거나 `git status --porcelain -- <쓰기 집합>` 이 비어 있지 않으면 `true` 다 — §10 의 무동작 판정이 이 값을 읽는다. `--commit-lane-work` 가 있고 `run.status = "done"` 이면 이 시점에 §1.5 대로 요구마다 테스트 커밋과 그 뒤의 구현 커밋을 만든다 — `run.commit_sha` 는 그 가운데 마지막 구현 커밋이다.
+kiwi-coder 실행이 끝나면 PM 이 결과를 `run` 에 확정한다. `run.changed` 는 실행 시작 이후 쓰기 집합(`--sds` 면 SDS 쓰기 집합, 아니면 `base_sha` 이후 이 실행이 바꾼 경로 — 워커면 lane 쓰기 집합) 안에 새 commit 이 생겼거나 `git status --porcelain -- <쓰기 집합>` 이 비어 있지 않으면 `true` 다 — §10 의 무동작 판정이 이 값을 읽는다. `--commit-lane-work` 가 있고 `run.status = "done"` 이면 이 시점에 §1.5 대로 요구마다 테스트 커밋과 그 뒤의 구현 커밋을 만든다 — `run.commit_sha` 는 그 가운데 마지막 구현 커밋이다. 요구마다 두 커밋의 sha 는 `run.commits` 에 적는다(§2.2).
 
 ### 6.2 T-final SRS Status 마무리
 

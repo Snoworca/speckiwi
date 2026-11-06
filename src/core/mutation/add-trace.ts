@@ -71,9 +71,9 @@ export function refuseDiscardedTraceTargets<T = unknown>(records: readonly Requi
 }
 
 /**
- * @req FR-NODE-272 AC-1, AC-4 — the same refusal, from a workspace read before the SRS lock is taken: a
- * refusal decided inside the lock leaves kiwi/.status.json saying the lock is held, so only this one
- * writes no file. The writer checks again inside the lock, for a target discarded between the two reads.
+ * @req FR-NODE-272 AC-1, AC-4 — the same refusal, from a workspace read before the SRS lock is taken, so a
+ * refused link never takes the lock. The writer checks again inside the lock, for a target discarded
+ * between the two reads.
  */
 export async function refuseDiscardedTraceTargetsBeforeLock<T = unknown>(root: ProjectRoot, rows: readonly WrittenTraceRow[]): Promise<MutationResult<T> | undefined> {
   if (!rows.some((row) => row.type === "Requirement")) return undefined;

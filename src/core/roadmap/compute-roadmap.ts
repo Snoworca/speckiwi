@@ -83,6 +83,10 @@ export interface RoadmapItemView {
   };
   readonly purpose: string;
   readonly purposeSource: "item" | "target";
+  /** @req FR-NODE-268 AC-1 — the `Description` section text, empty when absent or `-`. */
+  readonly description: string;
+  /** @req FR-NODE-268 AC-1 — the `Features` section text, empty when absent or `-`. */
+  readonly features: string;
   readonly history: readonly RoadmapHistoryRow[];
 }
 
@@ -191,7 +195,13 @@ function purposeOf(item: RoadmapItem, sources: RoadmapSources): { purpose: strin
   return purpose === ROADMAP_EMPTY && goal ? { purpose: goal, purposeSource: "target" } : { purpose, purposeSource: "item" };
 }
 
-// @req FR-NODE-255 AC-1 AC-2 AC-3 AC-4 AC-5 AC-6 AC-7 AC-8 FR-NODE-269 AC-1
+// @req FR-NODE-268 AC-1
+function sectionText(item: RoadmapItem, name: "Description" | "Features"): string {
+  const text = item.sections[name]?.text ?? "";
+  return text === ROADMAP_EMPTY ? "" : text;
+}
+
+// @req FR-NODE-255 AC-1 AC-2 AC-3 AC-4 AC-5 AC-6 AC-7 AC-8 FR-NODE-269 AC-1 FR-NODE-268 AC-1
 export function computeRoadmapItems(document: RoadmapDocument, sources: RoadmapSources, asOf: string): RoadmapItemView[] {
   return document.items.map((item) => {
     const decided = roadmapItemStatus(document, sources, item);
@@ -227,6 +237,8 @@ export function computeRoadmapItems(document: RoadmapDocument, sources: RoadmapS
         ...healthOf(decided.status, planned.end, actual.end, asOf)
       },
       ...purposeOf(item, sources),
+      description: sectionText(item, "Description"),
+      features: sectionText(item, "Features"),
       history: item.history
     };
   });

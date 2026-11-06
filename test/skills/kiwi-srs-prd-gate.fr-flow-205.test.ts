@@ -98,8 +98,11 @@ const R = {
   // verify-r15: a confirmed proposal limiting scope acts as an exclusion item (AC-5 last sentence).
   b4: ["AC-5", "(b) a confirmed proposal whose Effect is exclusion acts as an exclusion item",
     "`Effect` 가 exclusion 인 확정 proposal 은 exclusion 항목으로 작동한다 — 그 proposal 에 걸리는 요구나 AC 도 drop 한다."],
+  // FR-FLOW-227: the fills: basis names the criteria it grounds, in the form `speckiwi prd coverage` counts.
   c1: ["AC-6", "(c) filling a hole is accepted only with a fills: basis",
-    "(c) 요청의 구멍·모순·결함을 메우는 추가는 그 요구의 Rationale 에 `fills: PRD-<n> / <hole|contradiction|defect> / <reason>` 이 있을 때만 받아들인다."],
+    "(c) 요청의 구멍·모순·결함을 메우는 추가는 그 요구의 Rationale 에 `fills: PRD-<n> / <hole|contradiction|defect> / for AC-<m>, <reason>` 이 있을 때만 받아들인다."],
+  c1b: ["AC-6", "(c) the fills: basis names every criterion it grounds, or coverage counts it for none (FR-FLOW-227)",
+    "`for` 뒤에는 그 근거로 메우는 AC 를 모두 적는다 — 여럿이면 `for AC-1, AC-3`, 범위면 `for AC-1–AC-3` 이다. AC 를 적지 않은 `fills:` 는 `speckiwi prd coverage` 가 어느 AC 의 근거로도 세지 않는다."],
   c2: ["AC-6", "a fill stays the smallest one inside the item's boundary",
     "메우기는 그 항목의 경계 안에서 가장 작게 한다."],
   // verify-r2 R1 / AC-6 as revised: the loop resolves a contradiction itself, scope removal included.
@@ -162,7 +165,7 @@ function expectedCoreBlock(): string {
     "**판정 셋.**",
     `- ${s("a1")} ${s("a1b")} ${s("a1c")} ${s("a2")}`,
     `- ${s("b1")} ${s("b2")} ${s("b3")} ${s("b4")}`,
-    `- ${s("c1")} ${s("c2")} ${s("c3")} ${s("c3d")} ${s("c3b")} ${s("c3c")} ${s("c4")}`,
+    `- ${s("c1")} ${s("c1b")} ${s("c2")} ${s("c3")} ${s("c3d")} ${s("c3b")} ${s("c3c")} ${s("c4")}`,
     `- ${s("wave")}`,
     "",
     `**종료.** ${s("end1")} ${s("end2")} ${s("end3")} ${s("end4")} ${s("end6")} ${s("end5")}`,

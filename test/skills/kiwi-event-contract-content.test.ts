@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { requiredCleanStreak } from "../../src/core/orchestrator/journal-schema.js";
 import { at } from "../support/at.js";
 
 // @req FR-FLOW-043
@@ -927,6 +928,11 @@ describe("R2 — waves-event run-scoped resume, frozen denominators and preserva
       /`fail-cap`/.test(rule),
       `${copy} an unreachable pass must be recorded as fail-cap rather than burned through`
     ).toBe(true);
+    // "@req FR-NODE-144 AC-4": the clean rounds already counted come off the streak the rounds left must supply.
+    expect(
+      /요구치에서 이미 쌓인 연속 clean 라운드 수를 뺀 값보다 작으면/.test(rule),
+      `${copy} the comparison must subtract the clean rounds already counted`
+    ).toBe(true);
     // The two unsafe remedies. Extending the cap removes the escalation; persisting the streak
     // contradicts the "approval is never persisted" rule this file already carries.
     expect(
@@ -1153,18 +1159,22 @@ describe("R3 — waves-event production duties, run-scope window and closed excl
   });
 
   // R3-L1: §4's unreachable-pass predicate compares against a streak requirement no document numbers.
-  it.each(WAVES_COPIES)("%s gives the streak requirement a number for Normal", (copy) => {
+  // "@req FR-NODE-264 AC-4": the number is the engine's for the variant — etc rounds carry the
+  // etc-local-llm profile, which raises Normal to 3.
+  it.each(WAVES_COPIES)("%s gives the streak requirement the engine's number for Normal", (copy) => {
     const resume = section(read(copy), /^##\s*4\./);
     expect(resume, `${copy} must have a resume section`).not.toBe("");
     const rule = line(resume, /스트릭[^\n]*요구치/);
     expect(rule, `${copy} the unreachable-pass predicate must state what it compares against`).not.toBe("");
+    const normal = copy.startsWith("skills/etc/") ? requiredCleanStreak("normal", "etc-local-llm") : requiredCleanStreak("normal");
     expect(
-      /Normal[^\n]*\*\*1\*\*|\*\*1\*\*[^\n]*Normal/.test(rule),
-      `${copy} Normal must be 1 — the mode has no streak, so an unnumbered requirement makes the predicate unevaluable`
-    ).toBe(true);
+      /Normal(?: 이)? \*\*(\d+)\*\*/.exec(rule)?.[1],
+      `${copy} Normal must be the engine's ${normal} — an unnumbered or wrong requirement makes the predicate unevaluable`
+    ).toBe(String(normal));
+    // The table moved from kiwi-wave-master §5.5.4 to the shared verify-loop.md §5 (verify-v534-r3 #7).
     expect(
-      /kiwi-wave-master\s*§5\.5\.4/.test(rule),
-      `${copy} the per-mode numbers vary by variant, so the contract must point at the skill table that owns them`
+      /`verify-loop\.md`\s*§5\(종료 조건\)의 표/.test(rule),
+      `${copy} the per-mode numbers vary by variant, so the contract must point at the verify-loop.md §5 table that owns them`
     ).toBe(true);
   });
 });

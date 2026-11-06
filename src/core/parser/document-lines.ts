@@ -25,6 +25,12 @@ export interface DocumentLine {
    * starts no block, so it cannot be a link reference definition (CommonMark §4.7).
    */
   continuesParagraph: boolean;
+  /**
+   * Set on the lines of a structure that never closes yet hides the rest of the document (a top-level
+   * fence; any fence or comment block under `unclosedOpens`), from its opener on: it has no end, so a
+   * reader cannot tell where the text it hides was meant to stop.
+   */
+  unclosed?: true;
 }
 
 export interface ClassifyOptions {
@@ -272,15 +278,17 @@ export function classifyDocumentLines(lines: readonly string[], options: Classif
   let stack: Container[] = [];
   let hiddenThrough = -1;
   let hiddenKind: DocumentLineKind = "fence";
+  let hiddenUnclosed = false;
   let inIndentedCode = false;
   let paragraphOpen = false;
   const endOf = structureEnds(lines);
-  const not = (line: string, kind: DocumentLineKind): DocumentLine => ({
+  const not = (line: string, kind: DocumentLineKind, unclosed = false): DocumentLine => ({
     body: false,
     kind,
     text: " ".repeat(line.length),
     contentStart: line.length,
-    continuesParagraph: false
+    continuesParagraph: false,
+    ...(unclosed ? { unclosed: true as const } : {})
   });
   // The cursor's text past its leading blanks is the end of the line itself, so its length places it.
   const body = (line: string, cursor: Cursor, continuesParagraph: boolean): DocumentLine => ({
@@ -295,12 +303,13 @@ export function classifyDocumentLines(lines: readonly string[], options: Classif
     if (end === undefined && !hidesWhenUnclosed && options.unclosedOpens !== true) return false;
     hiddenThrough = end ?? lines.length - 1;
     hiddenKind = kind;
+    hiddenUnclosed = end === undefined;
     paragraphOpen = false;
     return true;
   };
 
   return lines.map((line, index) => {
-    if (index <= hiddenThrough) return not(line, hiddenKind);
+    if (index <= hiddenThrough) return not(line, hiddenKind, hiddenUnclosed);
 
     const continued = continueContainers(line, stack);
     let cursor = continued.cursor;
@@ -351,13 +360,13 @@ export function classifyDocumentLines(lines: readonly string[], options: Classif
       const closer: Closer = { key: `fence:${opening.marker}${opening.length}`, closes: (inner) => closesFence(opening, closingFenceAt(inner, trail)) };
       const end = endOf(index + 1, containers, closer);
       // An unclosed fence at the top level keeps hiding the rest of the document, as it did before.
-      if (hide(index, "fence", end, containers.length === 0)) return not(line, "fence");
+      if (hide(index, "fence", end, containers.length === 0)) return not(line, "fence", end === undefined);
     }
     if (HTML_COMMENT_START.test(text)) {
       const closesHere = text.indexOf("-->", text.indexOf("<!--") + COMMENT_CLOSE_SEARCH_OFFSET) >= 0;
       const end = closesHere ? index : endOf(index + 1, stack, COMMENT_CLOSER);
       // An HTML comment block that never closes is taken for text, so it hides nothing.
-      if (hide(index, "comment", end, false)) return not(line, "comment");
+      if (hide(index, "comment", end, false)) return not(line, "comment", end === undefined);
     }
 
     const endsParagraph = ATX_HEADING.test(text) || THEMATIC_BREAK.test(text) || (paragraphOpen && SETEXT_UNDERLINE.test(text));

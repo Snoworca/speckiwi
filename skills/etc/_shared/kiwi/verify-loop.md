@@ -68,22 +68,22 @@ finding 을 닫는 길은 그 테스트를 green 으로 만드는 수정 하나�
 
 | 모드 | PASS |
 |---|---|
-| Normal | 위 통과 조건을 만족한 라운드 하나 — **그 라운드에서 수정이 적용되지 않았을 것** |
+| Normal | 위 통과 조건을 만족한 라운드가 **3라운드 연속** (etc 프로파일) — **각 라운드에서 수정이 적용되지 않았을 것** |
 | `--max` | 위 통과 조건을 만족한 라운드가 **3라운드 연속** (etc 프로파일) |
 
-`--max` 는 이 조건을 **3라운드 연속** 요구한다 — etc 호스트는 `../_shared/kiwi/local-llm-profile.md` 가 **3연속 무개선**을 요구하고 `--max` 가 기본값이기 때문이다. 엔진 `orchestrate round record` 는 `--max` 스트릭 2 에서 `pass` 를 돌려주므로, etc 는 그 `pass` 라운드 뒤에 한 라운드를 더 돌고 그 라운드도 `pass` 일 때만 `complete` 를 쓴다. **스트릭 요구치는** Normal **1** 라운드, `--max` **3** 라운드다.
+`--max` 는 이 조건을 **3라운드 연속** 요구한다 — etc 호스트는 `../_shared/kiwi/local-llm-profile.md` 가 **3연속 무개선**을 요구하고 `--max` 가 기본값이기 때문이다. etc 는 라운드마다 payload 에 `"profile": "etc-local-llm"` 을 실어 이 요구치를 엔진에 넘기고, 엔진 `orchestrate round record` 가 셋째 연속 통과 라운드에서 `pass` 를 돌려준다 — 엔진의 `pass` 뒤에 라운드를 더 돌지 않는다. **스트릭 요구치는** Normal **3** 라운드, `--max` **3** 라운드다 — 프로파일이 실리면 엔진은 모드의 요구치와 프로파일의 3 가운데 큰 값을 쓰므로, etc 에서는 모드와 관계없이 3 이다.
 
 **수정이 적용되지 않은 라운드**에서만 통과한다는 조항이 저비용 상한을 안전하게 만든다 — 검증자가 읽은 적 없는 상태에 PASS 를 찍는 것을 막고, 수정이 있었다면 반드시 재검증 라운드가 돌게 한다.
 
 라운드 상한(`../_shared/kiwi/loop-option.md` v1.0): 기본 **5**, `--max` **8**, `--mini` 3. `--mini` 와 `--loops N` 동시 지정 시 **`--loops` 우선**(비치명 **WARN**). 단 etc 는 `--max` 가 기본이므로 `--mini`/`--loops` 미지정 시 실효 상한은 **8** 이고(명시 `--loops N` 은 그대로 우선한다), 위 표의 Normal 행은 etc 에서 **단독 종료 조건으로는 쓰이지 않는다** — `--max` 행이 참조하는 구성요소로만 남는다. 프로파일이 `--max` 를 끄는 수단을 제공하지 않으므로 Normal 행 단독으로 종료하는 경로가 없다.
 
-재개 시점에 **남은 라운드**(`cap - rounds`)가 그 모드의 **스트릭 요구치**보다 작으면 PASS 가 산술적으로 불가능하므로, 라운드를 더 돌지 않고 `fail-cap` 으로 기록하고 사용자 결정을 받는다.
+재개 시점에 **남은 라운드**(`cap - rounds`)가 그 모드의 **스트릭 요구치**에서 이미 쌓인 연속 통과 라운드 수를 뺀 값보다 작으면 PASS 가 산술적으로 불가능하므로, 라운드를 더 돌지 않고 `fail-cap` 으로 기록하고 사용자 결정을 받는다.
 
 **cap 소진은 PASS 가 아니다.** 상한에 닿으면 verdict 를 `fail-cap` 으로 기록하고, `complete` 를 append 하지 않으며, kept finding 을 **전량** 보고한 뒤 사용자 결정을 받는다. 상한은 무한 에스컬레이션을 멈출 뿐 결함을 은폐하지 않는다.
 
 kept finding 을 남긴 채 상한 전에 끝난 경우 — 교차 wave HALT, 사용자 중단, 코드로 닫을 수 없는 요구 수준 잔여 — 는 `fail-residual` 이고, 그때는 호출자의 `fail-residual` 게이트로 중단해 사용자 결정을 받는다. 통과한 라운드가 이월이나 재진입으로 넘긴 항목을 `residual` 에 남기는 것은 `pass` + `residual` 이며 사용자 결정을 받지 않는다.
 
-**이 표의 PASS 조건을 손으로 대조하지 않는다.** 라운드마다 MCP `orchestrate_round_record` 로 그 라운드의 verdict 를 받는다 — CLI 대체는 `speckiwi orchestrate round record --run-id <id> --payload <payload> --proof <payload>` 이고, 그 한 호출이 kept 행 · 그 라운드의 수정 적용 여부 · 회귀 부분집합 · 검증자 수 · 스트릭과 cap 을 함께 판정해 저널 줄을 만든다. 라운드 scope 가 닫힌 어휘 밖이거나 선언한 loop 의 것이 아니면 그 호출이 `invalid-run-scope-option` 으로 거절한다. `--proof` 에 실을 증명의 종류는 `waves-event.md` 의 `proof_kind` 가 정하고, 저널 밖에서 재계산되는 종류를 하나도 싣지 않은 라운드 줄은 같은 호출이 `run-invariant-drift` 로 거절한다.
+**이 표의 PASS 조건을 손으로 대조하지 않는다.** 라운드마다 MCP `orchestrate_round_record` 로 그 라운드의 verdict 를 받는다(payload 에 `"profile": "etc-local-llm"` 을 싣는다) — CLI 대체는 `speckiwi orchestrate round record --run-id <id> --payload <payload> --proof <payload>` 이고, 그 한 호출이 kept 행 · 그 라운드의 수정 적용 여부 · 회귀 부분집합 · 검증자 수 · 스트릭과 cap 을 함께 판정해 저널 줄을 만든다. 라운드 scope 가 닫힌 어휘 밖이거나 선언한 loop 의 것이 아니면 그 호출이 `invalid-run-scope-option` 으로 거절한다. `--proof` 에 실을 증명의 종류는 `waves-event.md` 의 `proof_kind` 가 정하고, 저널 밖에서 재계산되는 종류를 하나도 싣지 않은 라운드 줄은 같은 호출이 `run-invariant-drift` 로 거절한다.
 
 저널을 되읽는 것으로 이 호출을 대신할 수 없다. 저널 검사는 착지한 줄의 일부 규칙만 보며, 수정이 적용된 라운드인지를 담는 필드가 저널에 없어 위 표의 그 조항은 저널 쪽에서 구조적으로 판정되지 않는다.
 

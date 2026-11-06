@@ -68,7 +68,7 @@ async function syncUnlocked(root: ProjectRoot, input: SyncRoadmapActualsInput, d
     if (own.length === 0) continue;
     const changes = own.map((proposal) => ({ field: proposal.field, from: ROADMAP_EMPTY, to: proposal.value }));
     const reason = `roadmap sync: ${own[0]!.status} by ${own[0]!.rule}`;
-    const planned = planRoadmapItemChanges(file, item, changes, date.value, reason);
+    const planned = planRoadmapItemChanges(file, document, item, changes, date.value, reason);
     if (!planned.ok) return mutationFail(planned.code, planned.message);
     operations.push(...planned.operations);
   }

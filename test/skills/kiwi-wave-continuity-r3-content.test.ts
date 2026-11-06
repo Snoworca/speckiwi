@@ -174,6 +174,9 @@ const EXCLUSION_CLASSES = [
 
 /** R3-L1: the streak requirement, which is an intentional per-variant difference (etc = 3). */
 const MAX_STREAK: Record<string, string> = { claude: "2", codex: "2", etc: "3" };
+/** etc carries `"profile": "etc-local-llm"` on every round, and the engine then requires 3 in every mode.
+ * @req FR-NODE-264 AC-1 */
+const NORMAL_STREAK: Record<string, string> = { claude: "1", codex: "1", etc: "3" };
 
 /** R3-M19: `_shared/kiwi/auto-option.md` is mirrored, so it ships in four copies like the event contracts. */
 const AUTO_OPTION_COPIES = [
@@ -1341,9 +1344,10 @@ describe("R3-L1 — the streak requirement is a number", () => {
         const exit = sectionUnder(skillBody(readWave(variant)), /^#{2,4}\s.*5\.5\.4/);
         const rule = lineWith(exit, /스트릭 요구치는/);
         expect(rule, `${variant}: the unreachable-pass predicate cannot be evaluated without a number`).not.toBe("");
+        // Normal has no streak of its own but still needs one clean round; etc's profile raises it to 3.
         expect(
-          /Normal[^\n]*\*\*1\*\*/.test(rule),
-          `${variant}: Normal must be 1 — the mode has no streak, but it still needs one clean round`
+          new RegExp("Normal \\*\\*" + NORMAL_STREAK[variant] + "\\*\\*").test(rule),
+          `${variant}: Normal must be ${NORMAL_STREAK[variant]}, the streak the engine requires for this variant`
         ).toBe(true);
         expect(
           new RegExp("`--max`[^\\n]*\\*\\*" + MAX_STREAK[variant] + "\\*\\*").test(rule),
@@ -1351,6 +1355,21 @@ describe("R3-L1 — the streak requirement is a number", () => {
         ).toBe(true);
         expect(HEDGE.test(rule), `${variant}: the streak numbers must be absolute, not hedged`).toBe(false);
       });
+    });
+  }
+});
+
+// The unreachable-PASS rule in waves-event.md reads the --max streak from a table; the pointer must
+// name the section that holds that table, which moved from kiwi-wave-master §5.5.4 to verify-loop.md §5.
+describe("R3-L1 — the waves-event unreachable-PASS rule points at the streak table where it is", () => {
+  for (const variant of VARIANTS) {
+    it(`@req FR-NODE-264 AC-3: ${variant} waves-event.md names verify-loop.md §5, and that section holds the streak numbers`, () => {
+      const rule = lineWith(readShared(`skills/${variant}/_shared/kiwi/waves-event.md`), /^\*\*도달 불가한 PASS 탐지/);
+      expect(rule, `${variant}: the unreachable-PASS rule`).not.toBe("");
+      expect(rule).toContain("`verify-loop.md` §5(종료 조건)의 표를 SSOT 로 읽는다");
+      expect(rule).not.toContain("kiwi-wave-master §5.5.4");
+      const exit = sectionUnder(readShared(`skills/${variant}/_shared/kiwi/verify-loop.md`), /^## 5\. 종료 조건/);
+      expect(lineWith(exit, /스트릭 요구치는/), `${variant}: verify-loop.md §5 states the streak numbers`).not.toBe("");
     });
   }
 });

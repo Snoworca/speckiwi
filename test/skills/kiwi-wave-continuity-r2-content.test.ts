@@ -1161,6 +1161,11 @@ describe("R2-M6 — an unreachable pass is detected instead of burned through", 
           /`fail-cap`/.test(rule),
           `${variant}: an arithmetically impossible pass must be recorded as fail-cap and escalated`
         ).toBe(true);
+        // "@req FR-NODE-144 AC-4": the clean rounds already counted come off the streak the rounds left must supply.
+        expect(
+          /스트릭 요구치\*\*에서 이미 쌓인 연속 통과 라운드 수를 뺀 값보다 작으면/.test(rule),
+          `${variant}: the comparison must subtract the clean rounds already counted`
+        ).toBe(true);
         // The unsafe alternative: silently extending the cap, or persisting a passing streak.
         expect(
           /cap 을 (?:연장|늘린다)|스트릭을 영속/.test(exit),

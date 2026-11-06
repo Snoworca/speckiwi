@@ -91,6 +91,27 @@ describe("FR-NODE-144 evaluateRound", () => {
     expect(roomy.verdict).toBe("fail-residual");
   });
 
+  it("AC-4 subtracts the clean rounds already counted from the streak the remaining rounds must still supply", () => {
+    // "@req FR-NODE-144 AC-4"
+    // The etc profile requires three consecutive clean rounds. A clean round 6 of cap 8 leaves a
+    // streak of 1, so rounds 7 and 8 can still supply the two it needs: not unreachable.
+    const etc = { mode: "max" as const, profile: "etc-local-llm" as const, cap: 8, roundIndex: 6, frozenDenominator: 3 };
+    const counted = evaluateRound(round(etc));
+    expect(counted).toMatchObject({ verdict: "fail-residual", streak: 1, capRemaining: 2, unreachable: false });
+
+    // A clean first round of cap 3 (etc --mini, or --loops 3) likewise stays open.
+    const mini = evaluateRound(round({ ...etc, mode: "normal", cap: 3, roundIndex: 1 }));
+    expect(mini).toMatchObject({ verdict: "fail-residual", streak: 1, capRemaining: 2, unreachable: false });
+
+    // The same round 6 with no clean round counted (a fix was applied) still needs three: unreachable.
+    const uncounted = evaluateRound(round({ ...etc, fixAppliedThisRound: true }));
+    expect(uncounted).toMatchObject({ verdict: "fail-cap", streak: 0, capRemaining: 2, unreachable: true });
+
+    // A clean round that leaves one short with no round left is still unreachable.
+    const last = evaluateRound(round({ ...etc, roundIndex: 8, streakBefore: 1 }));
+    expect(last).toMatchObject({ verdict: "fail-cap", streak: 2, capRemaining: 0, unreachable: true });
+  });
+
   it("AC-5 can return different verdicts for two calls differing only in mode", () => {
     // Literally identical but for mode: one verifier is the normal count and too few for --max.
     const value = round({ mode: "normal" });

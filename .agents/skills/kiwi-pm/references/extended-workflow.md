@@ -280,7 +280,7 @@ FUNCTION VERIFY_SHA_ON_RESUME(state, args):
 
 ### 6.1 실행 결과 판정
 
-kiwi-coder 실행이 끝나면 PM 이 결과를 `run` 에 확정한다. `run.changed` 는 실행 시작 이후 쓰기 집합(`--sds` 면 SDS 쓰기 집합, 아니면 `base_sha` 이후 이 실행이 바꾼 경로 — 워커면 lane 쓰기 집합) 안에 새 commit 이 생겼거나 `git status --porcelain -- <쓰기 집합>` 이 비어 있지 않으면 `true` 다 — §10 의 무동작 판정이 이 값을 읽는다. `--commit-lane-work` 가 있고 `run.status = "done"` 이면 이 시점에 `SKILL.md` §1.5 대로 요구마다 테스트 커밋과 그 뒤의 구현 커밋을 만든다 — `run.commit_sha` 는 그 가운데 마지막 구현 커밋이다. 그 밖에 PM 은 자동 commit 하지 않는다 — `--commit-lane-work` 를 명시한 오케스트레이션 실행이 그 유일한 예외다.
+kiwi-coder 실행이 끝나면 PM 이 결과를 `run` 에 확정한다. `run.changed` 는 실행 시작 이후 쓰기 집합(`--sds` 면 SDS 쓰기 집합, 아니면 `base_sha` 이후 이 실행이 바꾼 경로 — 워커면 lane 쓰기 집합) 안에 새 commit 이 생겼거나 `git status --porcelain -- <쓰기 집합>` 이 비어 있지 않으면 `true` 다 — §10 의 무동작 판정이 이 값을 읽는다. `--commit-lane-work` 가 있고 `run.status = "done"` 이면 이 시점에 `SKILL.md` §1.5 대로 요구마다 테스트 커밋과 그 뒤의 구현 커밋을 만든다 — `run.commit_sha` 는 그 가운데 마지막 구현 커밋이다. 요구마다 두 커밋의 sha 는 `run.commits` 에 적는다(§2.2). 그 밖에 PM 은 자동 commit 하지 않는다 — `--commit-lane-work` 를 명시한 오케스트레이션 실행이 그 유일한 예외다.
 
 ### 6.2 T-final SRS Status 마무리
 

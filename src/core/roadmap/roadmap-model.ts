@@ -51,6 +51,11 @@ export interface RoadmapHistoryRow {
 export interface RoadmapSection {
   /** 1-based line of the `#### <name>` heading. */
   readonly line: number;
+  /**
+   * 1-based line of the section's last non-blank line, code and comment lines included; the heading's
+   * line when the section is empty. The section runs to the next `####` heading outside code.
+   */
+  readonly lastLine: number;
   /** The section's text with surrounding blank lines removed. */
   readonly text: string;
 }
@@ -61,7 +66,10 @@ export interface RoadmapItem {
   readonly title: string;
   /** 1-based line of the item heading. */
   readonly line: number;
-  /** 1-based line of the item's last non-blank line. */
+  /**
+   * 1-based line of the item's last non-blank line, code and comment lines included. The item runs to
+   * the next item heading outside code. @req FR-NODE-268 AC-4
+   */
   readonly lastLine: number;
   readonly fields: Readonly<Partial<Record<RoadmapFieldName, RoadmapFieldValue>>>;
   readonly sections: Readonly<Partial<Record<RoadmapSectionName, RoadmapSection>>>;
@@ -73,6 +81,11 @@ export interface RoadmapItem {
 export interface RoadmapDocument {
   /** Items in document order. */
   readonly items: readonly RoadmapItem[];
+  /**
+   * 1-based line where a code fence opens and never closes. It hides every line after it, item headings
+   * included, so where the items after it end is unknown. @req FR-NODE-268 AC-4
+   */
+  readonly unclosedFenceLine?: number;
 }
 
 export interface RoadmapParse {

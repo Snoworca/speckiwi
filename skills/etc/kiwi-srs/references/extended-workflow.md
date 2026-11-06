@@ -237,7 +237,7 @@ speckiwi 보장 사항:
     { "id": "PRD-1", "kind": "intent|user|goal|in-scope|exclusion|proposal", "verdict": "accepted|fail|respected|violated|other-wave|not-applicable|resolved", "refs": ["FR-X-001#AC-2"], "note": "..." }
   ],
   "srs_items": [
-    { "id": "FR-X-001 | FR-X-001#AC-2", "verdict": "grounded|fills|drop|residual", "basis": "PRD-4 | fills: PRD-4 / hole / ...", "note": "..." }
+    { "id": "FR-X-001 | FR-X-001#AC-2", "verdict": "grounded|fills|drop|residual", "basis": "PRD-4 | fills: PRD-4 / hole / for AC-2, ...", "note": "..." }
   ],
   "summary": { "kept": N, "dropped": N }
 }

@@ -4,8 +4,10 @@
 // invalid-round rule — exists today only as skill prose applied by an agent. Nothing here reads a
 // file, a clock or a process: every fact the verdict rests on arrives on the `Round` argument.
 import {
-  REQUIRED_CLEAN_STREAK,
+  EXECUTION_PROFILES,
   REQUIRED_VERIFIER_COUNT,
+  requiredCleanStreak,
+  type ExecutionProfile,
   type LoopMode,
   type ReasonClass,
   type RoundVerdict,
@@ -37,6 +39,8 @@ export interface Round {
    * variant, and a `cap` of 8 is ambiguous between `--max` and an explicit `--loops 8`.
    */
   mode: LoopMode;
+  /** The run's execution profile, when it raises the mode's required streak. @req FR-NODE-264 */
+  profile?: ExecutionProfile;
   cap: number;
   streakBefore: number;
   /** Externally fixed at round entry; the verifier never computes it. */
@@ -92,6 +96,10 @@ export function roundPayloadProblems(payload: Record<string, unknown>): string[]
     return ["--payload.verifiers must list the names of the verifiers that reviewed the round"];
   }
   if (!Array.isArray(payload.rows)) return ["--payload.rows must be an array"];
+  // @req FR-NODE-264 AC-1 — an unknown profile would silently fall back to the mode's streak.
+  if (payload.profile !== undefined && !(EXECUTION_PROFILES as readonly unknown[]).includes(payload.profile)) {
+    return [`--payload.profile must be one of: ${EXECUTION_PROFILES.join(", ")}`];
+  }
 
   const named = new Set<string>(verifiers);
   const problems: string[] = [];
@@ -112,10 +120,20 @@ export function roundPayloadProblems(payload: Record<string, unknown>): string[]
   return problems;
 }
 
+/**
+ * PASS is arithmetically impossible when fewer rounds remain than the clean rounds the required streak
+ * still needs after this round, so the loop stops rather than recommending a round that cannot close
+ * it. The clean rounds already counted are subtracted: a streak this round leaves carries forward.
+ * @req FR-NODE-144 AC-4
+ */
+function passUnreachable(capRemaining: number, requiredStreak: number, streak: number): boolean {
+  return capRemaining < requiredStreak - streak;
+}
+
 export function evaluateRound(round: Round): RoundOutcome {
   const violations: ViolationCode[] = [];
   const capRemaining = Math.max(0, round.cap - round.roundIndex);
-  const requiredStreak = REQUIRED_CLEAN_STREAK[round.mode];
+  const requiredStreak = requiredCleanStreak(round.mode, round.profile);
 
   // The denominator mismatch and a verifier count other than the mode's are checked first and
   // short-circuit: the round is void, so nothing measured inside it is worth reporting. A void round
@@ -131,7 +149,7 @@ export function evaluateRound(round: Round): RoundOutcome {
       violations,
       streak: 0,
       capRemaining,
-      unreachable: capRemaining < requiredStreak
+      unreachable: passUnreachable(capRemaining, requiredStreak, 0)
     };
   }
 
@@ -162,9 +180,7 @@ export function evaluateRound(round: Round): RoundOutcome {
     };
   }
 
-  // PASS is arithmetically impossible when fewer rounds remain than the streak the mode requires, so
-  // the loop stops here rather than recommending a round that cannot close it.
-  const unreachable = capRemaining < requiredStreak;
+  const unreachable = passUnreachable(capRemaining, requiredStreak, streak);
   if (unreachable || round.roundIndex >= round.cap) {
     violations.push("cap-exhausted");
     return { verdict: "fail-cap", violations, streak, capRemaining, unreachable };

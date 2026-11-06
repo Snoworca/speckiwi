@@ -273,6 +273,25 @@ export type LoopMode = (typeof LOOP_MODES)[number];
 export const REQUIRED_CLEAN_STREAK: Record<LoopMode, number> = { normal: 1, max: 2, mini: 1, explicit: 1 };
 
 /**
+ * The execution profiles a run may declare on a round. `etc-local-llm` is the etc single-worker
+ * profile (`skills/etc/_shared/kiwi/local-llm-profile.md`), which requires three consecutive clean
+ * evaluations. @req FR-NODE-264
+ */
+export const EXECUTION_PROFILES = ["etc-local-llm"] as const;
+export type ExecutionProfile = (typeof EXECUTION_PROFILES)[number];
+
+const PROFILE_CLEAN_STREAK: Record<ExecutionProfile, number> = { "etc-local-llm": 3 };
+
+/**
+ * The consecutive clean rounds a round needs: its mode's, raised to its profile's when one is given.
+ * @req FR-NODE-264 AC-1 AC-2
+ */
+export function requiredCleanStreak(mode: LoopMode, profile?: ExecutionProfile): number {
+  const byMode = REQUIRED_CLEAN_STREAK[mode];
+  return profile === undefined ? byMode : Math.max(byMode, PROFILE_CLEAN_STREAK[profile]);
+}
+
+/**
  * The distinct verifiers a round must name: one, and two under `--max`. `mini` and `explicit` vary
  * the cap, not the verifier count. @req FR-NODE-254 AC-2
  */

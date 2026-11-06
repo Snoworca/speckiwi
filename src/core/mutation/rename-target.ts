@@ -245,11 +245,12 @@ async function renameTargetUnlocked(root: ProjectRoot, input: RenameTargetInput,
     const date = resolveRoadmapDate(input.date, "date");
     if (!date.ok) return mutationFail(date.error.code, date.error.message);
     const reason = `Renamed target ${from} to ${to}`;
-    for (const item of parseRoadmap(roadmap.text, NO_ROADMAP_SOURCES).document.items) {
+    const document = parseRoadmap(roadmap.text, NO_ROADMAP_SOURCES).document;
+    for (const item of document.items) {
       const entries = roadmapList(roadmapFieldValue(item, "Targets"));
       if (!entries.includes(from)) continue;
       const renamed = formatRoadmapList([...new Set(entries.map((entry) => (entry === from ? to : entry)))]);
-      const planned = planRoadmapItemChanges(roadmap, item, [{ field: "Targets", from: roadmapFieldValue(item, "Targets"), to: renamed }], date.value, reason);
+      const planned = planRoadmapItemChanges(roadmap, document, item, [{ field: "Targets", from: roadmapFieldValue(item, "Targets"), to: renamed }], date.value, reason);
       if (!planned.ok) return mutationFail("MUTATION_DENIED", `${planned.message}; nothing was renamed`);
       for (const operation of planned.operations) {
         if (operation.type === "replaceLine") plans.add(roadmap, operation.line, operation.replacement, { kind: "roadmap-targets" });
