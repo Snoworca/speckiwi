@@ -6,8 +6,8 @@ import { PRIORITY_LEVELS, RISK_LEVELS, type MutationResult, type ProjectRoot, ty
 import { assertOpensNoBlockBoundary, assertRequirementTitle } from "./block-prose.js";
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { loadRecordWithWorkspace, planMetadataWrite } from "./internal.js";
-import { refuseExpiredMarker } from "./render-requirement.js";
+import { findSectionTable, loadRecordWithWorkspace, planMetadataWrite, planTableRowUpdate, type RowSection } from "./internal.js";
+import { acceptanceCriterionLine, refuseExpiredMarker } from "./render-requirement.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { assertSafeMarkdownTableCells, tableCellText } from "./table-cell.js";
 import { todayStamp } from "../date-stamp.js";
@@ -89,7 +89,8 @@ function forwardFailure<T>(result: MutationResult): MutationResult<T> {
   );
 }
 
-function assertEditable(record: RequirementRecord): MutationResult | undefined {
+/** The refusal every criterion and field edit gives a verified block. @req FR-NODE-041 AC-5 */
+export function assertEditable(record: RequirementRecord): MutationResult | undefined {
   if (record.status === "verified") return mutationFail("MUTATION_DENIED", "Granular edits cannot modify verified requirements; change status through a guarded status mutation first");
   return undefined;
 }
@@ -241,7 +242,7 @@ function acceptanceCriteriaLines(file: TextFile, record: RequirementRecord, item
   let next = 1;
   for (const item of items) {
     while (held.has(next)) next += 1;
-    numbered.push({ number: next, line: `- [${item.checked ? "x" : " "}] AC-${next}: ${item.text}` });
+    numbered.push({ number: next, line: acceptanceCriterionLine(`AC-${next}`, item.text, item.checked === true) });
     next += 1;
   }
   return numbered.sort((left, right) => left.number - right.number).map((entry) => entry.line);
@@ -269,13 +270,15 @@ async function replaceAcceptanceCriteriaUnlocked(root: ProjectRoot, input: Repla
   return applyGranularPlan(root, input.id, loaded.file, [operation], "replace_acceptance_criteria", input.dryRun ?? false, ["acceptanceCriteria"]);
 }
 
-function evidenceReplacement(values: Record<string, string>, fallback: { id: string; type: string; reference: string; covers: string; notes: string }): string {
-  return `| ${fallback.id} | ${values.type ?? fallback.type} | ${values.reference ?? fallback.reference} | ${values.covers ?? fallback.covers} | ${values.notes ?? fallback.notes} |`;
-}
-
-function traceReplacement(values: Record<string, string>, fallback: { type: string; reference: string; relation: string; notes: string }): string {
-  return `| ${values.type ?? fallback.type} | ${values.reference ?? fallback.reference} | ${values.relation ?? fallback.relation} | ${values.notes ?? fallback.notes} |`;
-}
+/**
+ * The section and header column each settable key of an evidence or trace row is written under: the
+ * row is re-rendered by the table's own header, so a reordered table keeps every value under its
+ * heading and a column no key names keeps its cell. @req FR-NODE-259 AC-2 AC-4
+ */
+const ROW_TABLES: Record<"verification_evidence" | "trace_links", { section: RowSection; columns: Readonly<Record<string, string>> }> = {
+  verification_evidence: { section: "Verification Evidence", columns: { type: "Type", reference: "Reference", covers: "Covers", notes: "Notes" } },
+  trace_links: { section: "Trace Links", columns: { type: "Type", reference: "Reference", relation: "Relation", notes: "Notes" } }
+};
 
 /**
  * @req FR-NODE-222 AC-1 AC-2 — the Change Notes data rows straight from the source lines, placeholder
@@ -366,13 +369,13 @@ async function editRequirementTableRowsUnlocked(root: ProjectRoot, input: EditRe
     }
     const unsafe = assertSafeMarkdownTableCells(Object.fromEntries(Object.entries(values).map(([field, value]) => [`${input.section} ${field}`, value])));
     if (unsafe) return forwardFailure(unsafe);
-    if (input.section === "verification_evidence") {
-      const evidence = row as { id: string; type: string; reference: string; covers: string; notes: string };
-      operations.push({ type: "replaceLine", line, original, replacement: evidenceReplacement(values, evidence) });
-    } else {
-      const trace = row as { type: string; reference: string; relation: string; notes: string };
-      operations.push({ type: "replaceLine", line, original, replacement: traceReplacement(values, trace) });
-    }
+    const { section, columns } = ROW_TABLES[input.section];
+    const table = findSectionTable(loaded.file, loaded.record, section);
+    const tableRow = table?.rowLines.indexOf(line) ?? -1;
+    if (!table || tableRow < 0) return mutationFail("MUTATION_DENIED", `Selected row is not in the ${section} table`);
+    const write = planTableRowUpdate(loaded.file, table, tableRow, Object.fromEntries(Object.entries(values).map(([field, value]) => [columns[field] ?? field, value])));
+    if (!write.ok) return mutationFail("MUTATION_DENIED", write.message);
+    operations.push(write.operation);
   }
 
   return applyGranularPlan(root, input.id, loaded.file, operations, "edit_requirement_table_rows", input.dryRun ?? false, [input.section, `changed:${todayStamp()}`]);

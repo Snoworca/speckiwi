@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ROLE_REFUSAL_REASONS,
   type WorktreeProbes,
   classifyRoot,
   preflightRunRootForRole
@@ -15,6 +16,7 @@ import {
 
 const HOST = "C:/Work/repo";
 const LANE = "C:/Work/repo/.claude/worktrees/agent-1";
+const LANE2 = "C:/Work/repo/.claude/worktrees/agent-2";
 const OTHER = "C:/Work/other";
 const HOST_COMMON = "C:/Work/repo/.git";
 const OTHER_COMMON = "C:/Work/other/.git";
@@ -22,10 +24,10 @@ const OTHER_COMMON = "C:/Work/other/.git";
 function probes(overrides: Partial<WorktreeProbes> = {}): WorktreeProbes {
   return {
     realpath: (value) => value,
-    gitToplevel: (value) => (value === HOST ? HOST : value === LANE ? LANE : value === OTHER ? OTHER : undefined),
+    gitToplevel: (value) => ([HOST, LANE, LANE2, OTHER].includes(value) ? value : undefined),
     gitCommonDir: (value) =>
-      value === HOST || value === LANE ? HOST_COMMON : value === OTHER ? OTHER_COMMON : undefined,
-    registeredWorktrees: (commonDir) => (commonDir === HOST_COMMON ? [HOST, LANE] : [OTHER]),
+      [HOST, LANE, LANE2].includes(value) ? HOST_COMMON : value === OTHER ? OTHER_COMMON : undefined,
+    registeredWorktrees: (commonDir) => (commonDir === HOST_COMMON ? [HOST, LANE, LANE2] : [OTHER]),
     ...overrides
   };
 }
@@ -116,35 +118,54 @@ describe("FR-NODE-186 — the role-declared run-root gate", () => {
     expect(verdict).toMatchObject({ ok: true, reason: null, topology: "linked-worktree" });
   });
 
-  it("AC-8: a host root that is itself a linked worktree is refused", () => {
-    // The MCP server was started inside a worktree: both roots agree, so the equality gate passes,
-    // but SRS written here lands in a checkout that still has to be merged.
+  it("AC-8: a host root that is itself a linked worktree passes when the two roots agree", () => {
+    // @req FR-NODE-186 AC-8
+    // The host session runs from a linked worktree and the MCP server is bound to that same
+    // worktree: the roots agree, so the host gate passes.
     const verdict = preflightRunRootForRole({ role: "host", mcpRoot: LANE, gitRoot: LANE }, probes());
 
-    expect(verdict.ok).toBe(false);
-    expect(verdict.reason).toBe("host-root-is-a-linked-worktree");
+    expect(verdict).toMatchObject({ ok: true, reason: null, topology: "same-root" });
   });
 
   it("AC-8: a host root at the repository top level passes", () => {
+    // @req FR-NODE-186 AC-8
     expect(preflightRunRootForRole({ role: "host", mcpRoot: HOST, gitRoot: HOST }, probes())).toMatchObject({
       ok: true,
       reason: null
     });
   });
 
+  it("AC-8: a host root that does not equal the MCP root is refused as host-roots-differ", () => {
+    // @req FR-NODE-186 AC-8
+    for (const [mcpRoot, gitRoot] of [
+      [HOST, LANE],
+      [LANE, HOST],
+      [LANE, LANE2]
+    ] as const) {
+      const verdict = preflightRunRootForRole({ role: "host", mcpRoot, gitRoot }, probes());
+      expect(verdict, `${mcpRoot} vs ${gitRoot}`).toMatchObject({ ok: false, reason: "host-roots-differ" });
+    }
+  });
+
+  it("AC-8: host-root-is-a-linked-worktree is no longer a refusal reason", () => {
+    // @req FR-NODE-186 AC-8
+    expect(ROLE_REFUSAL_REASONS).not.toContain("host-root-is-a-linked-worktree");
+  });
+
   it("AC-8: the host verdict does not depend on the order git lists worktrees in", () => {
-    // `git worktree list` reports the main checkout first, and a verdict that read the list
-    // positionally would invert the moment that ordering changed. Both orders must agree.
-    const reversed = probes({ registeredWorktrees: () => [LANE, HOST] });
+    // @req FR-NODE-186 AC-8
+    const reversed = probes({ registeredWorktrees: () => [LANE2, LANE, HOST] });
     expect(preflightRunRootForRole({ role: "host", mcpRoot: HOST, gitRoot: HOST }, reversed).ok).toBe(true);
-    expect(preflightRunRootForRole({ role: "host", mcpRoot: LANE, gitRoot: LANE }, reversed).reason).toBe(
-      "host-root-is-a-linked-worktree"
-    );
+    expect(preflightRunRootForRole({ role: "host", mcpRoot: LANE, gitRoot: LANE }, reversed).ok).toBe(true);
   });
 
   it("AC-9: relabelling does not satisfy the gate in either direction", () => {
+    // @req FR-NODE-186 AC-9
     // A lane root declared as host: refused because the two roots differ.
     expect(preflightRunRootForRole({ role: "host", mcpRoot: HOST, gitRoot: LANE }, probes()).ok).toBe(false);
+    // The host is itself a linked worktree now that AC-8 admits one; a sibling lane declared as host
+    // is still refused.
+    expect(preflightRunRootForRole({ role: "host", mcpRoot: LANE, gitRoot: LANE2 }, probes()).ok).toBe(false);
     // A host root declared as lane: refused because a lane may not be the host root.
     expect(
       preflightRunRootForRole(
@@ -152,5 +173,30 @@ describe("FR-NODE-186 — the role-declared run-root gate", () => {
         probes()
       ).ok
     ).toBe(false);
+    // A linked-worktree host root declared as lane: refused for the same reason.
+    expect(
+      preflightRunRootForRole(
+        { role: "lane", mcpRoot: LANE, gitRoot: LANE, laneId: "w1-s1-l1", lanePlan: LANE_PLAN },
+        probes()
+      ).reason
+    ).toBe("lane-root-is-host-root");
+  });
+});
+
+describe("FR-FLOW-230 — a host in a linked worktree with lanes in sibling worktrees", () => {
+  it("AC-1: the host-role gate passes and a sibling worktree passes the lane gate", () => {
+    // @req FR-FLOW-230 AC-1
+    const host = preflightRunRootForRole({ role: "host", mcpRoot: LANE, gitRoot: LANE }, probes());
+    expect(host).toMatchObject({ ok: true, reason: null });
+
+    const lane = preflightRunRootForRole(
+      { role: "lane", mcpRoot: LANE, gitRoot: LANE2, laneId: "w1-s1-l1", lanePlan: LANE_PLAN },
+      probes()
+    );
+    expect(lane).toMatchObject({ ok: true, reason: null, topology: "linked-worktree" });
+
+    // The main checkout, seen from a linked-worktree host, is also a registered worktree of the
+    // repository, so it classifies the same way.
+    expect(classifyRoot(LANE, HOST, probes())).toBe("linked-worktree");
   });
 });

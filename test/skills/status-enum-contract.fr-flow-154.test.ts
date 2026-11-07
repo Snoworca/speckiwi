@@ -1731,7 +1731,8 @@ function contractSourceSites(): ContractSite[] {
 // back in the frozen inventory.
 //
 // The other three — `edit_requirement_fields`, `replace_acceptance_criteria` and
-// `edit_requirement_table_rows` — name one value inside a guard clause (`refused while the
+// `edit_requirement_table_rows` — and the two FR-MCP-072 added later — `edit_acceptance_criterion`
+// and `append_acceptance_criterion` — name one value inside a guard clause (`refused while the
 // requirement's Status is verified`). They present no list, so nothing pins them and nothing
 // excuses them: they are frozen in the inventory like every other copy.
 // ---------------------------------------------------------------------------------------------
@@ -1830,13 +1831,15 @@ function describedTool(text: string): string | null {
 
 /**
  * How many contract-carrying string literals each source file holds that no exemption speaks for,
- * measured. The three `src/mcp/schemas.ts` rows are the guard-clause descriptions named above;
+ * measured. The five `src/mcp/schemas.ts` rows are the guard-clause descriptions named above;
  * the two pinned ones are excused by `mcp-description-pinned-enum` and counted by its own roster.
  */
 const CONTRACT_SOURCE_INVENTORY: Record<string, number> = {
   "src/core/bootstrap/templates.ts": 2,
   "src/core/diagnostic-registry.ts": 1,
-  "src/mcp/schemas.ts": 3
+  // 5.3.6 (FR-MCP-072 AC-3): the edit_acceptance_criterion and append_acceptance_criterion
+  // descriptions tell an agent a verified block is refused; read, enum words only, kept.
+  "src/mcp/schemas.ts": 5
 };
 
 /** How many files of each kind a rendering ships, measured. A kind that vanished is a defect. */

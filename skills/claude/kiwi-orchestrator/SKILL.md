@@ -23,6 +23,8 @@ intake 가 받은 요청에 PRD 경로가 없으면 조사보다 먼저 `kiwi-pr
 
 wave 의 실행 절차 — (`--sds` 면) SDS 작성, stage 계산, 워커 dispatch, join, 판정, 병합, 재생, 설계 적합 검증, 테스트 충분성, 승급 — 는 `_shared/kiwi/parallel-waves.md` 가 소유하고 본 문서는 그것을 지목한다. lane 하나는 wave 하나의 워커다.
 
+**run 의 target 은 제품 target 하나다.** 요구는 모두 제품 target 에 저작하고, 재생(PW-10)이 `--frozen-target` 으로 동결하는 것도 제품 target 이다 — `wave-{n}` 은 노드 이름이지 target 이 아니다. 제품 target 의 요구가 이미 PRD 를 덮으면 `--existing-srs <제품 target>` 으로 들어와 2.a 처음 저작을 건너뛴다(§16).
+
 ---
 
 ## Workflow 도구 정책
@@ -281,7 +283,7 @@ Phase 1  intake → route → design                                  [loop D]
                                             design-not-frozen (하류)                C
 
 Phase 2  SRS 한 번과 요구 분해 (R-ORCH 전용) — wave-decomposition.md §2
-  2.a  /kiwi-srs 처음 저작 — run 당 한 번, host root (wave-srs-registration.md §1)
+  2.a  /kiwi-srs 처음 저작 — run 당 한 번, host root (wave-srs-registration.md §1) — `--existing-srs` 면 건너뛴다
                                      게이트: child-srs-needs-user-or-failed         C
   2.a′ /kiwi-srs-feasibility 한 번 (TARGET=<제품 target>) — wave 마다 부르지 않는다
   2.b  PRD 커버리지 (constraints 아티팩트는 loop D 가 비어 있어도 기록했다)
@@ -986,6 +988,7 @@ run 이 `docs/research/{work}/` 아래에 저작하는 모든 아티팩트는 `c
 | `--run-budget <mins>` | run 전체 벽시계. 초과 시 다음 stage 경계에서 `abort_gate` 를 `run-budget-exhausted` 로 놓고 `abort-run` 으로 멈춘다 |
 | `--subagent-budget N` | run 전체 서브에이전트 spawn 상한. 소진 시 현재 루프를 `verdict = fail-cap` 과 `reason_class = "budget-exhausted"` 로 닫고, 다음 stage 경계에서 `abort_gate` 를 `subagent-budget-exhausted` 로 놓고 `abort-run` 으로 멈춘다 |
 | `--strict-grounding` | wave 선언 항목의 `files[]`(`--sds` 면 SDS 가 선언한 경로도)가 모두 dispatch base 에 존재할 것을 요구한다 — `orchestrate schedule waves --strict-grounding` 으로 넘긴다 |
+| `--existing-srs <target>` | off — 제품 target 의 요구가 이미 PRD 를 덮을 때 켠다("이미 저작된 SRS 로", "기존 요구로", "with the existing SRS"). `<target>` 이 제품 target 이 되고, 2.a 처음 저작(`wave-srs-registration.md §1`)을 건너뛰어 SRS 를 바꾸지 않는다 — `kiwi-srs` 의 네 분류가 모두 `add_requirement` 로 시작하므로, 이미 덮인 target 에 2.a 를 돌리면 요구가 새로 생기거나 기존 요구가 대체된다. 2.a′ feasibility · 2.b PRD 커버리지 · 2.d 분해는 그대로 돈다 — 2.b 가 빠진 PRD 항목을 찾으면 `wave-decomposition-coverage-gap` 으로 멈춘다 |
 
 `run_id` 는 기본값 `{YYYY-MM-DD}.{git-toplevel-basename}.{work}` 로 **Preflight P.0 에서** 생성되고 `--run-id` 가 이를 덮어쓴다. `--run-id` 는 `frozen.integration_branch` 에 박히므로 Preflight 에서 검증한다.
 
@@ -1199,7 +1202,7 @@ recovery class **externally-visible**. Phase 3.h, PW-9. 판정을 통과한 워�
 
 ### §V.replay-deferred-mutations
 
-recovery class **idempotent-by-key**. Phase 3.i, PW-10. 수확한 큐를 `orchestrate replay plan` 으로 계획하고 호스트 root 에서 `orchestrate replay apply --plan <path> --applied kiwi/orchestrator/{run_id}/replay-applied.jsonl --frozen-target wave-{n}` 으로 적용한다.
+recovery class **idempotent-by-key**. Phase 3.i, PW-10. 수확한 큐를 `orchestrate replay plan` 으로 계획하고 호스트 root 에서 `orchestrate replay apply --plan <path> --applied kiwi/orchestrator/{run_id}/replay-applied.jsonl --frozen-target <제품 target>` 으로 적용한다.
 복구: `replay-applied.jsonl` 의 시도 기록에서 남은 호출만 환원한다 — append 인 두 도구의 행이 중복되지 않는다. 기록이 실패로 남긴 호출은 조용히 재시도하지 않는다.
 게이트: `srs-mutation-replay-failed`.
 
@@ -1301,7 +1304,7 @@ P.5 의 lease 는 해제하지 않는다 — 멈춘 run 은 재개할 수 있고
 
    `--mcp-root` 는 MCP `mcp_workspace_info` 의 `workspaceRoot`, `--git-root` 는 레인 워크트리, `--lane-id` 는 `lane-{waveId}`, `--lane-plan` 은 `docs/research/{work}/waves/stage-{s}/lanes.lock.json` 이다 — lock 은 dispatch base 뒤에 커밋되어 워크트리에 없으므로 호스트 run root 를 앞에 붙인 **전체 경로(absolute path)**로 준다. `--role` 은 `host` 또는 `lane` 이고, 레인 배치를 승인받을 때는 **`--role lane`** 이다. exit 0 이 아니면 그 배치에서 아무것도 하지 않는다 — 거부 사유가 무엇을 고쳐야 하는지 말한다.
 
-   같은 판정을 MCP 에서도 받는다 — `orchestrate_preflight` 바인딩이 `role`·`laneId`·`lanePlan` 을 그대로 노출한다. 이 인자들이 없으면 MCP 호출은 언제나 기본 `role=host` 로 판정되고, 역할 게이트는 호스트를 자처하는 linked worktree 를 거부하므로 워크트리 세션이 실제로 쓰는 표면에서 게이트에 닿을 수 없다. `orchestrate_preflight` 는 `workspaceRoot` 를 받지 않는다 — 판정 대상인 두 root 를 이미 필수 인자로 받기 때문이다.
+   같은 판정을 MCP 에서도 받는다 — `orchestrate_preflight` 바인딩이 `role`·`laneId`·`lanePlan` 을 그대로 노출한다. 이 인자들이 없으면 MCP 호출은 언제나 기본 `role=host` 로 판정되고, 호스트 루트와 레인 루트가 다르면 등가 검사가 `roots-differ` 로 거부하므로 워크트리 세션이 실제로 쓰는 표면에서 게이트에 닿을 수 없다. `orchestrate_preflight` 는 `workspaceRoot` 를 받지 않는다 — 판정 대상인 두 root 를 이미 필수 인자로 받기 때문이다.
 
    그 밖의 `orchestrate_*` 도구와 `workflow_*` 계열 전부는 선택적 인자 `workspaceRoot` (absolute path) 를 받는다. 호스트에 고정된 MCP 서버로도 레인 워크트리의 세션 상태·파이프라인·워크로그를 그 root 기준으로 다룰 수 있다는 뜻이다. `orchestrate_replay_apply` 는 거부한다 — 유예된 SRS mutation 은 호스트 root 에서만 재생되며, 그것이 유예가 존재하는 이유다. 어느 체크아웃의 SRS 를 읽되 아무것도 쓰지 않는 조회 계열도 같은 인자를 받아 그 체크아웃의 SRS 로 답하므로, 레인의 요구 상태를 호스트 세션에서 그대로 물을 수 있다. 그 계열은 지명된 체크아웃에 `docs/spec/00.index.md` 가 없으면 거부하며, 거부는 수리 명령이 아니라 검사한 체크아웃을 이름으로 밝힌다. `docs/spec` 아래에 쓰거나 Requirement ID 를 발급하는 도구는 전부 거부하고, 자기가 어느 root 에 결속되었는지 답하는 도구도 거부한다 — 그 답을 인자로 받으면 P.1 대조의 두 변이 한 출처에서 나온다. 수용된 root 라도 `docs/spec` 아래로 떨어지는 경로 인자는 거부된다. 다만 호출자가 넘기는 경로 인자를 아예 받지 않는다고 선언한 도구는 예외이고, SRS 조회가 `docs/spec` 참조로 필터링할 수 있는 것이 그 선언 덕분이다. 계열마다 어느 도구가 인자를 받는지는 README 의 per-call `workspaceRoot` 표가 이름으로 싣는다. **`workspaceRoot` 를 빠뜨린 SRS 쓰기는 거부되지 않고 호스트 root 에 조용히 떨어진다** — 3.g 의 `worker-touched-srs` 비교가 그 경로를 잡는다.
 

@@ -357,7 +357,8 @@ describe("REL-FLOW-003 — the whole document is clean", () => {
     // 103 since 5.3.1 added `list_targets` (IR-MCP-010).
     // 109 since 5.3.1 added the six roadmap tools (IR-MCP-009).
     // 110 since 5.3.3 added `check_review_round` (FR-NODE-274).
-    expect(truth.toolNames.size).toBe(110);
+    // 114 since 5.3.6 added `add_related_doc`, `add_change_note` (FR-MCP-049), `edit_acceptance_criterion` and `append_acceptance_criterion` (FR-MCP-072).
+    expect(truth.toolNames.size).toBe(114);
     expect([...truth.counts.values()].every((count) => count > 0)).toBe(true);
 
     expect(lintDocument(readme, truth)).toEqual([]);

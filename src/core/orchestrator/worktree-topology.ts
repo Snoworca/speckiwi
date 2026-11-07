@@ -77,7 +77,6 @@ export type RunRootRole = (typeof RUN_ROOT_ROLES)[number];
  */
 export const ROLE_REFUSAL_REASONS = [
   "host-roots-differ",
-  "host-root-is-a-linked-worktree",
   "lane-root-is-host-root",
   "lane-root-unregistered",
   "lane-root-foreign-repo",
@@ -118,22 +117,6 @@ const LANE_REFUSAL_BY_TOPOLOGY: Record<Exclude<RootTopology, "linked-worktree">,
   "not-a-repo": "lane-root-not-a-repo"
 };
 
-/**
- * Whether `root` is a linked worktree rather than the repository's own checkout.
- *
- * Decided from the common directory's parent, not from the position of an entry in
- * `git worktree list`: the main worktree's common directory is `<checkout>/.git`, so its parent IS
- * that checkout, while every linked worktree shares that same common directory and sits elsewhere.
- * Reading it this way makes the answer independent of the order git happens to list worktrees in.
- */
-function isLinkedWorktree(root: string, probes: WorktreeProbes): boolean {
-  const common = probes.gitCommonDir(root);
-  if (common === undefined) return false;
-  const mainCheckout = common.replace(/\\/g, "/").replace(/\/+$/, "").replace(/\/[^/]+$/, "");
-  if (mainCheckout === "") return false;
-  return !sameRoot(mainCheckout, root, probes.realpath);
-}
-
 const SRS_PREFIX = "docs/spec/";
 
 function touchesSrs(writeSet: readonly string[]): boolean {
@@ -143,9 +126,9 @@ function touchesSrs(writeSet: readonly string[]): boolean {
 /**
  * @req FR-NODE-186 — accept a run root only in the relation its declared role is allowed to hold.
  *
- * A host may only be the repository's own top level: a host rooted in a worktree passes the equality
- * gate (both roots agree) while writing SRS into a checkout that still has to be merged, which is the
- * split-brain in a shape the equality gate cannot see.
+ * A host passes exactly when its root equals the MCP root, whether that root is the repository's main
+ * worktree or a linked worktree of it: the SRS sits at the git top level of whichever checkout the
+ * host session runs from (FR-NODE-186 AC-8, FR-FLOW-230 AC-1).
  *
  * A lane must be a registered worktree AND appear in the run's frozen lane plan. Registration alone
  * would admit any worktree of the repository, which puts the gate back to trusting its caller; plan
@@ -156,9 +139,6 @@ export function preflightRunRootForRole(request: RunRootRequest, probes: Worktre
 
   if (request.role === "host") {
     if (topology !== "same-root") return { ok: false, reason: "host-roots-differ", topology };
-    if (isLinkedWorktree(request.gitRoot, probes)) {
-      return { ok: false, reason: "host-root-is-a-linked-worktree", topology };
-    }
     return { ok: true, reason: null, topology };
   }
 

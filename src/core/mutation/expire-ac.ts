@@ -7,7 +7,7 @@ import type { MutationResult, ProjectRoot } from "../types.js";
 import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { findSectionTableInsertionLine, loadRecordWithWorkspace } from "./internal.js";
+import { loadRecordWithWorkspace, planSectionRowsInsert } from "./internal.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { tableCellText } from "./table-cell.js";
 
@@ -73,16 +73,13 @@ async function expireAcceptanceCriterionUnlocked(root: ProjectRoot, input: Expir
   const marker = `${criterion.id}:`;
   const markerIndex = original.indexOf(marker);
   if (markerIndex < 0) return mutationFail("MUTATION_DENIED", `Acceptance Criterion prefix not found for ${input.acId}`);
-  const insertLine = findSectionTableInsertionLine(file, record, "Change Notes");
-  if (!insertLine) return mutationFail("MUTATION_DENIED", "Change Notes section not found for the expiry reason");
-
   const expiredOn = todayStamp();
+  // @req FR-NODE-259 AC-1 @req FR-NODE-278 AC-3
+  const note = planSectionRowsInsert(file, record, "Change Notes", [{ Date: expiredOn, Change: `Expired ${criterion.id}`, Reason: tableCellText(reason) }]);
+  if (!note.ok) return mutationFail("MUTATION_DENIED", note.message);
+
   const replacement = `${original.slice(0, markerIndex + marker.length)} ${expiredCriterionText(criterion.text, expiredOn, successor)}`;
-  const note = `| ${expiredOn} | Expired ${criterion.id} | ${tableCellText(reason)} |`;
-  const plan = createPatchPlan(file, [
-    { type: "replaceLine", line: criterion.line, original, replacement },
-    { type: "insertLines", line: insertLine, lines: [note] }
-  ]);
+  const plan = createPatchPlan(file, [{ type: "replaceLine", line: criterion.line, original, replacement }, note.operation]);
   const dryRun = input.dryRun ?? false;
   const applied = await applyPatchPlan(plan, { dryRun });
   return {

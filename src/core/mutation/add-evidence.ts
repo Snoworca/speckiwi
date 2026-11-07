@@ -1,12 +1,12 @@
 import { diagnostic } from "../diagnostic.js";
 import { COVERS_ACCEPTED_FORMS, coversRangeIn } from "../evidence-covers.js";
 import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
-import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
+import { createPatchPlan } from "../patch/patch-plan.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import type { MutationResult, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { findSectionTableInsertionLine } from "./internal.js";
+import { planSectionRowsInsert } from "./internal.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 
@@ -19,15 +19,6 @@ export interface AddEvidenceInput {
   dryRun?: boolean;
   ignoreLock?: boolean;
   skipLock?: boolean;
-}
-
-function insertLinesOperation(file: TextFile, line: number, lines: string[]): PatchOperation {
-  const operation: PatchOperation = { type: "insertLines", line, lines };
-  const expectedBefore = file.lines[line - 2];
-  if (expectedBefore !== undefined) operation.expectedBefore = expectedBefore;
-  const expectedAfter = file.lines[line - 1];
-  if (expectedAfter !== undefined) operation.expectedAfter = expectedAfter;
-  return operation;
 }
 
 function generateNextEvidenceId(record: RequirementRecord): string {
@@ -77,12 +68,14 @@ async function addVerificationEvidenceUnlocked(root: ProjectRoot, input: AddEvid
   const loaded = await loadFreshRecord(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
   const next = generateNextEvidenceId(loaded.record);
-  const insertLine = findSectionTableInsertionLine(loaded.file, loaded.record, "Verification Evidence");
-  if (!insertLine) return mutationFail("MUTATION_DENIED", "Verification Evidence table not found");
-  const row = `| ${next} | ${input.type} | ${input.reference} | ${covers} | ${notes} |`;
+  // @req FR-NODE-259 AC-2 @req FR-NODE-278 AC-3 — under the table's own header, the table made when missing.
+  const insert = planSectionRowsInsert(loaded.file, loaded.record, "Verification Evidence", [
+    { "Evidence ID": next, Type: input.type, Reference: input.reference, Covers: covers, Notes: notes }
+  ]);
+  if (!insert.ok) return mutationFail("MUTATION_DENIED", insert.message);
   try {
     const dryRun = input.dryRun ?? false;
-    const plan = createPatchPlan(loaded.file, [insertLinesOperation(loaded.file, insertLine, [row])]);
+    const plan = createPatchPlan(loaded.file, [insert.operation]);
     const applied = await applyPatchPlan(plan, { dryRun });
     return withMutationEnvelope(
       mutationOk({ id: input.id, evidenceId: next, written: applied.written }),

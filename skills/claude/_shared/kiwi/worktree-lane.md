@@ -78,7 +78,7 @@ run root 검사는 두 root 의 **일치**가 아니라 **다름이 동결된 �
 
 | role | 통과 조건 |
 |---|---|
-| `host` | 두 root 가 일치하고, 그 root 가 linked worktree 가 **아니다** |
+| `host` | 두 root 가 일치한다 — 메인 워크트리든 linked worktree 든 같다. 두 root 가 다르면 등가 검사가 먼저 거부한다(`roots-differ`; git root 가 저장소가 아니면 `git-root-not-a-repository`, 최상위가 아니면 `git-root-not-toplevel`) |
 | `lane` | git common dir 이 호스트와 같고, toplevel 은 다르고, 그 common dir 에 **등록**돼 있고, `lane_id` 가 동결 lane plan 에 있고, 그 레인의 `write_set` 이 `docs/spec/` 을 건드리지 않는다 |
 
 판별자는 **git common directory** 다 — 한 저장소의 모든 linked worktree 가 같은 값을 보고하고 toplevel 만 다르며, 어느 값도 호출자가 고르지 않는다.

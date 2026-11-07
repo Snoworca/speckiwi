@@ -166,15 +166,21 @@ export interface TableRowWriteOptions {
    * since the row would otherwise be reported written while the parser reads no such value.
    */
   optional?: readonly string[];
+  /**
+   * The cell a new row gets under a header column no value was given for. Unset: the cell is left
+   * empty. A row writer for a requirement-block table or the step table passes `-`, the placeholder
+   * the parser reads as no value. @req FR-NODE-259 AC-4
+   */
+  unownedCell?: string;
 }
 
 /** The values the header can hold, or the name of a non-optional column it lacks. */
-function valuesForHeader(table: ParsedTable, values: Readonly<Record<string, string>>, options: TableRowWriteOptions): { ok: true; values: Record<string, string> } | { ok: false; message: string } {
+function valuesForHeader(headers: readonly string[], values: Readonly<Record<string, string>>, options: TableRowWriteOptions): { ok: true; values: Record<string, string> } | { ok: false; message: string } {
   const kept: Record<string, string> = {};
   for (const [column, value] of Object.entries(values)) {
-    if (table.headers.includes(column)) kept[column] = value;
+    if (headers.includes(column)) kept[column] = value;
     else if (!(options.optional ?? []).includes(column)) {
-      return { ok: false, message: `table header [${table.headers.join(", ")}] has no ${column} column, so the ${column} value cannot be written` };
+      return { ok: false, message: `table header [${headers.join(", ")}] has no ${column} column, so the ${column} value cannot be written` };
     }
   }
   return { ok: true, values: kept };
@@ -198,7 +204,7 @@ export function planTableRowUpdate(
   const line = table.rowLines[rowIndex];
   if (line === undefined) return { ok: false, message: "table row not found" };
   const original = file.lines[line - 1] ?? "";
-  const accepted = valuesForHeader(table, updates, options);
+  const accepted = valuesForHeader(table.headers, updates, options);
   if (!accepted.ok) return accepted;
   if (Object.keys(accepted.values).length === 0) return { ok: true, operation: { type: "replaceLine", line, original, replacement: original } };
   const readWhole = rowReadWhole(file, table, line);
@@ -220,21 +226,38 @@ export function planTableRowsInsert(
   rows: readonly Readonly<Record<string, string>>[],
   options: TableRowWriteOptions = {}
 ): TableRowPlan {
+  const rendered = renderNewRows(table.headers, rows, options);
+  if (!rendered.ok) return rendered;
+  return { ok: true, operation: insertLinesAt(file, table.endLine + 1, rendered.lines) };
+}
+
+/** New rows rendered by a header, or the refusal naming a column the header lacks. */
+function renderNewRows(
+  headers: readonly string[],
+  rows: readonly Readonly<Record<string, string>>[],
+  options: TableRowWriteOptions
+): { ok: true; lines: string[] } | { ok: false; message: string } {
   const lines: string[] = [];
   for (const values of rows) {
-    const accepted = valuesForHeader(table, values, options);
+    const accepted = valuesForHeader(headers, values, options);
     if (!accepted.ok) return accepted;
-    const rendered = renderRowByHeader(table.headers, accepted.values);
+    const unowned = options.unownedCell;
+    const cells = unowned === undefined ? accepted.values : { ...Object.fromEntries(headers.map((header) => [header, unowned])), ...accepted.values };
+    const rendered = renderRowByHeader(headers, cells);
     if (!rendered.ok) return { ok: false, message: rendered.error.message };
     lines.push(rendered.value);
   }
-  const insertAt = table.endLine + 1;
-  const operation: PatchOperation = { type: "insertLines", line: insertAt, lines };
-  const expectedBefore = file.lines[insertAt - 2];
+  return { ok: true, lines };
+}
+
+/** Inserts `lines` before line `line`, pinned to the lines around the insertion point. */
+function insertLinesAt(file: TextFile, line: number, lines: string[]): PatchOperation {
+  const operation: PatchOperation = { type: "insertLines", line, lines };
+  const expectedBefore = file.lines[line - 2];
   if (expectedBefore !== undefined) operation.expectedBefore = expectedBefore;
-  const expectedAfter = file.lines[insertAt - 1];
+  const expectedAfter = file.lines[line - 1];
   if (expectedAfter !== undefined) operation.expectedAfter = expectedAfter;
-  return { ok: true, operation };
+  return operation;
 }
 
 /**
@@ -263,17 +286,89 @@ export function metadataRowText(file: TextFile, record: RequirementRecord, field
   return line === undefined ? undefined : file.lines[line - 1];
 }
 
-export function findSectionTableInsertionLine(file: TextFile, record: RequirementRecord, sectionName: string): number | undefined {
-  const start = record.sectionLines?.[sectionName];
-  if (!start) return undefined;
-  const end = record.blockEndLine ?? file.lines.length;
-  let lastTableLine: number | undefined;
-  for (let line = start + 1; line <= end; line += 1) {
-    const text = file.lines[line - 1] ?? "";
-    if (line > start + 1 && text.startsWith("#### ")) break;
-    if (text.trim().startsWith("|")) lastTableLine = line;
+/** The requirement-block tables a mutation adds rows to, each with its SRS-MD header (§22.1, §23.1, §26). */
+export const SECTION_TABLE_HEADERS = {
+  "Verification Evidence": ["Evidence ID", "Type", "Reference", "Covers", "Notes"],
+  "Trace Links": ["Type", "Reference", "Relation", "Notes"],
+  "Change Notes": ["Date", "Change", "Reason"]
+} as const satisfies Record<string, readonly string[]>;
+
+export type RowSection = keyof typeof SECTION_TABLE_HEADERS;
+
+/**
+ * The one writer for a row added to a requirement block's Verification Evidence, Trace Links or
+ * Change Notes table. Each value goes under the header column it is keyed by, wherever the table
+ * puts that column; a header column no value is given for gets `-`, and a value for a column the
+ * header lacks is refused, naming it, with nothing written. @req FR-NODE-259 AC-1 AC-2 AC-4
+ *
+ * The table used is the one the parser reads: the first thing under the section heading. A section
+ * that is only a heading gets the standard header and then the row; a missing section is created,
+ * header and row, at its place in the standard section order. A section holding something else
+ * first is refused, since a row written there would be reported written and never read.
+ * @req FR-NODE-278 AC-1 AC-2
+ */
+export function planSectionRowsInsert(
+  file: TextFile,
+  record: RequirementRecord,
+  section: RowSection,
+  rows: readonly Readonly<Record<string, string>>[]
+): TableRowPlan {
+  const options: TableRowWriteOptions = { unownedCell: "-" };
+  const headingLine = record.sectionLines?.[section];
+  if (headingLine === undefined) return planNewSection(file, record, section, rows, options);
+  const table = findSectionTable(file, record, section);
+  if (table) return planTableRowsInsert(file, table, rows, options);
+  if (file.lines.slice(headingLine, sectionEndLine(file, record, headingLine)).some((text) => text.trim() !== "")) {
+    return { ok: false, message: `${section} section of ${record.id} does not begin with a table, so a row added there would not be read; fix the section first` };
   }
-  return lastTableLine ? lastTableLine + 1 : start + 1;
+  const rendered = renderNewRows(SECTION_TABLE_HEADERS[section], rows, options);
+  if (!rendered.ok) return rendered;
+  return { ok: true, operation: insertLinesAt(file, headingLine + 1, ["", ...sectionTableHeaderLines(section), ...rendered.lines, ...blankBefore(file, headingLine + 1)]) };
+}
+
+/** The table of a requirement-block section, read where the parser reads it: first under the heading. */
+export function findSectionTable(file: TextFile, record: RequirementRecord, section: RowSection): ParsedTable | undefined {
+  const headingLine = record.sectionLines?.[section];
+  if (headingLine === undefined) return undefined;
+  const table = parseMarkdownTable(file.lines, headingLine);
+  return table && table.startLine <= sectionEndLine(file, record, headingLine) ? table : undefined;
+}
+
+function sectionTableHeaderLines(section: RowSection): string[] {
+  const headers = SECTION_TABLE_HEADERS[section];
+  return [`| ${headers.join(" | ")} |`, `| ${headers.map(() => "---").join(" | ")} |`];
+}
+
+/** A blank line to end an insertion with, when the line it lands before is text. */
+function blankBefore(file: TextFile, line: number): string[] {
+  const next = file.lines[line - 1];
+  return next !== undefined && next.trim() !== "" ? [""] : [];
+}
+
+/** The last line of the section whose heading is at `headingLine`. */
+function sectionEndLine(file: TextFile, record: RequirementRecord, headingLine: number): number {
+  const following = Object.values(record.sectionLines ?? {}).filter((line) => line > headingLine);
+  return following.length > 0 ? Math.min(...following) - 1 : (record.blockEndLine ?? file.lines.length);
+}
+
+function planNewSection(
+  file: TextFile,
+  record: RequirementRecord,
+  section: RowSection,
+  rows: readonly Readonly<Record<string, string>>[],
+  options: TableRowWriteOptions
+): TableRowPlan {
+  const rendered = renderNewRows(SECTION_TABLE_HEADERS[section], rows, options);
+  if (!rendered.ok) return rendered;
+  const body = [`#### ${section}`, "", ...sectionTableHeaderLines(section), ...rendered.lines];
+  const laterHeadings = CANONICAL_SECTION_ORDER.slice(CANONICAL_SECTION_ORDER.indexOf(section) + 1)
+    .map((name) => record.sectionLines?.[name])
+    .filter((line): line is number => line !== undefined);
+  if (laterHeadings.length > 0) return { ok: true, operation: insertLinesAt(file, Math.min(...laterHeadings), [...body, ""]) };
+  // No later section: after the block's last non-blank line, set off by a blank line.
+  let lastText = record.blockEndLine ?? file.lines.length;
+  while (lastText > record.headingLine && (file.lines[lastText - 1] ?? "").trim() === "") lastText -= 1;
+  return { ok: true, operation: insertLinesAt(file, lastText + 1, ["", ...body, ...blankBefore(file, lastText + 1)]) };
 }
 
 const CANONICAL_SECTION_ORDER: readonly string[] = [

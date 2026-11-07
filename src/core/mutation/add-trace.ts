@@ -7,7 +7,7 @@ import { parseWorkspace } from "../parser/workspace-parser.js";
 import { judgeDiscardedTraceTargets } from "../discarded-trace-target.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { findSectionTableInsertionLine, planMetadataWrite } from "./internal.js";
+import { planMetadataWrite, planSectionRowsInsert } from "./internal.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 
@@ -20,15 +20,6 @@ export interface AddTraceInput {
   dryRun?: boolean;
   ignoreLock?: boolean;
   skipLock?: boolean;
-}
-
-function insertLinesOperation(file: TextFile, line: number, lines: string[]): PatchOperation {
-  const operation: PatchOperation = { type: "insertLines", line, lines };
-  const expectedBefore = file.lines[line - 2];
-  if (expectedBefore !== undefined) operation.expectedBefore = expectedBefore;
-  const expectedAfter = file.lines[line - 1];
-  if (expectedAfter !== undefined) operation.expectedAfter = expectedAfter;
-  return operation;
 }
 
 function findLoadedRecord(workspace: ParsedWorkspace, id: string): { record: RequirementRecord; file: TextFile } | undefined {
@@ -103,12 +94,14 @@ async function addTraceLinkUnlocked(root: ProjectRoot, input: AddTraceInput): Pr
   if (discardedRefusal) return discardedRefusal;
   const loaded = findLoadedRecord(workspace, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
-  const insertLine = findSectionTableInsertionLine(loaded.file, loaded.record, "Trace Links");
-  if (!insertLine) return mutationFail("MUTATION_DENIED", "Trace Links table not found");
-  const row = `| ${input.type} | ${input.reference} | ${input.relation} | ${notes} |`;
+  // @req FR-NODE-259 AC-2 @req FR-NODE-278 AC-1 AC-2 — under the table's own header, the table made when missing.
+  const insert = planSectionRowsInsert(loaded.file, loaded.record, "Trace Links", [
+    { Type: input.type, Reference: input.reference, Relation: input.relation, Notes: notes }
+  ]);
+  if (!insert.ok) return mutationFail("MUTATION_DENIED", insert.message);
   try {
     const dryRun = input.dryRun ?? false;
-    const plan = createPatchPlan(loaded.file, [insertLinesOperation(loaded.file, insertLine, [row])]);
+    const plan = createPatchPlan(loaded.file, [insert.operation]);
     const applied = await applyPatchPlan(plan, { dryRun });
     return withMutationEnvelope(
       mutationOk({ id: input.id, reference: input.reference, written: applied.written }),
@@ -184,12 +177,14 @@ async function setSupersedeUnlocked(root: ProjectRoot, input: SetSupersedeInput)
   }
 
   if (input.syncTrace) {
-    const traceInsertLine = findSectionTableInsertionLine(file, record, "Trace Links");
-    if (traceInsertLine) {
-      for (const field of fields) {
-        operations.push(insertLinesOperation(file, traceInsertLine, [`| Requirement | ${field.value} | ${field.relation} | - |`]));
-      }
-    }
+    const insert = planSectionRowsInsert(
+      file,
+      record,
+      "Trace Links",
+      fields.map((field) => ({ Type: "Requirement", Reference: field.value, Relation: field.relation, Notes: "-" }))
+    );
+    if (!insert.ok) return mutationFail("MUTATION_DENIED", insert.message) as MutationResult<SetSupersedeOutput>;
+    operations.push(insert.operation);
   }
 
   const warnings = [

@@ -3,6 +3,7 @@ import { createPatchPlan } from "../patch/patch-plan.js";
 import type { MutationResult, PatchSummary, ProjectRoot } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { loadRecordWithWorkspace, planMetadataWrite } from "./internal.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 import { assertSafeMarkdownTableCell } from "./table-cell.js";
 
 // @req FR-NODE-061
@@ -19,6 +20,8 @@ export interface AddRelatedDocInput {
   id: string;
   reference: string;
   dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
 }
 
 export interface AddRelatedDocOutput {
@@ -32,7 +35,17 @@ function patchSummary(filePath: string, replacement: string, dryRun: boolean): P
 }
 
 // @req FR-NODE-061
+// @req FR-MCP-049 AC-6 — the core holds the SRS mutation lock, so the CLI and the MCP tool both do.
 export async function addRelatedDoc(
+  root: ProjectRoot,
+  input: AddRelatedDocInput
+): Promise<MutationResult<AddRelatedDocOutput>> {
+  return withSrsMutationLock(root, { operation: "add_related_doc", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () =>
+    addRelatedDocUnlocked(root, input)
+  );
+}
+
+async function addRelatedDocUnlocked(
   root: ProjectRoot,
   input: AddRelatedDocInput
 ): Promise<MutationResult<AddRelatedDocOutput>> {

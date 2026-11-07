@@ -152,7 +152,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
   "wave-decomposition §1–§7": {
     "skills/claude": [
       "_shared/kiwi/wave-decomposition.md\t## 1. 입력 — 호출자가 넘기는 것\t8\tbfc83737:1 4199ba45:1 3e546ede:1 7ac1e767:1 9fe915cb:1 6861e060:1 ecaceed7:1 e0cd050c:1",
-      "_shared/kiwi/wave-decomposition.md\t## 2. 순서 — run 당 한 번\t8\t599a737f:1 e811fc45:1 b41fcde4:1 c6de7a14:1 c8e94e9a:1 35b4a419:1 733b7331:1 57935fc1:1",
+      "_shared/kiwi/wave-decomposition.md\t## 2. 순서 — run 당 한 번\t8\t599a737f:1 2f0a97e1:1 b41fcde4:1 c6de7a14:1 c8e94e9a:1 35b4a419:1 733b7331:1 57935fc1:1",
       "_shared/kiwi/wave-decomposition.md\t## 3. 배정은 그래프의 `acs` 다\t1\t10cd731e:1",
       "_shared/kiwi/wave-decomposition.md\t## 4. 노드의 PRD 항목\t1\t979e531b:1",
       "_shared/kiwi/wave-decomposition.md\t## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`\t1\taaed8894:1",
@@ -161,7 +161,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
     ],
     "skills/codex": [
       "_shared/kiwi/wave-decomposition.md\t## 1. 입력 — 호출자가 넘기는 것\t8\tbfc83737:1 4199ba45:1 3e546ede:1 7ac1e767:1 9fe915cb:1 6861e060:1 ecaceed7:1 e0cd050c:1",
-      "_shared/kiwi/wave-decomposition.md\t## 2. 순서 — run 당 한 번\t8\t599a737f:1 e811fc45:1 b41fcde4:1 c6de7a14:1 c8e94e9a:1 35b4a419:1 733b7331:1 57935fc1:1",
+      "_shared/kiwi/wave-decomposition.md\t## 2. 순서 — run 당 한 번\t8\t599a737f:1 2f0a97e1:1 b41fcde4:1 c6de7a14:1 c8e94e9a:1 35b4a419:1 733b7331:1 57935fc1:1",
       "_shared/kiwi/wave-decomposition.md\t## 3. 배정은 그래프의 `acs` 다\t1\t10cd731e:1",
       "_shared/kiwi/wave-decomposition.md\t## 4. 노드의 PRD 항목\t1\t979e531b:1",
       "_shared/kiwi/wave-decomposition.md\t## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`\t1\taaed8894:1",
@@ -170,7 +170,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
     ],
     "skills/etc": [
       "_shared/kiwi/wave-decomposition.md\t## 1. 입력 — 호출자가 넘기는 것\t8\tbfc83737:1 4199ba45:1 3e546ede:1 7ac1e767:1 9fe915cb:1 6861e060:1 ecaceed7:1 e0cd050c:1",
-      "_shared/kiwi/wave-decomposition.md\t## 2. 순서 — run 당 한 번\t8\t599a737f:1 e811fc45:1 b41fcde4:1 c6de7a14:1 c8e94e9a:1 35b4a419:1 733b7331:1 57935fc1:1",
+      "_shared/kiwi/wave-decomposition.md\t## 2. 순서 — run 당 한 번\t8\t599a737f:1 2f0a97e1:1 b41fcde4:1 c6de7a14:1 c8e94e9a:1 35b4a419:1 733b7331:1 57935fc1:1",
       "_shared/kiwi/wave-decomposition.md\t## 3. 배정은 그래프의 `acs` 다\t1\t10cd731e:1",
       "_shared/kiwi/wave-decomposition.md\t## 4. 노드의 PRD 항목\t1\t979e531b:1",
       "_shared/kiwi/wave-decomposition.md\t## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`\t1\taaed8894:1",
@@ -179,7 +179,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
     ],
     ".agents/skills": [
       "_shared/kiwi/wave-decomposition.md\t## 1. 입력 — 호출자가 넘기는 것\t8\tbfc83737:1 4199ba45:1 3e546ede:1 7ac1e767:1 9fe915cb:1 6861e060:1 ecaceed7:1 e0cd050c:1",
-      "_shared/kiwi/wave-decomposition.md\t## 2. 순서 — run 당 한 번\t8\t599a737f:1 e811fc45:1 b41fcde4:1 c6de7a14:1 c8e94e9a:1 35b4a419:1 733b7331:1 57935fc1:1",
+      "_shared/kiwi/wave-decomposition.md\t## 2. 순서 — run 당 한 번\t8\t599a737f:1 2f0a97e1:1 b41fcde4:1 c6de7a14:1 c8e94e9a:1 35b4a419:1 733b7331:1 57935fc1:1",
       "_shared/kiwi/wave-decomposition.md\t## 3. 배정은 그래프의 `acs` 다\t1\t10cd731e:1",
       "_shared/kiwi/wave-decomposition.md\t## 4. 노드의 PRD 항목\t1\t979e531b:1",
       "_shared/kiwi/wave-decomposition.md\t## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`\t1\taaed8894:1",
@@ -263,35 +263,35 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "kiwi-wave-master/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 실행 규칙 (FR-FLOW-223)\t12\t5da8b034:1 d470a9c8:1 127a027d:1 7a8e1dfd:1 db49f1fc:1 8572077e:1 f21e0e3e:1 568767c7:1 5caf7ff4:1 e0b01cbf:1 fac5f71d:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 0. 공통 규약 (SSOT)\t19\t3cd39375:1 4199ba45:1 fe348441:1 7d99bd73:1 fc6a2bd8:1 33a029ee:1 ba3ebd05:1 afe834b6:1 587b08c9:1 48422008:1 c1647e3f:1 638bf0f8:1 e70721cf:1 ca2c20b2:1 1809db0f:1 30f641d3:1 daf30c1a:1 ce59393d:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 8. 에픽 이슈 진입 모드 (FR-FLOW-214)\t2\tc8458038:1 cb3f91d5:1",
-      "kiwi-wave-master/SKILL.md\t## 11 워크트리 절차 — 만들고, 그 안에서 일하고, 되돌려준다\t24\t00774939:1 f7ae9a66:1 0ec32875:1 45df90ed:1 f1b90184:1 65b4276d:1 f1b90184:1 bc16d203:1 4d93fc7a:1 4ded5dd1:1 9d700098:1 a67beca6:1 db22b050:1 f1b90184:1 c8a7bc8a:1 f1b90184:1 9cd5430b:1 a370d569:1 9c678472:1 f1b90184:1 2696b5f1:1 f1b90184:1 d8781f29:1 ff86bb18:1"
+      "kiwi-wave-master/SKILL.md\t## 11 워크트리 절차 — 만들고, 그 안에서 일하고, 되돌려준다\t24\t00774939:1 f7ae9a66:1 0ec32875:1 45df90ed:1 f1b90184:1 65b4276d:1 f1b90184:1 bc16d203:1 17e2fde5:1 4ded5dd1:1 9d700098:1 a67beca6:1 db22b050:1 f1b90184:1 c8a7bc8a:1 f1b90184:1 9cd5430b:1 a370d569:1 9c678472:1 f1b90184:1 2696b5f1:1 f1b90184:1 d8781f29:1 ff86bb18:1"
     ],
     "skills/codex": [
       "kiwi-wave-master/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t6\te86c695c:1 4a85b919:1 cb3f91d5:1 85587d51:1 a578ac2c:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 실행 규칙 (FR-FLOW-223)\t12\t5da8b034:1 d470a9c8:1 127a027d:1 7a8e1dfd:1 db49f1fc:1 8572077e:1 f21e0e3e:1 568767c7:1 5caf7ff4:1 e0b01cbf:1 fac5f71d:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 0. 공통 규약 (SSOT)\t19\t3cd39375:1 4199ba45:1 f86041b0:1 7d99bd73:1 fc6a2bd8:1 267a7ab9:1 ba3ebd05:1 afe834b6:1 59cee1ef:1 c9741018:1 43e322fe:1 e478d331:1 001f66b8:1 ac01d9dc:1 89e01f2b:1 30f641d3:1 49677d25:1 ce59393d:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 8. 에픽 이슈 진입 모드 (FR-FLOW-214)\t2\tc8458038:1 cb3f91d5:1",
-      "kiwi-wave-master/SKILL.md\t## 11 워크트리 절차 — 만들고, 그 안에서 일하고, 되돌려준다\t24\tcf8d33f5:1 56367194:1 0ec32875:1 45df90ed:1 f1b90184:1 65b4276d:1 f1b90184:1 bc16d203:1 4d93fc7a:1 4ded5dd1:1 9d700098:1 a67beca6:1 db22b050:1 f1b90184:1 c8a7bc8a:1 f1b90184:1 9cd5430b:1 a370d569:1 9c678472:1 f1b90184:1 2696b5f1:1 f1b90184:1 d8781f29:1 ff86bb18:1"
+      "kiwi-wave-master/SKILL.md\t## 11 워크트리 절차 — 만들고, 그 안에서 일하고, 되돌려준다\t24\tcf8d33f5:1 56367194:1 0ec32875:1 45df90ed:1 f1b90184:1 65b4276d:1 f1b90184:1 bc16d203:1 17e2fde5:1 4ded5dd1:1 9d700098:1 a67beca6:1 db22b050:1 f1b90184:1 c8a7bc8a:1 f1b90184:1 9cd5430b:1 a370d569:1 9c678472:1 f1b90184:1 2696b5f1:1 f1b90184:1 d8781f29:1 ff86bb18:1"
     ],
     "skills/etc": [
       "kiwi-wave-master/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t6\te86c695c:1 4a85b919:1 cb3f91d5:1 98047d4a:1 a578ac2c:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 실행 규칙 (FR-FLOW-223)\t12\t5da8b034:1 d470a9c8:1 127a027d:1 7a8e1dfd:1 db49f1fc:1 8572077e:1 f21e0e3e:1 568767c7:1 5caf7ff4:1 e0b01cbf:1 fac5f71d:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 0. 공통 규약 (SSOT)\t19\t3cd39375:1 4199ba45:1 f86041b0:1 7d99bd73:1 fc6a2bd8:1 267a7ab9:1 ba3ebd05:1 afe834b6:1 59cee1ef:1 c9741018:1 43e322fe:1 e478d331:1 001f66b8:1 ac01d9dc:1 89e01f2b:1 30f641d3:1 49677d25:1 ce59393d:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 8. 에픽 이슈 진입 모드 (FR-FLOW-214)\t2\tc8458038:1 cb3f91d5:1",
-      "kiwi-wave-master/SKILL.md\t## 11 워크트리 절차 — 만들고, 그 안에서 일하고, 되돌려준다\t24\tcf8d33f5:1 56367194:1 0ec32875:1 45df90ed:1 f1b90184:1 65b4276d:1 f1b90184:1 bc16d203:1 4d93fc7a:1 4ded5dd1:1 9d700098:1 a67beca6:1 db22b050:1 f1b90184:1 c8a7bc8a:1 f1b90184:1 9cd5430b:1 a370d569:1 9c678472:1 f1b90184:1 2696b5f1:1 f1b90184:1 d8781f29:1 ff86bb18:1"
+      "kiwi-wave-master/SKILL.md\t## 11 워크트리 절차 — 만들고, 그 안에서 일하고, 되돌려준다\t24\tcf8d33f5:1 56367194:1 0ec32875:1 45df90ed:1 f1b90184:1 65b4276d:1 f1b90184:1 bc16d203:1 17e2fde5:1 4ded5dd1:1 9d700098:1 a67beca6:1 db22b050:1 f1b90184:1 c8a7bc8a:1 f1b90184:1 9cd5430b:1 a370d569:1 9c678472:1 f1b90184:1 2696b5f1:1 f1b90184:1 d8781f29:1 ff86bb18:1"
     ]
   },
   "kiwi-orchestrator core rules": {
     "skills/claude": [
-      "kiwi-orchestrator/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t9\t2f25f90c:1 7f5c481a:1 7a98c9ec:1 d08392a9:1 cb3f91d5:1 f36e19b0:1 ff85047e:1 a9a09cf7:1 cb3f91d5:1"
+      "kiwi-orchestrator/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t10\t2f25f90c:1 7f5c481a:1 7a98c9ec:1 d08392a9:1 cb3f91d5:1 f36e19b0:1 ff85047e:1 a9a09cf7:1 65125abe:1 cb3f91d5:1"
     ],
     "skills/codex": [
-      "kiwi-orchestrator/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t9\t2f25f90c:1 7f5c481a:1 7a98c9ec:1 d08392a9:1 cb3f91d5:1 f36e19b0:1 80c252fe:1 a9a09cf7:1 cb3f91d5:1"
+      "kiwi-orchestrator/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t10\t2f25f90c:1 7f5c481a:1 7a98c9ec:1 d08392a9:1 cb3f91d5:1 f36e19b0:1 80c252fe:1 a9a09cf7:1 65125abe:1 cb3f91d5:1"
     ],
     "skills/etc": [
-      "kiwi-orchestrator/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t9\t2f25f90c:1 7f5c481a:1 7a98c9ec:1 d08392a9:1 cb3f91d5:1 3f030bfe:1 80c252fe:1 a9a09cf7:1 cb3f91d5:1"
+      "kiwi-orchestrator/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t10\t2f25f90c:1 7f5c481a:1 7a98c9ec:1 d08392a9:1 cb3f91d5:1 3f030bfe:1 80c252fe:1 a9a09cf7:1 65125abe:1 cb3f91d5:1"
     ],
     ".agents/skills": [
-      "kiwi-orchestrator/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t9\t2f25f90c:1 7f5c481a:1 7a98c9ec:1 d08392a9:1 cb3f91d5:1 f36e19b0:1 80c252fe:1 a9a09cf7:1 cb3f91d5:1"
+      "kiwi-orchestrator/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t10\t2f25f90c:1 7f5c481a:1 7a98c9ec:1 d08392a9:1 cb3f91d5:1 f36e19b0:1 80c252fe:1 a9a09cf7:1 65125abe:1 cb3f91d5:1"
     ]
   },
   "kiwi-pm core rules": {

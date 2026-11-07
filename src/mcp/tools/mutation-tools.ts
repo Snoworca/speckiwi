@@ -2,7 +2,9 @@ import { resolveProjectRoot } from "../../core/project-root.js";
 import { updateStatus } from "../../core/mutation/update-status.js";
 import { updateStability } from "../../core/mutation/update-stability.js";
 import { appendSectionNote } from "../../core/mutation/append-section-note.js";
-import { setAcceptanceCriteriaChecked } from "../../core/mutation/check-ac.js";
+import { appendAcceptanceCriterion, editAcceptanceCriteria, setAcceptanceCriteriaChecked } from "../../core/mutation/check-ac.js";
+import { addRelatedDoc } from "../../core/mutation/add-related-doc.js";
+import { addChangeNote } from "../../core/mutation/add-change-note.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { addTraceLink } from "../../core/mutation/add-trace.js";
 import { addRequirement, promoteStepRequirement } from "../../core/mutation/add-requirement.js";
@@ -200,6 +202,41 @@ export const EXPIRE_ACCEPTANCE_CRITERION_SCHEMA = {
   ignoreLock: z.boolean().optional()
 };
 
+/** @req FR-MCP-072 AC-1 — server.ts lists it, the handler checks it. */
+export const EDIT_ACCEPTANCE_CRITERION_SCHEMA = {
+  id: z.string(),
+  acId: z.string().describe("the live criterion to reword, e.g. AC-2"),
+  text: z.string(),
+  dryRun: z.boolean().optional(),
+  ignoreLock: z.boolean().optional()
+};
+
+/** @req FR-MCP-072 AC-2 — server.ts lists it, the handler checks it. */
+export const APPEND_ACCEPTANCE_CRITERION_SCHEMA = {
+  id: z.string(),
+  text: z.string(),
+  dryRun: z.boolean().optional(),
+  ignoreLock: z.boolean().optional()
+};
+
+/** @req FR-MCP-049 AC-1 AC-3 — one id, never a list; server.ts lists it, the handler checks it. */
+export const ADD_RELATED_DOC_SCHEMA = {
+  id: z.string(),
+  link: z.string().describe("the document reference to append, e.g. a path or URL"),
+  dryRun: z.boolean().optional(),
+  ignoreLock: z.boolean().optional()
+};
+
+/** @req FR-MCP-049 AC-2 AC-3 AC-4 · FR-NODE-205 AC-7 — the date is optional; the core defaults it. */
+export const ADD_CHANGE_NOTE_SCHEMA = {
+  id: z.string(),
+  change: z.string(),
+  reason: z.string(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("YYYY-MM-DD; omitted, the writer's local date"),
+  dryRun: z.boolean().optional(),
+  ignoreLock: z.boolean().optional()
+};
+
 export function registerMutationTools(server: McpServerHandle, deps: McpDependencies): void {
   registerOrchestrateTools(server, deps, "mutation");
   // @req IR-MCP-009 AC-2 — the roadmap writers are workspace mutations and refuse a per-call root.
@@ -260,6 +297,57 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
         acId: String(input.acId),
         reason: typeof input.reason === "string" ? input.reason : "",
         ...(typeof input.successor === "string" ? { successor: input.successor } : {}),
+        ...mutationOptions(input)
+      })
+    ),
+    { kind: "req-scoped" }
+  );
+  // @req FR-MCP-072 AC-1 AC-3
+  server.registerTool("edit_acceptance_criterion", async (input) =>
+    missingRequiredArguments("edit_acceptance_criterion", EDIT_ACCEPTANCE_CRITERION_SCHEMA, input) ??
+    resultToMcp(
+      await editAcceptanceCriteria(await root(deps, input), {
+        id: String(input.id),
+        acId: String(input.acId),
+        text: typeof input.text === "string" ? input.text : "",
+        ...mutationOptions(input)
+      })
+    ),
+    { kind: "req-scoped" }
+  );
+  // @req FR-MCP-072 AC-2 AC-3
+  server.registerTool("append_acceptance_criterion", async (input) =>
+    missingRequiredArguments("append_acceptance_criterion", APPEND_ACCEPTANCE_CRITERION_SCHEMA, input) ??
+    resultToMcp(
+      await appendAcceptanceCriterion(await root(deps, input), {
+        id: String(input.id),
+        text: typeof input.text === "string" ? input.text : "",
+        ...mutationOptions(input)
+      })
+    ),
+    { kind: "req-scoped" }
+  );
+  // @req FR-MCP-049 AC-1 AC-5 AC-6
+  server.registerTool("add_related_doc", async (input) =>
+    missingRequiredArguments("add_related_doc", ADD_RELATED_DOC_SCHEMA, input) ??
+    resultToMcp(
+      await addRelatedDoc(await root(deps, input), {
+        id: String(input.id),
+        reference: String(input.link),
+        ...mutationOptions(input)
+      })
+    ),
+    { kind: "req-scoped" }
+  );
+  // @req FR-MCP-049 AC-2 AC-4 AC-5 AC-6
+  server.registerTool("add_change_note", async (input) =>
+    missingRequiredArguments("add_change_note", ADD_CHANGE_NOTE_SCHEMA, input) ??
+    resultToMcp(
+      await addChangeNote(await root(deps, input), {
+        id: String(input.id),
+        change: String(input.change),
+        reason: String(input.reason),
+        ...(typeof input.date === "string" ? { date: input.date } : {}),
         ...mutationOptions(input)
       })
     ),

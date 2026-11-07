@@ -53,7 +53,8 @@ describe("FR-NODE-041 FND-005 — edit_acceptance_criteria rejects unsafe text a
     const result = await editAcceptanceCriteria(root, {
       id: "FR-ARCH-001",
       acId: "AC-1",
-      text: "x".repeat(5000)
+      // One unit over the FR-NODE-041 AC-4 limit of 16384; the old 5000 now fits under it.
+      text: "x".repeat(16385)
     });
 
     expect(result.ok).toBe(false);

@@ -275,8 +275,8 @@ const ENGINE_OPTION = o("--engine", "engine");
 export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   { tool: "orchestrate_resume", description: "Rebuilds the resume state of an orchestrator run from its journal and resume card — which wave and lane it stopped in, and whether anything drifted since. Without run_id it resumes the most recent run under the engine (kiwi-orchestrator by default) that is neither complete nor aborted. Without facts it reads the git facts and drift inputs from the repository itself, and then reports the intent-digest comparison as unchecked with a warning; a facts file, when given, must carry both halves. Read-only.", path: ["resume"], kind: "read", options: [RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION, o("--card", "card"), o("--facts", "facts")] },
   // @req IR-MCP-005 — the role declaration is bound too. Without it the binding could only ever
-  // produce the default host role, and the role-aware gate refuses a linked worktree claiming to be
-  // a host, which leaves the topology gate unreachable from the surface a worktree session uses.
+  // produce the default host role, and on the host path the equality gate refuses two roots that
+  // differ (`roots-differ`), which leaves the topology gate unreachable from the surface a lane uses.
   {
     tool: "orchestrate_preflight", description: "Compares the MCP workspace root against the git root a caller passes and judges whether this session may run there, given its declared role and lane. Both roots are arguments; nothing is taken from the process working directory. Read-only.",
     path: ["preflight"],
@@ -631,9 +631,9 @@ async function roleAwarePreflight(
   }
 
   // @req FR-NODE-178 — the equality verdict still runs on the host path, and its refusal still wins,
-  // so IR-CLI-090's three conditions and their reported shape are untouched. The topology gate adds
-  // one refusal the equality test structurally cannot see: a host that is itself a linked worktree,
-  // where both roots agree and SRS is written into a checkout still waiting to be merged.
+  // so IR-CLI-090's three conditions and their reported shape are untouched. The topology gate then
+  // reports the host's topology; a host in a linked worktree passes when both roots agree
+  // (FR-NODE-186 AC-8).
   if (role === "host") {
     const legacy = preflightRunRoot(mcpRoot, gitRoot, {
       realpath: realpathProbe,

@@ -5,7 +5,7 @@ import { parseMarkdownTable } from "../parser/table.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertSafeStateCell } from "./table-cell.js";
 import { getWorkMode } from "./work-mode.js";
-import { evaluateVibeCompletionGate } from "./internal.js";
+import { evaluateVibeCompletionGate, planTableRowUpdate } from "./internal.js";
 import { listDirtyEdges } from "../query/summary.js";
 import type { MutationResult, ProjectRoot, StepStateStatus } from "../types.js";
 import { todayStamp } from "../date-stamp.js";
@@ -40,15 +40,6 @@ export interface UpdateStepStateValue {
 // @req FR-NODE-043
 /** The Status enum a step row may transition into (FR-PARSE-026 / StepStateStatus). */
 export const STEP_STATE_STATUSES: readonly StepStateStatus[] = ["active", "merging", "merged", "abandoned"];
-
-// @req FR-NODE-043
-/** Split a pipe-delimited table row into its trimmed cells (between the outer pipes). */
-function rowCells(line: string): string[] {
-  return line
-    .split("|")
-    .slice(1, -1)
-    .map((cell) => cell.trim());
-}
 
 export async function updateStepState(
   root: ProjectRoot,
@@ -119,26 +110,25 @@ export async function updateStepState(
     }
   }
 
-  const original = stateFile.lines[rowLine - 1] ?? "";
-  const cells = rowCells(original);
   const stamp = todayStamp();
-  // Columns: Step, Status, DependsOn, TouchesScope, TouchesReq, Created, Updated.
-  const updatedColumn = table.headers.indexOf("Updated");
-  if (input.status !== undefined) cells[1] = input.status;
-  if (input.dependsOn !== undefined) cells[2] = input.dependsOn;
-  if (updatedColumn >= 0) cells[updatedColumn] = stamp;
-  const replacement = `| ${cells.join(" | ")} |`;
+  // @req FR-NODE-259 AC-3 AC-4 — rewritten by the table's own header: each value under its column,
+  // every other cell kept; a column the update fills and the header lacks is refused. A table
+  // without an Updated column is written without the stamp, as before.
+  const updates: Record<string, string> = { Updated: stamp };
+  if (input.status !== undefined) updates.Status = input.status;
+  if (input.dependsOn !== undefined) updates.DependsOn = input.dependsOn;
+  const write = planTableRowUpdate(stateFile, table, rowIndex, updates, { optional: ["Updated"] });
+  if (!write.ok) return mutationFail("MUTATION_DENIED", write.message);
 
-  const operations: PatchOperation[] = [
-    { type: "replaceLine", line: rowLine, original, replacement }
-  ];
+  const operations: PatchOperation[] = [write.operation];
   const plan = createPatchPlan(stateFile, operations);
   const applied = await applyPatchPlan(plan, { dryRun: input.dryRun ?? false });
+  const row = table.rows[rowIndex] ?? {};
 
   return mutationOk<UpdateStepStateValue>({
     step: input.step,
-    status: cells[1] ?? "",
-    dependsOn: cells[2] ?? "",
+    status: updates.Status ?? row.Status ?? "",
+    dependsOn: updates.DependsOn ?? row.DependsOn ?? "",
     updated: stamp,
     written: applied.written
   });

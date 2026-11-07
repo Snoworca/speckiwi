@@ -72,13 +72,14 @@ describe("IR-MCP-005 — orchestrate_preflight lets a lane declare that it is a 
     // flags changed the verdict rather than the fixture.
     const undeclared = (await server.callTool("orchestrate_preflight", { mcpRoot: host, gitRoot: lane })) as Record<string, unknown>;
     expect(undeclared).toMatchObject({ gate: "run-root-preflight-mismatch", exitCode: 2 });
+    // @req IR-MCP-005 AC-2 — the equality gate refuses first, so the reason is its `roots-differ`.
+    expect(JSON.stringify(undeclared)).toContain('"reason":"roots-differ"');
 
-    // `host-root-is-a-linked-worktree` is the topology gate's own reason, and it is reachable only
-    // when both roots ARE the worktree — with the roots differing the equality gate refuses first
-    // with `roots-differ`. Asserted here so the named reason is still covered.
+    // @req FR-NODE-186 AC-8 — both roots at the worktree is a host session run from a linked
+    // worktree, and it passes; the linked-worktree host refusal was withdrawn.
     const hostInWorktree = (await server.callTool("orchestrate_preflight", { mcpRoot: lane, gitRoot: lane })) as Record<string, unknown>;
-    expect(hostInWorktree).toMatchObject({ gate: "run-root-preflight-mismatch", exitCode: 2 });
-    expect(JSON.stringify(hostInWorktree)).toContain("host-root-is-a-linked-worktree");
+    expect(hostInWorktree, JSON.stringify(hostInWorktree)).toMatchObject({ role: "host", topology: "same-root", exitCode: 0 });
+    expect(JSON.stringify(hostInWorktree)).not.toContain("host-root-is-a-linked-worktree");
   });
 
   it("AC-3: a lane declaration without a lane id, or with an unplanned lane id, is refused", async () => {

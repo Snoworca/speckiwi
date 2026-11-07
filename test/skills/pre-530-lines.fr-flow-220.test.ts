@@ -23,8 +23,9 @@ const PATTERNS: ReadonlyArray<[string, RegExp]> = [
   ["design-item denominator", /design_items|설계 항목 분모/],
   ["loop W", /loop\s*\**\s*W\b/],
   ["reading waves.jsonl by hand", /`(?:\.\/)?(?:kiwi\/)?waves\.jsonl` ?(?:을|를)? ?(?:직접 |손으로 )?읽|read(?:s|ing)? (?:the )?`(?:\.\/)?(?:kiwi\/)?waves\.jsonl`/i],
-  // The quoted value form `"target":"wave-1"` of an example line slipped past the prose forms (verify r3).
-  ["a wave-{n} target", /TARGET=wave-|`wave-\{n\}` ?(?:target|타깃)|target[^\n]{0,20}`wave-\{n\}`|전용 (?:SRS )?target|"target":\s*"wave-(?:\d+|\{n\})"/],
+  // The quoted value form `"target":"wave-1"` of an example line slipped past the prose forms (verify r3),
+  // and so did the flag form `--frozen-target wave-{n}` of the replay step (FR-FLOW-230 AC-3).
+  ["a wave-{n} target", /TARGET=wave-|`wave-\{n\}` ?(?:target|타깃)|target[^\n]{0,20}`wave-\{n\}`|전용 (?:SRS )?target|"target":\s*"wave-(?:\d+|\{n\})"|--frozen-target wave-/],
   ["a severity pass condition", /CRITICAL\s*=\s*0|HIGH\s*=\s*0|MEDIUM-zero|잔여 CRITICAL|CRITICAL ?· ?HIGH|CRITICAL\/HIGH/]
 ];
 
@@ -60,6 +61,10 @@ const ALLOWED: ReadonlyArray<[string, string]> = [
   [
     "`2-consecutive-MEDIUM-zero` for a skill that keeps a severity gate. So `--mini` means **\"at most 3 rounds\"**,",
     "the English loop-option contract, second line of the same bullet"
+  ],
+  [
+    "**run 의 target 은 제품 target 하나다.** 요구는 모두 제품 target 에 저작하고, 재생(PW-10)이 `--frozen-target` 으로 동결하는 것도 제품 target 이다 — `wave-{n}` 은 노드 이름이지 target 이 아니다. 제품 target 의 요구가 이미 PRD 를 덮으면 `--existing-srs <제품 target>` 으로 들어와 2.a 처음 저작을 건너뛴다(§16).",
+    "FR-FLOW-230 AC-3 — the rule that names the product target, not `wave-{n}`, as the target replay freezes"
   ]
 ];
 

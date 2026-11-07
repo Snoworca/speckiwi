@@ -6,6 +6,7 @@ import { z } from "zod";
 import { main } from "../../src/cli/index.js";
 import { renderSdsDesignTemplate, BUNDLED_SRS_RULES_FILENAME } from "../../src/core/bootstrap/templates.js";
 import { toDateStamp, todayStamp } from "../../src/core/date-stamp.js";
+import { addChangeNote } from "../../src/core/mutation/add-change-note.js";
 import { addCompletedWork } from "../../src/core/mutation/add-completed-work.js";
 import { addRequirement } from "../../src/core/mutation/add-requirement.js";
 import { addVerificationEvidence } from "../../src/core/mutation/add-evidence.js";
@@ -21,7 +22,7 @@ import { updateStatus } from "../../src/core/mutation/update-status.js";
 import { updateStepState } from "../../src/core/mutation/update-step-state.js";
 import { resolveProjectRoot } from "../../src/core/project-root.js";
 import { readRoadmap } from "../../src/core/roadmap/load-roadmap.js";
-import { toolSchemas } from "../../src/mcp/server.js";
+import { createMcpServer, toolSchemas } from "../../src/mcp/server.js";
 import { copyFixtureWorkspace } from "../fixtures/fixture-utils.js";
 
 // FR-NODE-205 — every YYYY-MM-DD stamp a mutation produces for an SRS, SDS or step-state document
@@ -289,12 +290,25 @@ describe("FR-NODE-205 — the document date stamp follows the writer's local cal
     expect(paths).toContain("date");
   });
 
-  it("AC-7: add_change_note is not an MCP tool at all, so no MCP call can default its date", () => {
-    // `schemas.ts` registers add-change-note with an undefined exposure, which means CLI-only.
-    expect(toolSchemas.add_change_note).toBeUndefined();
-    // Control: a mutation that IS exposed appears in the same map, so the absence above is a fact
-    // about this tool rather than about the map being empty or wrongly keyed.
-    expect(toolSchemas.append_section_note).toBeDefined();
+  // @req FR-NODE-205 AC-7
+  it("AC-7: MCP add_change_note takes date as an optional string and, without one, writes the writer's local date", async () => {
+    const shape = z.object(toolSchemas.add_change_note as Record<string, z.ZodTypeAny>);
+    expect(shape.safeParse({ id: "FR-ARCH-001", change: "c", reason: "r" }).success).toBe(true);
+    expect(shape.safeParse({ id: "FR-ARCH-001", change: "c", reason: "r", date: "2020-01-02" }).success).toBe(true);
+    expect(shape.safeParse({ id: "FR-ARCH-001", change: "c", reason: "r", date: 20200102 }).success).toBe(false);
+
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const handle = createMcpServer({ root: rootPath });
+    await inKstSplitWindow(async () => {
+      const answer = (await handle.callTool("add_change_note", { id: "FR-ARCH-001", change: "Via MCP", reason: "no date" })) as { ok: boolean };
+      expect(answer.ok).toBe(true);
+    });
+    const explicit = (await handle.callTool("add_change_note", { id: "FR-ARCH-001", change: "Dated", reason: "given", date: "2020-01-02" })) as { ok: boolean };
+    expect(explicit.ok).toBe(true);
+    const file = await readFile(path.join(rootPath, ARCH_FILE), "utf8");
+    // KST_DATE, not the UTC day of the same instant: the default is the shared local-date helper.
+    expect(/\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Via MCP\s*\|\s*no date\s*\|/.exec(file)?.[1]).toBe(KST_DATE);
+    expect(file).toMatch(/\|\s*2020-01-02\s*\|\s*Dated\s*\|\s*given\s*\|/);
   });
 });
 
@@ -316,8 +330,8 @@ describe("FR-NODE-205 — the document date stamp follows the writer's local cal
 //     below is taken ONCE at module load, so even an accessor written into the literal is evaluated a
 //     single time, out here, against the real clock — the same value then reaches both instants.
 //   * A row is handed NO PATH. It asks for what it needs with plain markers the framework substitutes:
-//     `ROOT_SLOT` (the resolved project root), `ROOT_PATH_SLOT` (the workspace path), `IO_SLOT` (the
-//     CLI's streams). Asking is not supplying, and a row cannot write to the workspace it never sees.
+//     `ROOT_SLOT` (the resolved project root). Asking is not supplying, and a row cannot write to the
+//     workspace it never sees.
 //   * Fixture seeding is the FRAMEWORK's. A row names a seed from a fixed set; the code behind that
 //     name lives here. A row that could seed could forge, and that is what a seeding row did.
 //   * The framework then calls the export inside the window, requires the call to have SUCCEEDED, and
@@ -357,8 +371,6 @@ interface StampSite {
 
 /** Markers a row uses to ASK for something only the framework can supply. */
 const ROOT_SLOT = { __slot: "project-root" } as const;
-const ROOT_PATH_SLOT = { __slot: "root-path" } as const;
-const IO_SLOT = { __slot: "cli-io" } as const;
 
 const STATE_FILE = path.join("docs", "spec", "steps", "state.md");
 const STALE_RULES_LINK = "[SRS-MD-Rules-v1.0.0.md](../rule/SRS-MD-Rules-v1.0.0.md)";
@@ -436,17 +448,14 @@ const FILE_SITE_DECLARATIONS: readonly StampSite[] = [
     args: [ROOT_SLOT, { id: "FR-ARCH-001", section: "implementation_notes", text: "probe note" }]
   },
   {
-    file: "src/cli/commands/mutations.ts",
+    file: "src/core/mutation/add-change-note.ts",
     destination: "srs-file",
-    // The default date of `add-change-note` when the caller passes none. The production entry point
-    // for this site is the CLI's `main`, which is what reaches the default in `mutations.ts`.
+    // The default date of a Change Note when the caller passes none. It moved from the CLI into the
+    // core so the CLI command and the MCP tool share one default (FR-NODE-205 AC-7, FR-MCP-049 AC-4).
     pattern: String.raw`\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Probed\s*\|\s*probe reason\s*\|`,
-    fn: main as (...args: never[]) => unknown,
+    fn: addChangeNote as (...args: never[]) => unknown,
     seed: "none",
-    args: [
-      ["--root", ROOT_PATH_SLOT, "add-change-note", "FR-ARCH-001", "--change", "Probed", "--reason", "probe reason"],
-      IO_SLOT
-    ]
+    args: [ROOT_SLOT, { id: "FR-ARCH-001", change: "Probed", reason: "probe reason" }]
   },
   {
     file: "src/core/mutation/update-status.ts",
@@ -602,7 +611,7 @@ const CALLER_SITE_DECLARATIONS: readonly StampSite[] = [
  */
 const PRODUCTION_EXPORTS: Readonly<Record<string, unknown>> = {
   "src/core/mutation/append-section-note.ts": appendSectionNote,
-  "src/cli/commands/mutations.ts": main,
+  "src/core/mutation/add-change-note.ts": addChangeNote,
   "src/core/mutation/update-status.ts": updateStatus,
   "src/core/mutation/update-stability.ts": updateStability,
   "src/core/mutation/retarget.ts": retarget,
@@ -691,8 +700,6 @@ function fillSlots(value: unknown, supply: SlotFill): unknown {
   if (value === null || typeof value !== "object") return value;
   const slot = (value as { __slot?: unknown }).__slot;
   if (slot === "project-root") return supply.root;
-  if (slot === "root-path") return supply.rootPath;
-  if (slot === "cli-io") return io();
   const out: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) out[key] = fillSlots(item, supply);
   return out;

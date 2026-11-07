@@ -55,6 +55,8 @@ interface SkillInstallMetadata {
   sourceRevision?: string;
   sourceChecksum?: string;
   installedChecksum?: string;
+  /** @req FR-NODE-277 — the install checksum over text files with CRLF folded to LF; absent in metadata older than 5.3.6. */
+  installedChecksumIgnoringLineEndings?: string;
   sourceFileCount?: number;
   installedFileCount?: number;
   sharedResourceRoot?: string;
@@ -164,9 +166,9 @@ export interface ManagedSkillRemovalOptions {
    */
   reconcileSharedMirror?: boolean;
   /**
-   * The bundled skill source, used only by the mirror reconciliation to read the references of a skill
-   * the workspace excludes from the mirror (FR-NODE-090). Absent, that branch is skipped and the
-   * reconciliation keeps more than it otherwise would.
+   * The bundled skill source. The mirror reconciliation reads from it the references of a skill the
+   * workspace excludes from the mirror (FR-NODE-090) and the bytes a mirrored file must match
+   * (FR-NODE-190 AC-8). Absent, both are skipped and more is kept than otherwise would be.
    */
   sourceRoot?: string;
 }
@@ -237,8 +239,9 @@ export async function removeManagedKiwiSkills(options: ManagedSkillRemovalOption
         hold(candidate, "foreign-metadata", "install metadata identifies a different install mode, agent, or skill name.");
         continue;
       }
-      const currentChecksum = await destinationDigest(candidate);
-      if (currentChecksum !== metadata.installedChecksum) {
+      // @req FR-NODE-277 — a checkout with core.autocrlf rewrites line endings and nothing else, so a
+      // copy that differs only there is still the one we wrote.
+      if (!(await copyMatchesInstall(candidate, metadata))) {
         hold(candidate, "locally-modified", "on-disk contents differ from the recorded install checksum (local edits).");
         continue;
       }
@@ -251,7 +254,7 @@ export async function removeManagedKiwiSkills(options: ManagedSkillRemovalOption
         removed.push(candidate);
       }
     } catch (error) {
-      // Any filesystem error (unreadable entry, a symlink nested inside caught by destinationDigest, an
+      // Any filesystem error (unreadable entry, a symlink nested inside caught by readDestinationEntries, an
       // rm failure, or a readdir/lstat race) degrades to a warning — the prune never aborts init.
       hold(candidate, "error", (error as Error).message);
     }
@@ -278,7 +281,8 @@ export async function removeManagedKiwiSkills(options: ManagedSkillRemovalOption
         // holds the same bytes at the same relative path; anything else is somebody's own file.
         const source = sharedSourceRoot ? path.join(sharedSourceRoot, relativePath) : undefined;
         const mirrored = source === undefined ? undefined : await readFile(source).catch(() => undefined);
-        if (mirrored === undefined || !mirrored.equals(await readFile(target).catch(() => Buffer.alloc(0)))) {
+        // @req FR-NODE-190 AC-8 — the same bytes, or the same text up to line endings (FR-NODE-277).
+        if (mirrored === undefined || !sameUpToLineEndings(mirrored, await readFile(target).catch(() => Buffer.alloc(0)))) {
           kept.push({
             path: target,
             reason: mirrored === undefined ? "user-authored" : "locally-modified",
@@ -298,8 +302,94 @@ export async function removeManagedKiwiSkills(options: ManagedSkillRemovalOption
 }
 
 
-/** Recomputes the install checksum (packageDigest format) over a destination skill directory's files. */
-async function destinationDigest(directory: string): Promise<string> {
+/** One file of a skill package, as the install checksum sees it: its path in the destination and its bytes. */
+interface DigestEntry {
+  relativePath: string;
+  bytes: Buffer;
+}
+
+type LineEnding = "lf" | "crlf";
+
+/** A file holding a NUL byte is binary: compared byte for byte, its line endings never rewritten (FR-NODE-277 AC-4). */
+function isText(bytes: Buffer): boolean {
+  return !bytes.includes(0);
+}
+
+/** The text with every line ending made `ending`; a binary file comes back unchanged. latin1 keeps every byte as it is. */
+function withLineEndings(bytes: Buffer, ending: LineEnding): Buffer {
+  if (!isText(bytes)) return bytes;
+  const lf = bytes.toString("latin1").replace(/\r\n/g, "\n");
+  return Buffer.from(ending === "lf" ? lf : lf.replace(/\n/g, "\r\n"), "latin1");
+}
+
+/** Byte-equal, or equal once both are folded to LF; a binary is never folded, so it must be byte-equal. */
+function sameUpToLineEndings(left: Buffer, right: Buffer): boolean {
+  return left.equals(right) || withLineEndings(left, "lf").equals(withLineEndings(right, "lf"));
+}
+
+/** The install checksum format. Entries must be sorted by relative path; `view` picks the bytes hashed for each. */
+function digestOf(entries: readonly DigestEntry[], view: (entry: DigestEntry) => Buffer = (entry) => entry.bytes): string {
+  return aggregateDigest(entries.map((entry) => ({ relativePath: entry.relativePath, hash: fileHash(view(entry)) })));
+}
+
+function fileHash(bytes: Buffer): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+/** The install checksum over per-file hashes already computed, in the entries' order. */
+function aggregateDigest(files: ReadonlyArray<{ relativePath: string; hash: string }>): string {
+  const hash = createHash("sha256");
+  for (const file of files) {
+    hash.update(file.relativePath);
+    hash.update("\0");
+    hash.update(file.hash);
+    hash.update("\n");
+  }
+  return `sha256:${hash.digest("hex")}`;
+}
+
+/**
+ * Above this many text files the legacy proof tries only all-LF and all-CRLF (FR-NODE-277 AC-3).
+ * Measured on Windows, a copy whose proof fails tried every choice in 71 ms at 8 files of 300 KB and
+ * 936 ms at 16 (1.6 s at 2 MB each); 8 (256 choices) keeps an upgrade over many copies fast.
+ */
+const MAX_TEXT_FILES_FOR_EVERY_ENDING = 8;
+
+/**
+ * Whether a destination copy still holds what the install recorded, up to line endings.
+ *
+ * @req FR-NODE-277 — metadata older than the line-ending-insensitive checksum recorded only the bytes
+ * of the source, whose files need not share one ending (the bundled kiwi-srs-research mixes CRLF and
+ * LF). Its proof tries every per-file choice of LF or CRLF for a copy of at most 8 text files, and
+ * only all-LF and all-CRLF above that, so it never depends on the bundled source.
+ */
+async function copyMatchesInstall(directory: string, metadata: SkillInstallMetadata): Promise<boolean> {
+  const entries = await readDestinationEntries(directory);
+  if (digestOf(entries) === metadata.installedChecksum) return true;
+  if (metadata.installedChecksumIgnoringLineEndings !== undefined) {
+    return digestOf(entries, (entry) => withLineEndings(entry.bytes, "lf")) === metadata.installedChecksumIgnoringLineEndings;
+  }
+  // Each file's two hashes are computed once; a choice of endings then costs only the aggregate digest.
+  const files = entries.map((entry) => ({
+    relativePath: entry.relativePath,
+    lf: fileHash(withLineEndings(entry.bytes, "lf")),
+    crlf: fileHash(withLineEndings(entry.bytes, "crlf"))
+  }));
+  // A binary file's two hashes are equal, so only text files are choices.
+  const textCount = entries.filter((entry) => isText(entry.bytes)).length;
+  const matches = (crlf: (index: number) => boolean): boolean =>
+    aggregateDigest(files.map((file, index) => ({ relativePath: file.relativePath, hash: crlf(index) ? file.crlf : file.lf }))) === metadata.installedChecksum;
+  if (textCount > MAX_TEXT_FILES_FOR_EVERY_ENDING) return matches(() => false) || matches(() => true);
+  const textIndexes = entries.flatMap((entry, index) => (isText(entry.bytes) ? [index] : []));
+  for (let mask = 0; mask < 1 << textCount; mask += 1) {
+    const crlfFiles = new Set(textIndexes.filter((_, bit) => (mask & (1 << bit)) !== 0));
+    if (matches((index) => crlfFiles.has(index))) return true;
+  }
+  return false;
+}
+
+/** Reads a destination skill directory's files (the install metadata excepted) in the install checksum's order. */
+async function readDestinationEntries(directory: string): Promise<DigestEntry[]> {
   const relativePaths: string[] = [];
   async function walk(current: string): Promise<void> {
     for (const entry of await readdir(current, { withFileTypes: true })) {
@@ -320,14 +410,9 @@ async function destinationDigest(directory: string): Promise<string> {
   }
   await walk(directory);
   relativePaths.sort((left, right) => left.localeCompare(right));
-  const hash = createHash("sha256");
-  for (const relativePath of relativePaths) {
-    hash.update(relativePath);
-    hash.update("\0");
-    hash.update(createHash("sha256").update(await readFile(path.join(directory, relativePath))).digest("hex"));
-    hash.update("\n");
-  }
-  return `sha256:${hash.digest("hex")}`;
+  const entries: DigestEntry[] = [];
+  for (const relativePath of relativePaths) entries.push({ relativePath, bytes: await readFile(path.join(directory, relativePath)) });
+  return entries;
 }
 
 function normalizeOptions(options: SkillInstallOptions): Required<Pick<SkillInstallOptions, "projectRoot" | "agent" | "selector" | "scope" | "dryRun">> &
@@ -957,6 +1042,7 @@ async function buildInstallMetadata(sourcePackage: SkillPackage, destination: st
     sourceRevision: await resolveSourceRevision(projectRoot),
     sourceChecksum: sourceDigest.checksum,
     installedChecksum: sourceDigest.checksum,
+    installedChecksumIgnoringLineEndings: sourceDigest.checksumIgnoringLineEndings,
     sourceFileCount: sourceDigest.fileCount,
     installedFileCount: sourceDigest.fileCount,
     sharedResourceRoot: projectRoot ? toProjectPath(projectRoot, path.join(destinationRoot, "_shared", "kiwi")) : toPosix(path.resolve(destinationRoot, "_shared", "kiwi")),
@@ -967,15 +1053,14 @@ async function buildInstallMetadata(sourcePackage: SkillPackage, destination: st
   };
 }
 
-async function packageDigest(sourcePackage: SkillPackage): Promise<{ checksum: string; fileCount: number }> {
-  const hash = createHash("sha256");
-  for (const file of sourcePackage.files) {
-    hash.update(file.destinationRelativePath);
-    hash.update("\0");
-    hash.update(createHash("sha256").update(await readFile(file.absolutePath)).digest("hex"));
-    hash.update("\n");
-  }
-  return { checksum: `sha256:${hash.digest("hex")}`, fileCount: sourcePackage.files.length };
+async function packageDigest(sourcePackage: SkillPackage): Promise<{ checksum: string; checksumIgnoringLineEndings: string; fileCount: number }> {
+  const entries: DigestEntry[] = [];
+  for (const file of sourcePackage.files) entries.push({ relativePath: file.destinationRelativePath, bytes: await readFile(file.absolutePath) });
+  return {
+    checksum: digestOf(entries),
+    checksumIgnoringLineEndings: digestOf(entries, (entry) => withLineEndings(entry.bytes, "lf")),
+    fileCount: sourcePackage.files.length
+  };
 }
 
 function metadataMatchesExpected(metadata: SkillInstallMetadata, expected: SkillInstallMetadata): boolean {
@@ -991,6 +1076,7 @@ function metadataMatchesExpected(metadata: SkillInstallMetadata, expected: Skill
     metadata.sourceRevision === expected.sourceRevision &&
     metadata.sourceChecksum === expected.sourceChecksum &&
     metadata.installedChecksum === expected.installedChecksum &&
+    metadata.installedChecksumIgnoringLineEndings === expected.installedChecksumIgnoringLineEndings &&
     metadata.sourceFileCount === expected.sourceFileCount &&
     metadata.installedFileCount === expected.installedFileCount &&
     metadata.sharedResourceRoot === expected.sharedResourceRoot &&

@@ -9,7 +9,7 @@ import { mutationFail } from "../../core/mutation/guards.js";
 import { updateStatus, restore } from "../../core/mutation/update-status.js";
 import { updateStability } from "../../core/mutation/update-stability.js";
 import { appendSectionNote } from "../../core/mutation/append-section-note.js";
-import { setAcceptanceCriteriaChecked, editAcceptanceCriteria } from "../../core/mutation/check-ac.js";
+import { appendAcceptanceCriterion, setAcceptanceCriteriaChecked, editAcceptanceCriteria } from "../../core/mutation/check-ac.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { addTraceLink, setSupersede } from "../../core/mutation/add-trace.js";
 import { addRequirement } from "../../core/mutation/add-requirement.js";
@@ -37,7 +37,6 @@ import type { RequirementFilter, RequirementStatus, RequirementType } from "../.
 import { writeHuman, writeJson } from "../formatters.js";
 import { parseDate } from "../option-parsers.js";
 import { runAgentCli } from "../agent-cli-runner.js";
-import { todayStamp } from "../../core/date-stamp.js";
 import { markMutationCommands } from "../input-json.js";
 
 /** @req IR-CLI-106 AC-1 — one description for the flag on `init` and on `upgrade`. */
@@ -671,17 +670,38 @@ export function registerMutationCommands(command: Command, context: CliContext):
       if (!result.ok) command.setOptionValue("exitCode", 5);
     });
 
+  // @req FR-MCP-072 AC-2
+  command
+    .command("append-ac")
+    .argument("<id>")
+    .requiredOption("--text <text>", "the new acceptance criterion text")
+    .option("--dry-run")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
+    .option("--json")
+    .action(async (id, options) => {
+      const result = await appendAcceptanceCriterion(await rootFrom(command.opts()), {
+        id,
+        text: options.text,
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
   command
     .command("add-related-doc")
     .argument("<id>")
     .requiredOption("--link <link>", "Related Docs reference to append")
     .option("--dry-run")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, options) => {
       const result = await addRelatedDoc(await rootFrom(command.opts()), {
         id,
         reference: options.link,
-        ...(options.dryRun ? { dryRun: true } : {})
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);
@@ -694,14 +714,16 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .requiredOption("--reason <reason>")
     .option("--date <date>", "change-note date as YYYY-MM-DD (defaults to today)", parseDate)
     .option("--dry-run")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, options) => {
       const result = await addChangeNote(await rootFrom(command.opts()), {
         id,
-        date: typeof options.date === "string" ? options.date : todayStamp(),
+        ...(typeof options.date === "string" ? { date: options.date } : {}),
         change: options.change,
         reason: options.reason,
-        ...(options.dryRun ? { dryRun: true } : {})
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);

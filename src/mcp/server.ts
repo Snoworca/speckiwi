@@ -15,7 +15,15 @@ import { getServerMetadata, type PackageInfo } from "./metadata.js";
 // read here would run against a half-initialised module.
 import { renderToolDescriptions } from "./schemas.js";
 import { perCallWorkspaceRootTools, registerReadTools } from "./tools/read-tools.js";
-import { EXPIRE_ACCEPTANCE_CRITERION_SCHEMA, RENAME_SCOPE_SCHEMA, registerMutationTools } from "./tools/mutation-tools.js";
+import {
+  ADD_CHANGE_NOTE_SCHEMA,
+  ADD_RELATED_DOC_SCHEMA,
+  APPEND_ACCEPTANCE_CRITERION_SCHEMA,
+  EDIT_ACCEPTANCE_CRITERION_SCHEMA,
+  EXPIRE_ACCEPTANCE_CRITERION_SCHEMA,
+  RENAME_SCOPE_SCHEMA,
+  registerMutationTools
+} from "./tools/mutation-tools.js";
 import { PRD_TOOL_SCHEMAS, registerPrdTools } from "./tools/prd-tools.js";
 import { ROADMAP_TOOL_SCHEMAS } from "./tools/roadmap-tools.js";
 import { registerResources } from "./resources.js";
@@ -238,6 +246,12 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   rename_scope: RENAME_SCOPE_SCHEMA,
   // @req FR-NODE-243 AC-6
   expire_acceptance_criterion: EXPIRE_ACCEPTANCE_CRITERION_SCHEMA,
+  // @req FR-MCP-072 AC-1 AC-2
+  edit_acceptance_criterion: EDIT_ACCEPTANCE_CRITERION_SCHEMA,
+  append_acceptance_criterion: APPEND_ACCEPTANCE_CRITERION_SCHEMA,
+  // @req FR-MCP-049 AC-3
+  add_related_doc: ADD_RELATED_DOC_SCHEMA,
+  add_change_note: ADD_CHANGE_NOTE_SCHEMA,
   update_status: { id: z.string(), status: z.string(), reason: z.string().max(500).optional(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   update_stability: {
     id: z.string(),

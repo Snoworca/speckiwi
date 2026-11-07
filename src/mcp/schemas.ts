@@ -585,20 +585,29 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("edit-ac", undefined, "req-scoped", "editAcceptanceCriteria", [
+  // @req FR-MCP-072 AC-1 AC-2 — one criterion edited or appended, the rest never restated.
+  mutationSpec("edit-ac", mcp("edit_acceptance_criterion", "Rewrites the wording of one acceptance criterion of a requirement, named by its id such as `AC-2`, keeping its number and its checked state and leaving every other line of the block as written. Unlike `replace_acceptance_criteria`, nothing is renumbered and the other criteria are not restated. The text is a single line of at most 16384 characters; an expired criterion cannot be reworded, and the call is refused while the requirement's Status is `verified`. Writes the requirement block."), "req-scoped", "editAcceptanceCriteria", [
     opt("--text <text>", "text"),
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("add-related-doc", undefined, "req-scoped", "addRelatedDoc", [
-    opt("--link <link>", "link"),
-    DRY_RUN
+  mutationSpec("append-ac", mcp("append_acceptance_criterion", "Adds one new unchecked acceptance criterion after the last one of a requirement, numbered one above the highest number the block has ever used, expired ones included, so a retired number never returns. The existing criteria and their checked state stay as written and are not restated. The text is a single line of at most 16384 characters, and the call is refused while the requirement's Status is `verified`. Writes the requirement block."), "req-scoped", "appendAcceptanceCriterion", [
+    opt("--text <text>", "text"),
+    DRY_RUN,
+    IGNORE_LOCK
   ]),
-  mutationSpec("add-change-note", undefined, "req-scoped", "addChangeNote", [
+  // @req FR-MCP-049 AC-1 AC-2 AC-5 AC-6
+  mutationSpec("add-related-doc", mcp("add_related_doc", "Appends one document reference to a requirement's Related Docs field, replacing the `-` placeholder or adding it after a comma, and changes no other line of the block. Writes the requirement block."), "req-scoped", "addRelatedDoc", [
+    opt("--link <link>", "link"),
+    DRY_RUN,
+    IGNORE_LOCK
+  ]),
+  mutationSpec("add-change-note", mcp("add_change_note", "Appends one dated row — date, change, reason — to a requirement's Change Notes table, keeping every existing row; without a date it stamps today's local date. Use it for a revision that moves neither Status nor Stability, such as a reworded criterion; `update_status` and `update_stability` already record their own row when given a `reason`. Writes the requirement block."), "req-scoped", "addChangeNote", [
     opt("--change <change>", "change"),
     opt("--reason <reason>", "reason"),
     opt("--date <date>", "date"),
-    DRY_RUN
+    DRY_RUN,
+    IGNORE_LOCK
   ]),
   mutationSpec("update-field", undefined, "workspace", "updateField", [
     opt("--field <field>", "field"),

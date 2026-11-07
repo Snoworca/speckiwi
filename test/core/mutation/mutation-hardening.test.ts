@@ -28,7 +28,9 @@ async function readSpec(rootPath: string): Promise<string> {
  * false the block omits its Change Notes section so a retarget with a reason hits the
  * `Change Notes section not found` MUTATION_DENIED branch — used by the FND-002 atomicity test.
  */
-async function addSecondRequirement(rootPath: string, withChangeNotes: boolean): Promise<void> {
+// A Change Notes table without the Reason column is refused by every Change Notes writer (FR-NODE-259 AC-4);
+// a missing section no longer is, since FR-NODE-278 creates it.
+async function addSecondRequirement(rootPath: string, changeNotes: "standard" | "without-reason"): Promise<void> {
   const file = await specPath(rootPath);
   const text = await readFile(file, "utf8");
   const lines = [
@@ -78,7 +80,7 @@ async function addSecondRequirement(rootPath: string, withChangeNotes: boolean):
     "",
     "- -"
   ];
-  if (withChangeNotes) {
+  if (changeNotes === "standard") {
     lines.push(
       "",
       "#### Change Notes",
@@ -87,6 +89,8 @@ async function addSecondRequirement(rootPath: string, withChangeNotes: boolean):
       "| --- | --- | --- |",
       "| 2026-05-08 | Created | Fixture |"
     );
+  } else {
+    lines.push("", "#### Change Notes", "", "| Date | Change |", "| --- | --- |", "| 2026-05-08 | Created |");
   }
   await writeFile(file, `${text.trimEnd()}\n${lines.join("\n")}\n`, "utf8");
 }
@@ -144,13 +148,13 @@ describe("FND-001 update-field rejects pipe/newline injection in values", () => 
 });
 
 describe("FND-002 retarget is atomic across per-item operations", () => {
-  // With two ids where the second triggers a MUTATION_DENIED (its Change Notes section is
-  // missing, required because the reason path is taken), the FIRST item's Target rewrite
+  // With two ids where the second triggers a MUTATION_DENIED (its Change Notes table has no
+  // Reason column for the row the retarget adds), the FIRST item's Target rewrite
   // must NOT be persisted: the whole call fails with no partial write.
   it("FND-002: a denied later item leaves no partial write from an earlier item", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
-    // FR-ARCH-002 has no Change Notes section, so a retarget WITH a reason denies it.
-    await addSecondRequirement(rootPath, false);
+    // FR-ARCH-002's Change Notes table has no Reason column, so a retarget WITH a reason denies it.
+    await addSecondRequirement(rootPath, "without-reason");
     const root = await resolveProjectRoot(rootPath);
     const before = await readSpec(rootPath);
 
@@ -172,7 +176,7 @@ describe("FND-002 retarget is atomic across per-item operations", () => {
   // Regression: a normal multi-id retarget still applies every item's rewrite.
   it("FND-002: a fully valid multi-id retarget still writes every item", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
-    await addSecondRequirement(rootPath, true);
+    await addSecondRequirement(rootPath, "standard");
     const root = await resolveProjectRoot(rootPath);
 
     const result = await retarget(root, {

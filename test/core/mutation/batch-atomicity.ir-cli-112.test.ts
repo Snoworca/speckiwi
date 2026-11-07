@@ -46,13 +46,22 @@ async function twoRequirementFixture(first: (block: string) => string, second: (
   return rootPath;
 }
 
-const withoutChangeNotes = (block: string): string => block.slice(0, block.indexOf("#### Change Notes"));
+// A Change Notes table without the Reason column refuses the row every batch writes (FR-NODE-259 AC-4);
+// a missing section no longer refuses it, since FR-NODE-278 creates the section.
+const changeNotesWithoutReason = (block: string): string => {
+  const reasonless = block.replace(
+    "| Date | Change | Reason |\n| --- | --- | --- |\n| 2026-05-08 | Created | Fixture |",
+    "| Date | Change |\n| --- | --- |\n| 2026-05-08 | Created |"
+  );
+  if (reasonless === block) throw new Error("fixture Change Notes table not found");
+  return reasonless;
+};
 
 describe("IR-CLI-112 batch commands write all or nothing", () => {
   // @req IR-CLI-112 AC-3
   it("repair rules-references refused on the second requirement writes nothing", async () => {
     const stale = (block: string) => block.replace("| Related Docs | - |", `| Related Docs | ${STALE_RULES_LINK} |`);
-    const rootPath = await twoRequirementFixture(stale, (block) => withoutChangeNotes(stale(block)));
+    const rootPath = await twoRequirementFixture(stale, (block) => changeNotesWithoutReason(stale(block)));
     const before = await snapshotSpec(rootPath);
     const result = await repairRulesReferences(await resolveProjectRoot(rootPath), { apply: true });
     expect(result.ok).toBe(false);
@@ -61,7 +70,7 @@ describe("IR-CLI-112 batch commands write all or nothing", () => {
 
   // @req IR-CLI-112 AC-3
   it("retarget refused on the second requirement writes nothing", async () => {
-    const rootPath = await twoRequirementFixture((block) => block, withoutChangeNotes);
+    const rootPath = await twoRequirementFixture((block) => block, changeNotesWithoutReason);
     const before = await snapshotSpec(rootPath);
     const result = await retarget(await resolveProjectRoot(rootPath), { ids: ["FR-ARCH-001", "FR-ARCH-002"], toTarget: "v1.1.0", dryRun: false });
     expect(result.ok).toBe(false);

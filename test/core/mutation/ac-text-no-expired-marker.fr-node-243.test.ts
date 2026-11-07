@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { addRequirement } from "../../../src/core/mutation/add-requirement.js";
-import { editAcceptanceCriteria } from "../../../src/core/mutation/check-ac.js";
+import { appendAcceptanceCriterion, editAcceptanceCriteria } from "../../../src/core/mutation/check-ac.js";
 import { replaceAcceptanceCriteria } from "../../../src/core/mutation/edit-requirement.js";
 import { supersedeRequirement } from "../../../src/core/mutation/supersede-requirement.js";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
@@ -27,6 +27,11 @@ const ENTRY_POINTS: Readonly<Record<string, { file: string; call: EntryPoint }>>
   edit_acceptance_criteria: {
     file: "src/core/mutation/check-ac.ts",
     call: (root, text) => editAcceptanceCriteria(root, { id: "FR-ARCH-001", acId: "AC-1", text })
+  },
+  // @req FR-MCP-072 AC-3 — the appended criterion is written verbatim too.
+  append_acceptance_criterion: {
+    file: "src/core/mutation/check-ac.ts",
+    call: (root, text) => appendAcceptanceCriterion(root, { id: "FR-ARCH-001", text })
   },
   replace_acceptance_criteria: {
     file: "src/core/mutation/edit-requirement.ts",
@@ -73,9 +78,10 @@ describe("FR-NODE-243 — no AC-text writer forges the expired marker", () => {
   });
 
   // @req FR-NODE-243 AC-1 — the denominator: every source file that renders an acceptance-criterion
-  // line (`- [x] AC-<n>: <text>`) or rewrites one's text after its `AC-<n>:` prefix.
+  // line (`- [x] AC-<n>: <text>`) or rewrites one's text after its `AC-<n>:` prefix, the callers of
+  // the shared line renderer `acceptanceCriterionLine` included (FR-MCP-072 AC-2).
   it("covers every source file that writes acceptance-criterion text", async () => {
-    const renders = /\] AC-\$\{|\] \$\{acId\}: \$\{|\$\{prefix\} \$\{input\.text\}/;
+    const renders = /\] AC-\$\{|\] \$\{acId\}: \$\{|\$\{prefix\} \$\{input\.text\}|\bacceptanceCriterionLine\(/;
     const found: string[] = [];
     const walk = async (dir: string): Promise<void> => {
       for (const entry of await readdir(dir, { withFileTypes: true })) {

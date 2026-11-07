@@ -21,7 +21,7 @@
 ## 2. 순서 — run 당 한 번
 
 1. **PRD** — 요청에 PRD 경로가 없으면 `kiwi-prd` 를 먼저 부른다.
-2. **처음 저작** — `wave-srs-registration.md §1` 의 호출 하나로 제품 target 의 SRS 를 쓴다.
+2. **처음 저작** — `wave-srs-registration.md §1` 의 호출 하나로 제품 target 의 SRS 를 쓴다. `kiwi-orchestrator --existing-srs` 면 이 단계를 건너뛰고, 4 의 PRD 커버리지는 그대로 돈다.
 3. **feasibility 한 번** — `Skill({ skill: "kiwi-srs-feasibility", args: "TARGET=<제품 target> [--auto] [--max] [--mini|--loops N]" })` 을 처음 저작 뒤, 첫 dispatch 앞에 한 번 부른다. wave 마다 부르지 않는다. 뒤 wave 의 요구는 `draft` 로 남겨도 되고, 그 노드를 스케줄하기 직전에 올린다(`parallel-waves.md` PW-4).
 4. **PRD 커버리지** — §5.
 5. **영향 분석** — 서브에이전트 하나가 요구마다 바꿀 것으로 예상되는 파일을 `{artifact_root}waves/expected-files.json`(요구 ID → 경로 목록)으로 쓴다. 입력은 요구 ID 와 AC, `existing_modules`, 저장소다. 수렴 레지스트리(`run-ledger.md`)가 `orchestrator-only` · `regenerate` 로 표시한 경로는 넣지 않는다 — 그 경로는 호스트가 병합 뒤에 처리한다(`parallel-waves.md` PW-12). 이 지도는 다음 단계의 `--files` 로만 넘기고 어느 SRS 필드에도 쓰지 않는다.

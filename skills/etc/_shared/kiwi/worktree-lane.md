@@ -107,7 +107,7 @@ declaration against the repository itself.
 
 | role | passes when |
 |---|---|
-| `host` | the two roots agree and that root is **not** a linked worktree |
+| `host` | the two roots agree, whether it is the main worktree or a linked worktree; roots that differ are refused first by the equality check, as `roots-differ` (`git-root-not-a-repository` when the git root is not a repository, `git-root-not-toplevel` when it is not the top level) |
 | `lane` | the git common dir matches the host's, the top level differs, the common dir has it
 **registered**, `lane_id` is in the frozen lane plan, and that lane's `write_set` touches no
 `docs/spec/` path |

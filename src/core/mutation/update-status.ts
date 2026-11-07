@@ -8,7 +8,7 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { tableCellText } from "./table-cell.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
-import { findSectionTableInsertionLine, loadRecordWithWorkspace, planMetadataWrite } from "./internal.js";
+import { loadRecordWithWorkspace, planMetadataWrite, planSectionRowsInsert } from "./internal.js";
 import { deriveSuccessorSlot, findIncomingTraceRows, findSupersedingRows } from "../trace-search.js";
 import type { RequirementRecord } from "../types.js";
 import { checkIndexRollupsWritableAt, syncIndexRollupsAfterWrite } from "./sync-index.js";
@@ -193,12 +193,12 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput,
   if (headingOp) operations.push(headingOp);
   operations.push(statusWrite.operation);
   if (input.reason !== undefined && input.reason.length > 0) {
-    const insertLine = findSectionTableInsertionLine(loaded.file, loaded.record, "Change Notes");
-    if (!insertLine) {
-      return mutationFail("MUTATION_DENIED", "Change Notes section not found for reason append");
-    }
-    const row = `| ${todayStamp()} | ${statusChangeLabel(input.status)} | ${tableCellText(input.reason)} |`;
-    operations.push({ type: "insertLines", line: insertLine, lines: [row] });
+    // @req FR-NODE-259 AC-1 @req FR-NODE-278 AC-3
+    const insert = planSectionRowsInsert(loaded.file, loaded.record, "Change Notes", [
+      { Date: todayStamp(), Change: statusChangeLabel(input.status), Reason: tableCellText(input.reason) }
+    ]);
+    if (!insert.ok) return mutationFail("MUTATION_DENIED", insert.message);
+    operations.push(insert.operation);
   }
   for (const move of markerMoves.filter((rewrite) => rewrite.file.relativePath === loaded.file.relativePath)) {
     operations.push({ type: "replaceLine", line: move.line, original: move.original, replacement: move.replacement });

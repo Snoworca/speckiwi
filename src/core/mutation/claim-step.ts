@@ -1,6 +1,8 @@
 import { applyPatchPlan } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { parseStepState } from "../parser/index-parser.js";
+import { parseMarkdownTable } from "../parser/table.js";
+import { planTableRowInsert } from "./internal.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { computeBlastRadius } from "./records.js";
 import { mutationFail, mutationOk } from "./guards.js";
@@ -134,8 +136,17 @@ export async function claimStep(root: ProjectRoot, input: ClaimStepInput): Promi
 
   const stamp = todayStamp();
   const reqCell = claimReqs.length > 0 ? claimReqs.join(", ") : "-";
-  const row = `| ${input.step} | active | - | ${input.touchesScope} | ${reqCell} | ${stamp} | ${stamp} |`;
-  const operations: PatchOperation[] = [{ type: "appendLines", lines: [row] }];
+  // @req FR-NODE-259 AC-3 AC-4 — under the step table's own header; a column it lacks is refused.
+  const table = parseMarkdownTable(stateFile.lines, 0, { skipNonTableLeading: true });
+  if (!table) return mutationFail("MUTATION_DENIED", "docs/spec/steps/state.md has no step table to add the claim to");
+  const insert = planTableRowInsert(
+    stateFile,
+    table,
+    { Step: input.step, Status: "active", DependsOn: "-", TouchesScope: input.touchesScope, TouchesReq: reqCell, Created: stamp, Updated: stamp },
+    { unownedCell: "-" }
+  );
+  if (!insert.ok) return mutationFail("MUTATION_DENIED", insert.message);
+  const operations: PatchOperation[] = [insert.operation];
 
   // AC-3: when a forced claim proceeds over a transitive overlap, pin an overlaps marker
   // recording the overlapping incumbent step(s) below the table.

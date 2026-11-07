@@ -35,6 +35,11 @@ const EXPECTED_KINDS: Record<string, MutationToolKind> = {
   rename_scope: "workspace",
   // @req FR-NODE-243 AC-6 — expiring a criterion acts on one requirement id.
   expire_acceptance_criterion: "req-scoped",
+  // @req FR-MCP-049 AC-5 · FR-MCP-072 AC-1 AC-2 — each acts on one requirement id.
+  add_related_doc: "req-scoped",
+  add_change_note: "req-scoped",
+  edit_acceptance_criterion: "req-scoped",
+  append_acceptance_criterion: "req-scoped",
   // @req IR-MCP-003 — every `orchestrate_*` mutation acts on run artifacts (the journal, the resume
   // card, a lock, the issue ledger), never on one requirement id, so all of them are workspace-kind.
   ...Object.fromEntries(

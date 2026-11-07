@@ -7,7 +7,7 @@ import { parseWorkspace } from "../parser/workspace-parser.js";
 import type { MutationResult, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
 import { rewriteRulesReferences } from "../bootstrap/rules-references.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { findMetadataLine, findSectionTableInsertionLine, metadataRowText, planMetadataRowEdit } from "./internal.js";
+import { findMetadataLine, metadataRowText, planMetadataRowEdit, planSectionRowsInsert } from "./internal.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { todayStamp } from "../date-stamp.js";
 
@@ -158,9 +158,13 @@ function planOne(repair: PlannedRepair, date: string): { ok: true; operations: P
   if (!write.ok) return { ok: false, message: `${write.message}: ${record.id}` };
   if ("unchanged" in write) return { ok: true, operations: [] };
   const metadataLine = findMetadataLine(file, record, RELATED_DOCS_FIELD) ?? 0;
-  const noteLine = findSectionTableInsertionLine(file, record, "Change Notes");
-  if (noteLine === undefined) return { ok: false, message: `Change Notes section not found: ${record.id}` };
-  if (noteLine <= metadataLine) return { ok: false, message: `Change Notes table precedes the metadata row in ${record.id}; refusing to patch` };
-  const note = `| ${date} | Related Docs reference repaired | rules document renamed; path corrected by repair rules-references |`;
-  return { ok: true, operations: [{ type: "insertLines", line: noteLine, lines: [note] }, write.operation] };
+  // @req FR-NODE-259 AC-1
+  const note = planSectionRowsInsert(file, record, "Change Notes", [
+    { Date: date, Change: "Related Docs reference repaired", Reason: "rules document renamed; path corrected by repair rules-references" }
+  ]);
+  if (!note.ok) return { ok: false, message: `${note.message}: ${record.id}` };
+  if (note.operation.type !== "insertLines" || note.operation.line <= metadataLine) {
+    return { ok: false, message: `Change Notes table precedes the metadata row in ${record.id}; refusing to patch` };
+  }
+  return { ok: true, operations: [note.operation, write.operation] };
 }

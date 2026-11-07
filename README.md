@@ -425,7 +425,7 @@ Run it by hand only for debugging. It waits on stdio, so it looks as if it hangs
 
 - **No `--root`.** The server finds the project by searching upward from its working directory for `docs/spec/00.index.md`. The search stops at your home directory and never adopts an index there. Started with `--root`, the server exits with an error.
 - **Outside a project, the server stays unbound.** When the search finds no `docs/spec/00.index.md`, the server creates nothing and refuses every tool call and resource read with `MCP_WORKSPACE_UNBOUND`, naming the directory it checked. Start the agent session in the project, or set the server's working directory in the agent's MCP configuration, then restart the session; an unbound server stays unbound until it is restarted. If the project has no SRS yet, run `speckiwi init` there first.
-- **Git worktrees.** The root is fixed when the server starts, so a running server does not follow a worktree switch. Restart the agent inside the worktree instead. A session rooted in a linked worktree must **not allocate new Requirement IDs** and cannot edit the host checkout's `docs/spec/`. Do both from the host checkout.
+- **Git worktrees.** The root is fixed when the server starts, so a running server does not follow a worktree switch. Restart the agent inside the worktree instead. Only the host session allocates new Requirement IDs and writes `docs/spec/`, whether it runs in the main worktree or in a linked worktree. A lane session, a worker in another linked worktree of the run, must **not allocate new Requirement IDs** and cannot edit the host checkout's `docs/spec/`.
 
 <a id="en-mcp-tools"></a>
 
@@ -451,7 +451,7 @@ The Kiwi skills use MCP tools for every read and every SRS change. The matching 
 | Orchestrator run surface | 31 `orchestrate_*` tools: the run lock and journal, routing probe and freeze, the wave schedule and wave status, verification rounds, wave close, resume and replay, and the `--auto` gate decision. |
 | Workflow & pipeline | 15 `workflow_*` tools: pipeline emit/status/tail, worklog, artifacts (SDS files included), session status, and repair and reclassification records. |
 
-**110 tools ship in total.** The table names every tool a skill calls directly. The last two rows are families, documented in the skills that drive them. After an upgrade, trust the count that `speckiwi doctor` reports, because that is what the server registered.
+**114 tools ship in total.** The table names every tool a skill calls directly. The last two rows are families, documented in the skills that drive them. After an upgrade, trust the count that `speckiwi doctor` reports, because that is what the server registered.
 
 #### Per-call `workspaceRoot`
 
@@ -1418,7 +1418,7 @@ speckiwi mcp
 
 - **`--root`를 받지 않습니다.** 서버는 자기 작업 디렉터리에서 위로 올라가며 `docs/spec/00.index.md`를 찾아 프로젝트를 정합니다. 이 탐색은 홈 디렉터리에서 멈추고, 홈 디렉터리의 인덱스는 루트로 삼지 않습니다. `--root`를 주고 시작하면 서버는 오류로 종료합니다.
 - **프로젝트 밖에서 시작한 서버는 어느 프로젝트에도 바인딩되지 않습니다(unbound).** 탐색이 `docs/spec/00.index.md`를 찾지 못하면 서버는 아무것도 만들지 않고, 모든 도구 호출과 리소스 읽기를 `MCP_WORKSPACE_UNBOUND`로 거부하면서 확인한 디렉터리를 알려 줍니다. 에이전트 세션을 프로젝트 안에서 시작하거나 에이전트의 MCP 설정에서 서버의 작업 디렉터리를 지정한 뒤, 세션을 재시작하십시오. 바인딩되지 않은 서버는 재시작할 때까지 그 상태로 남습니다. 프로젝트에 아직 SRS가 없으면 먼저 그 프로젝트에서 `speckiwi init`을 실행하십시오.
-- **Git worktree.** 루트는 서버가 시작할 때 정해지므로, 실행 중인 서버는 worktree를 바꿔도 따라가지 않습니다. 대신 그 worktree 안에서 에이전트를 재시작하십시오. 연결된 worktree를 루트로 삼은 세션은 **새 요구사항 ID를 할당하면 안 되며**, 호스트 체크아웃의 `docs/spec/`도 고칠 수 없습니다. 두 작업은 호스트 체크아웃에서 하십시오.
+- **Git worktree.** 루트는 서버가 시작할 때 정해지므로, 실행 중인 서버는 worktree를 바꿔도 따라가지 않습니다. 대신 그 worktree 안에서 에이전트를 재시작하십시오. 새 요구사항 ID를 할당하고 `docs/spec/`를 쓰는 것은 호스트 세션뿐이며, 호스트 세션은 메인 worktree에서도 연결된 worktree에서도 실행될 수 있습니다. 레인 세션, 곧 run 의 다른 연결된 worktree에서 도는 워커는 **새 요구사항 ID를 할당하면 안 되며**, 호스트 체크아웃의 `docs/spec/`도 고칠 수 없습니다.
 
 <a id="ko-mcp-tools"></a>
 
@@ -1444,7 +1444,7 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 | 오케스트레이터 실행 | `orchestrate_*` 31개: 실행 잠금과 저널, 경로 탐색과 경로 동결, wave 일정과 wave 상태, 검증 라운드, wave 종료, 재개와 재생, `--auto` 모드의 판정을 다룹니다. |
 | 워크플로와 파이프라인 | `workflow_*` 15개 — 파이프라인 emit/status/tail, 작업 기록(worklog), 산출물(SDS 파일 포함), 세션 상태, 복구와 재분류 기록을 다룹니다. |
 
-**총 110개 도구가 배포됩니다.** 표는 스킬이 직접 부르는 도구를 모두 나열합니다. 마지막 두 행은 도구군이며, 그 도구들을 쓰는 스킬의 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 그 개수가 서버가 실제로 등록한 도구 수입니다.
+**총 114개 도구가 배포됩니다.** 표는 스킬이 직접 부르는 도구를 모두 나열합니다. 마지막 두 행은 도구군이며, 그 도구들을 쓰는 스킬의 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 그 개수가 서버가 실제로 등록한 도구 수입니다.
 
 #### 호출마다 넘기는 `workspaceRoot`
 

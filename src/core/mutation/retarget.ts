@@ -18,7 +18,7 @@ export type { RetargetInput, RetargetItemPlan, RetargetOutput } from "../types.j
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { tableCellText } from "./table-cell.js";
-import { findSectionTableInsertionLine, loadRecord, planMetadataWrite } from "./internal.js";
+import { loadRecord, planMetadataWrite, planSectionRowsInsert } from "./internal.js";
 import { todayStamp } from "../date-stamp.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 
@@ -121,15 +121,12 @@ async function retargetUnlocked(root: ProjectRoot, input: RetargetInput): Promis
     pushOp(loaded.file, write.operation);
     // @req IR-CLI-112 AC-3 — every retarget leaves a row naming both targets, reason or not: the
     // Target cell alone no longer says where the requirement came from.
-    const insertLine = findSectionTableInsertionLine(loaded.file, loaded.record, "Change Notes");
-    if (!insertLine) {
-      return mutationFail("MUTATION_DENIED", `Change Notes section not found for ${id}`);
-    }
-    pushOp(loaded.file, {
-      type: "insertLines",
-      line: insertLine,
-      lines: [`| ${todayStamp()} | Target ${fromTarget} -> ${toTarget} | ${reason.length > 0 ? tableCellText(reason) : "-"} |`]
-    });
+    // @req FR-NODE-259 AC-1 @req FR-NODE-278 AC-3
+    const note = planSectionRowsInsert(loaded.file, loaded.record, "Change Notes", [
+      { Date: todayStamp(), Change: `Target ${fromTarget} -> ${toTarget}`, Reason: reason.length > 0 ? tableCellText(reason) : "-" }
+    ]);
+    if (!note.ok) return mutationFail("MUTATION_DENIED", `${note.message} (${id})`);
+    pushOp(loaded.file, note.operation);
 
     items.push({ id, fromTarget, toTarget });
   }

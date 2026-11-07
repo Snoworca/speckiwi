@@ -49,6 +49,7 @@ async function git(cwd: string, ...args: string[]): Promise<string> {
 let scratch = "";
 let host = "";
 let lane = "";
+let lane2 = "";
 let foreign = "";
 let planPath = "";
 
@@ -56,6 +57,7 @@ beforeAll(async () => {
   scratch = await mkdtemp(path.join(tmpdir(), "preflight-role-"));
   host = path.join(scratch, "host");
   lane = path.join(scratch, "lane");
+  lane2 = path.join(scratch, "lane2");
   foreign = path.join(scratch, "foreign");
 
   for (const [dir, file] of [
@@ -71,6 +73,7 @@ beforeAll(async () => {
   }
   // A real linked worktree of `host`, registered in host's common dir.
   await git(host, "worktree", "add", "-q", lane, "-b", "kiwi/orch/r1/lane-1");
+  await git(host, "worktree", "add", "-q", lane2, "-b", "kiwi/orch/r1/lane-2");
 
   planPath = path.join(scratch, "lanes.lock.json");
   await writeFile(
@@ -82,6 +85,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await run("git", ["-C", host, "worktree", "remove", "--force", lane]).catch(() => undefined);
+  await run("git", ["-C", host, "worktree", "remove", "--force", lane2]).catch(() => undefined);
 });
 
 describe("IR-CLI-093 — the declared role reaches the topology gate", () => {
@@ -147,10 +151,29 @@ describe("IR-CLI-093 — the declared role reaches the topology gate", () => {
     expect(JSON.stringify(result.json)).toContain("lane-write-set-touches-srs");
   });
 
-  it("AC-7: a host root that is itself a linked worktree is refused, where equality passes", async () => {
+  it("AC-7: a host root that is itself a linked worktree passes when the two roots agree", async () => {
+    // @req FR-NODE-186 AC-8 — the linked-worktree host refusal was withdrawn.
     const result = await preflight(["--mcp-root", lane, "--git-root", lane, "--role", "host"]);
-    expect(result.code).toBe(2);
-    expect(JSON.stringify(result.json)).toContain("host-root-is-a-linked-worktree");
+    expect(result.code, JSON.stringify(result.json)).toBe(0);
+    expect(result.json).toMatchObject({ role: "host", topology: "same-root" });
+  });
+
+  it("FR-FLOW-230 AC-1: a linked-worktree host passes, and a sibling linked worktree passes the lane gate", async () => {
+    // @req FR-FLOW-230 AC-1
+    const asHost = await preflight(["--mcp-root", lane, "--git-root", lane]);
+    expect(asHost.code, JSON.stringify(asHost.json)).toBe(0);
+
+    const sibling = await preflight([
+      "--mcp-root", lane, "--git-root", lane2, "--role", "lane", "--lane-id", "lane-1", "--lane-plan", planPath
+    ]);
+    expect(sibling.code, JSON.stringify(sibling.json)).toBe(0);
+    expect(sibling.json).toMatchObject({ ok: true, topology: "linked-worktree" });
+
+    // A sibling worktree declared as the host is still refused: the roots differ.
+    const relabelled = await preflight(["--mcp-root", lane, "--git-root", lane2, "--role", "host"]);
+    expect(relabelled.code).toBe(2);
+    // @req IR-CLI-093 AC-7 — the equality gate refuses first, so the reason is its `roots-differ`.
+    expect(JSON.stringify(relabelled.json)).toContain('"reason":"roots-differ"');
   });
 
   it("AC-9: a refusal reports both the topology and the reason", async () => {

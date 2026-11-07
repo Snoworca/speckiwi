@@ -54,6 +54,11 @@ function linesOrDash(value?: string): string[] {
   return value.split(/\r?\n/).map((line) => (line.startsWith("- ") ? line : `- ${line}`));
 }
 
+/** One acceptance-criterion line, the shape every writer of a criterion uses. @req FR-MCP-072 AC-2 */
+export function acceptanceCriterionLine(acId: string, text: string, checked: boolean): string {
+  return `- [${checked ? "x" : " "}] ${acId}: ${text}`;
+}
+
 export function renderRequirementBlock(input: RenderRequirementInput): string[] {
   const checked = new Set(input.checkedAcceptanceCriteria ?? []);
   // @req FR-NODE-094 — the marker states the stability, not how the requirement arrived at it.
@@ -74,7 +79,7 @@ export function renderRequirementBlock(input: RenderRequirementInput): string[] 
   ];
   const acLines = input.acceptanceCriteria.map((criterion, index) => {
     const acId = `AC-${index + 1}`;
-    return `- [${checked.has(acId) || checked.has(criterion) ? "x" : " "}] ${acId}: ${criterion}`;
+    return acceptanceCriterionLine(acId, criterion, checked.has(acId) || checked.has(criterion));
   });
   const evidenceRows = (input.evidence ?? []).map(
     (row, index) => `| ${row.id ?? `VE-${index + 1}`} | ${row.type ?? "test"} | ${row.reference ?? ""} | ${row.covers ?? "all"} | ${row.notes ?? "-"} |`
