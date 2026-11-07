@@ -34,8 +34,9 @@ import { isPrdFilePath } from "./paths.js";
 // - A citation outside any head and outside a fills is the requirement's, not any criterion's.
 // Line breaks and `;` end every clause.
 
-// The suffix here only finds candidates; `isPrdFilePath` decides.
-const TEXT_PATH = String.raw`(?<![\w./-])(?i:docs/prd/)[^\s;#()[\]` + "`" + String.raw`'"|]+?(?i:\.prd\.md)`;
+// The suffix here only finds candidates; `isPrdFilePath` decides. Case is spelled out per letter
+// because a RegExp modifier group (a flag letter after `(?`) needs Node.js 23, and engines.node admits 22 (FR-NODE-275).
+const TEXT_PATH = String.raw`(?<![\w./-])[dD][oO][cC][sS]/[pP][rR][dD]/[^\s;#()[\]` + "`" + String.raw`'"|]+?\.[pP][rR][dD]\.[mM][dD]`;
 const CRITERION = String.raw`(?<![\w-])AC-\d+`;
 const RUNNING_TEXT_RE = new RegExp(
   [

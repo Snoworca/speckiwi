@@ -85,24 +85,24 @@ interface TreeEntry {
 }
 
 interface FileIdentity {
-  readonly dev: number;
-  readonly ino: number;
-  readonly size: number;
-  readonly nlink: number;
+  readonly dev: bigint;
+  readonly ino: bigint;
+  readonly size: bigint;
+  readonly nlink: bigint;
 }
 
 interface DirectoryIdentity {
   readonly absolutePath: string;
   readonly realPath: string;
-  readonly dev: number;
-  readonly ino: number;
+  readonly dev: bigint;
+  readonly ino: bigint;
 }
 
 interface RootIdentity {
   readonly absolutePath: string;
   readonly realPath: string;
-  readonly dev: number;
-  readonly ino: number;
+  readonly dev: bigint;
+  readonly ino: bigint;
 }
 
 interface ObservedDocument extends PinnedDocument {
@@ -327,12 +327,20 @@ async function readBlob(git: GitRunner, root: string, entry: TreeEntry): Promise
   return bytes;
 }
 
-function fileIdentity(stat: { dev: number; ino: number; size: number; nlink: number }): FileIdentity {
+// @req FR-NODE-275 AC-4 — every identity is read as bigint: NTFS file ids exceed
+// Number.MAX_SAFE_INTEGER, and a number-typed ino rounds neighbouring files to one value.
+const BIGINT = { bigint: true } as const;
+
+function fileIdentity(stat: { dev: bigint; ino: bigint; size: bigint; nlink: bigint }): FileIdentity {
   return { dev: stat.dev, ino: stat.ino, size: stat.size, nlink: stat.nlink };
 }
 
+// @req FR-NODE-275 AC-4 — Node.js 22 on Windows reports device 0 from a path-based stat and the
+// volume serial from an open handle's stat, so a 0 there means "not reported", not another device.
+// The inode, size and link count still have to match.
 function sameFileIdentity(left: FileIdentity, right: FileIdentity): boolean {
-  return left.dev === right.dev && left.ino === right.ino &&
+  const sameDevice = left.dev === right.dev || left.dev === 0n || right.dev === 0n;
+  return sameDevice && left.ino === right.ino &&
     left.size === right.size && left.nlink === right.nlink;
 }
 
@@ -341,7 +349,7 @@ async function captureRootIdentity(root: string): Promise<RootIdentity> {
     fail("Pinned handoff root must be an absolute path");
   }
   const absolutePath = path.resolve(root);
-  const lexical = await lstat(absolutePath);
+  const lexical = await lstat(absolutePath, BIGINT);
   if (!lexical.isDirectory() || lexical.isSymbolicLink()) {
     fail("Pinned handoff root must be a non-reparse directory");
   }
@@ -349,7 +357,7 @@ async function captureRootIdentity(root: string): Promise<RootIdentity> {
   if (comparable(resolved) !== comparable(absolutePath)) {
     fail("Pinned handoff root resolves through a reparse point");
   }
-  const observed = await lstat(resolved);
+  const observed = await lstat(resolved, BIGINT);
   if (
     !observed.isDirectory() || observed.isSymbolicLink() ||
     observed.dev !== lexical.dev || observed.ino !== lexical.ino
@@ -379,7 +387,7 @@ async function captureAncestors(root: string, relativePath: string): Promise<rea
   }
   const identities: DirectoryIdentity[] = [];
   for (const absolutePath of paths) {
-    const stat = await lstat(absolutePath);
+    const stat = await lstat(absolutePath, BIGINT);
     if (!stat.isDirectory() || stat.isSymbolicLink()) {
       fail(`Pinned handoff ancestry contains a reparse point or non-directory: ${relativePath}`);
     }
@@ -387,7 +395,7 @@ async function captureAncestors(root: string, relativePath: string): Promise<rea
     if (comparable(resolved) !== comparable(absolutePath) || !isContained(root, resolved)) {
       fail(`Pinned handoff ancestry escapes the pinned root: ${relativePath}`);
     }
-    const resolvedStat = await lstat(resolved);
+    const resolvedStat = await lstat(resolved, BIGINT);
     if (
       !resolvedStat.isDirectory() || resolvedStat.isSymbolicLink() ||
       resolvedStat.dev !== stat.dev || resolvedStat.ino !== stat.ino
@@ -402,7 +410,7 @@ async function assertAncestors(
   relativePath: string
 ): Promise<void> {
   for (const identity of expected) {
-    const stat = await lstat(identity.absolutePath);
+    const stat = await lstat(identity.absolutePath, BIGINT);
     const resolved = await realpath(identity.absolutePath);
     if (
       !stat.isDirectory() || stat.isSymbolicLink() ||
@@ -422,11 +430,10 @@ async function readWorktreeDocument(root: string, relativePath: string): Promise
   if (!isContained(root, absolutePath)) {
     fail(`Pinned handoff path escapes the pinned root: ${relativePath}`);
   }
-  const lexicalBefore = await lstat(absolutePath);
+  const lexicalBefore = await lstat(absolutePath, BIGINT);
   if (
-    !lexicalBefore.isFile() || lexicalBefore.isSymbolicLink() || lexicalBefore.nlink !== 1 ||
-    !Number.isSafeInteger(lexicalBefore.size) || lexicalBefore.size < 0 ||
-    lexicalBefore.size > PIN_LIMITS.maxDocumentBytes
+    !lexicalBefore.isFile() || lexicalBefore.isSymbolicLink() || lexicalBefore.nlink !== 1n ||
+    lexicalBefore.size < 0n || lexicalBefore.size > BigInt(PIN_LIMITS.maxDocumentBytes)
   ) fail(`Pinned handoff leaf is not a bounded singly-linked regular file: ${relativePath}`);
   const realBefore = await realpath(absolutePath);
   if (comparable(realBefore) !== comparable(absolutePath) || !isContained(root, realBefore)) {
@@ -437,22 +444,22 @@ async function readWorktreeDocument(root: string, relativePath: string): Promise
   const handle = await open(absolutePath, "r");
   let bytes: Buffer;
   try {
-    const descriptorBefore = await handle.stat();
+    const descriptorBefore = await handle.stat(BIGINT);
     if (!descriptorBefore.isFile() || !sameFileIdentity(expectedIdentity, fileIdentity(descriptorBefore))) {
       fail(`Pinned handoff leaf identity changed before the bounded read: ${relativePath}`);
     }
-    const buffer = Buffer.alloc(expectedIdentity.size + 1);
+    const buffer = Buffer.alloc(Number(expectedIdentity.size) + 1);
     let offset = 0;
     while (offset < buffer.byteLength) {
       const { bytesRead } = await handle.read(buffer, offset, buffer.byteLength - offset, offset);
       if (bytesRead === 0) break;
       offset += bytesRead;
     }
-    if (offset !== expectedIdentity.size) {
+    if (BigInt(offset) !== expectedIdentity.size) {
       fail(`Pinned handoff leaf size changed during the bounded read: ${relativePath}`);
     }
     bytes = buffer.subarray(0, offset);
-    const descriptorAfter = await handle.stat();
+    const descriptorAfter = await handle.stat(BIGINT);
     if (!descriptorAfter.isFile() || !sameFileIdentity(expectedIdentity, fileIdentity(descriptorAfter))) {
       fail(`Pinned handoff leaf identity changed during the bounded read: ${relativePath}`);
     }
@@ -460,7 +467,7 @@ async function readWorktreeDocument(root: string, relativePath: string): Promise
     await handle.close();
   }
 
-  const lexicalAfter = await lstat(absolutePath);
+  const lexicalAfter = await lstat(absolutePath, BIGINT);
   const realAfter = await realpath(absolutePath);
   if (
     !lexicalAfter.isFile() || lexicalAfter.isSymbolicLink() ||
