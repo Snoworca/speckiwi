@@ -1,6 +1,6 @@
 {
   "name": "speckiwi",
-  "version": "5.3.6",
+  "version": "5.3.7",
   "description": "SpecKiwi manages Git-tracked Markdown SRS requirements through a local CLI and stdio MCP server.",
   "type": "module",
   "bin": {
