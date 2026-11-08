@@ -17,7 +17,7 @@ import type { MutationResult, ProjectRoot, TextFile } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { planIndexMetadataWrite, planMetadataWrite, readIndexMetadataValue } from "./internal.js";
-import { assertSafeMarkdownTableCells } from "./table-cell.js";
+import { assertSafeMarkdownTableCells, escapeRegExp, replaceTableCell } from "./table-cell.js";
 
 export interface RenameTargetInput {
   from: string;
@@ -69,20 +69,6 @@ async function readExisting(root: ProjectRoot, relativePaths: readonly string[])
 }
 // Same token shape the index parser accepts for a `### Target:` heading, so the renamed goal stays readable.
 const TARGET_TOKEN_RE = /^[^\s/\\]+$/;
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/**
- * Replaces table cell `column` (0-based) when its trimmed text is exactly `from`; whole-cell match keeps
- * `5.2` off `5.2.0`. The cell ends at the next pipe or, for a row without its closing pipe (which the
- * parser reads), at the end of the line.
- */
-function replaceCell(line: string, column: number, from: string, to: string): string | undefined {
-  const pattern = new RegExp(`^(\\s*\\|(?:[^|]*\\|){${column}}\\s*)${escapeRegExp(from)}(\\s*(?:\\||$))`);
-  return pattern.test(line) ? line.replace(pattern, (_match, head: string, tail: string) => `${head}${to}${tail}`) : undefined;
-}
 
 /**
  * Rewrites a residue row's Target cell. Release readiness accepts a row without its outer pipes, so
@@ -181,7 +167,7 @@ async function renameTargetUnlocked(root: ProjectRoot, input: RenameTargetInput,
     table.rows.forEach((row, index) => {
       const line = table.rowLines[index];
       if (line === undefined || (row.Target ?? "").trim() !== from) return;
-      const after = replaceCell(file.lines[line - 1] ?? "", column, from, to);
+      const after = replaceTableCell(file.lines[line - 1] ?? "", column, from, to);
       if (after === undefined) unrewritable.push(`${file.relativePath}:${line}`);
       else plans.add(file, line, after, { kind });
     });

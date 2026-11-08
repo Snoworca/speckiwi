@@ -243,51 +243,71 @@ export function parseIndexDocument(file: TextFile): { index: IndexDocument; diag
 }
 
 const TARGET_HEADING_RE = /^### Target:\s+(\S+)\s*$/;
+/** The `**Goal:** <text>` line of a target's goal block. */
 const GOAL_LABEL_RE = /^\*\*Goal:\*\*\s*(.+)$/;
+/** A heading of level one to three, another target's included, ends a target's goal block. */
+const GOAL_BLOCK_END_RE = /^#{1,3}\s/;
 const LABEL_LINE_RE = /^\*\*[^*]+:\*\*/;
 const FORBIDDEN_TOKEN_CHARS = /[/\\]/;
 
-export function extractTargetGoals(lines: readonly string[]): Record<string, string> {
-  const goals: Record<string, string> = {};
+/** A `### Target: <token>` goal block of the index; line numbers are 0-based. */
+export interface TargetGoalBlock {
+  target: string;
+  /** The `### Target:` heading line. */
+  heading: number;
+  /** The block's first `**Goal:**` line, when it has one. */
+  goal?: number;
+  /** The line the block ends before: the next heading of level one to three, or the line count. */
+  end: number;
+}
+
+/**
+ * The target goal blocks of `lines`, read from document-text lines only: a target heading, a block end
+ * or a Goal line inside fenced code, indented code or an HTML comment is an example the author shows,
+ * not the index's own. The one reader of goal blocks: the parser and set-target-goal both ask it, so a
+ * goal the mutation writes is the goal the parser returns. @req FR-NODE-260 AC-2
+ */
+export function findTargetGoalBlocks(lines: readonly string[]): TargetGoalBlock[] {
+  return goalBlocks(lines, linesOutsideFences(lines));
+}
+
+function goalBlocks(lines: readonly string[], text: readonly boolean[]): TargetGoalBlock[] {
+  const blocks: TargetGoalBlock[] = [];
   for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i] ?? "";
-    const match = TARGET_HEADING_RE.exec(line);
-    if (!match) continue;
-    const token = match[1];
-    if (!token || FORBIDDEN_TOKEN_CHARS.test(token)) continue;
-    const bodyEnd = findBlockEnd(lines, i + 1);
-    const goalText = readGoalText(lines, i + 1, bodyEnd);
-    if (goalText !== undefined) {
-      goals[token] = goalText;
+    const target = text[i] === true ? TARGET_HEADING_RE.exec(lines[i] ?? "")?.[1] : undefined;
+    if (target === undefined) continue;
+    let goal: number | undefined;
+    let end = lines.length;
+    for (let j = i + 1; j < lines.length; j += 1) {
+      if (text[j] !== true) continue;
+      const line = lines[j] ?? "";
+      if (GOAL_BLOCK_END_RE.test(line)) {
+        end = j;
+        break;
+      }
+      if (goal === undefined && GOAL_LABEL_RE.test(line)) goal = j;
     }
+    blocks.push({ target, heading: i, end, ...(goal === undefined ? {} : { goal }) });
+  }
+  return blocks;
+}
+
+export function extractTargetGoals(lines: readonly string[]): Record<string, string> {
+  const text = linesOutsideFences(lines);
+  const goals: Record<string, string> = {};
+  for (const block of goalBlocks(lines, text)) {
+    if (block.goal === undefined || FORBIDDEN_TOKEN_CHARS.test(block.target)) continue;
+    goals[block.target] = readGoalText(lines, text, block.goal, block.end);
   }
   return goals;
 }
 
-function findBlockEnd(lines: readonly string[], start: number): number {
-  for (let i = start; i < lines.length; i += 1) {
-    const line = lines[i] ?? "";
-    if (/^#{1,3}\s/.test(line) && !TARGET_HEADING_RE.test(line)) return i;
-    if (TARGET_HEADING_RE.test(line)) return i;
-  }
-  return lines.length;
-}
-
-function readGoalText(lines: readonly string[], start: number, end: number): string | undefined {
-  let goalStart = -1;
-  for (let i = start; i < end; i += 1) {
-    if (GOAL_LABEL_RE.test(lines[i] ?? "")) {
-      goalStart = i;
-      break;
-    }
-  }
-  if (goalStart === -1) return undefined;
-  const firstMatch = GOAL_LABEL_RE.exec(lines[goalStart] ?? "");
-  if (!firstMatch) return undefined;
-  const collected: string[] = [firstMatch[1]?.trim() ?? ""];
-  for (let i = goalStart + 1; i < end; i += 1) {
+/** The goal text from the Goal line through the block's end, document-text lines only, up to the next label line. */
+function readGoalText(lines: readonly string[], text: readonly boolean[], goal: number, end: number): string {
+  const collected: string[] = [GOAL_LABEL_RE.exec(lines[goal] ?? "")?.[1]?.trim() ?? ""];
+  for (let i = goal + 1; i < end; i += 1) {
     const next = lines[i] ?? "";
-    if (next.trim() === "") continue;
+    if (text[i] !== true || next.trim() === "") continue;
     if (LABEL_LINE_RE.test(next)) break;
     collected.push(next.trim());
   }

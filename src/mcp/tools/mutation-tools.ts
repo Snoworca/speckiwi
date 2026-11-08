@@ -18,7 +18,7 @@ import { setWorkMode } from "../../core/mutation/work-mode.js";
 import { mutationFail } from "../../core/mutation/guards.js";
 import type { RequirementType, StepStateMode } from "../../core/types.js";
 import { supersedeRequirement } from "../../core/mutation/supersede-requirement.js";
-import { setActiveTarget } from "../../core/mutation/set-active-target.js";
+import { setActiveTarget, setTargetDescription } from "../../core/mutation/set-active-target.js";
 import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { syncIndexRollups } from "../../core/mutation/sync-index.js";
@@ -267,7 +267,8 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
     resultToMcp(
       await registerScopes(await root(deps, input), {
         apply: input.apply === true,
-        ...(input.dryRun === true ? { dryRun: true } : {})
+        ...(input.dryRun === true ? { dryRun: true } : {}),
+        ...(input.ignoreLock === true ? { ignoreLock: true } : {})
       })
     ),
     { kind: "workspace" }
@@ -472,6 +473,19 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
           create: input.create === true,
           ...(typeof input.type === "string" ? { targetType: input.type } : {}),
           ...(typeof input.description === "string" ? { description: input.description } : {}),
+          ...mutationOptions(input)
+        })
+      ),
+    { kind: "workspace" }
+  );
+  // @req FR-NODE-276 AC-2
+  server.registerTool(
+    "set_target_description",
+    async (input) =>
+      resultToMcp(
+        await setTargetDescription(await root(deps, input), {
+          target: String(input.target),
+          description: String(input.description),
           ...mutationOptions(input)
         })
       ),

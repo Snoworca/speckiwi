@@ -9,7 +9,7 @@ import type { MutationResult, ProjectRoot, RequirementRecord, TargetEntry, TextF
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { withSrsMutationLock } from "./srs-lock.js";
-import { assertSafeMarkdownTableCells } from "./table-cell.js";
+import { assertSafeMarkdownTableCells, replaceTableCell } from "./table-cell.js";
 import { findHeadingMatching, TARGET_MAP_HEADING } from "../parser/index-parser.js";
 import { planIndexMetadataWrite, planTableRowInsert, planTableRowUpdate, readIndexMetadataValue, type TableRowPlan } from "./internal.js";
 
@@ -27,14 +27,30 @@ function normalizeTargetType(value: string | undefined): string {
   return value?.trim() || "version";
 }
 
-function assertTargetCreationInput(input: { target: string; targetType: string; description: string }): MutationResult | undefined {
+function assertTargetCreationInput(input: { target: string; targetType: string }): MutationResult | undefined {
   // @req FR-NODE-098 — the accepted set comes from TARGET_TYPES, not from a local array.
   if (!isTargetType(input.targetType)) return mutationFail("USAGE", `target type must be ${TARGET_TYPES_SENTENCE}`);
   return assertSafeMarkdownTableCells({
     "Target Map Target": input.target,
-    "Target Map Type": input.targetType,
-    "Target Map Description": input.description
+    "Target Map Type": input.targetType
   });
+}
+
+/** Unicode control characters (Cc): C0, DEL and C1; line breaks and tabs are among them. */
+const CONTROL_CHARACTER = /\p{Cc}/u;
+
+/**
+ * The one check of a Target Map description a caller gives, on registration and on replacement alike:
+ * the trimmed description, or a USAGE refusal of an empty one or one holding a pipe or a control
+ * character. Judged on the text as given, so a trailing line break is refused, not trimmed away.
+ * @req FR-NODE-276 AC-3
+ */
+function checkTargetDescription(value: string): string | MutationResult {
+  if (value.includes("|") || CONTROL_CHARACTER.test(value)) {
+    return mutationFail("USAGE", "description cannot contain a pipe, a line break or a control character");
+  }
+  const description = value.trim();
+  return description ? description : mutationFail("USAGE", "description is required");
 }
 
 export interface RegisterTargetInput {
@@ -72,13 +88,12 @@ function readTargetMap(file: TextFile): TargetMapRead | MutationResult {
 
 /** A not-yet-registered target's row, with the defaults both registration paths share, or the refusal. */
 function newTargetRow(target: string, input: { targetType?: string | undefined; description?: string | undefined }): TargetEntry | MutationResult {
-  const row: TargetEntry = {
-    target,
-    type: normalizeTargetType(input.targetType),
-    status: TARGET_STATUS_PLANNED,
-    description: input.description?.trim() || `Registered target ${target}`
-  };
-  return assertTargetCreationInput({ target: row.target, targetType: row.type, description: row.description }) ?? row;
+  const type = normalizeTargetType(input.targetType);
+  const refused = assertTargetCreationInput({ target, targetType: type });
+  if (refused) return refused;
+  const description = input.description === undefined ? `Registered target ${target}` : checkTargetDescription(input.description);
+  if (typeof description !== "string") return description;
+  return { target, type, status: TARGET_STATUS_PLANNED, description };
 }
 
 /**
@@ -126,6 +141,59 @@ async function registerTargetUnlocked(root: ProjectRoot, input: RegisterTargetIn
   );
 }
 
+export interface SetTargetDescriptionInput {
+  target: string;
+  description: string;
+  dryRun?: boolean;
+  ignoreLock?: boolean;
+  skipLock?: boolean;
+}
+
+/**
+ * @req FR-NODE-276 — replaces a registered target's Target Map description. The index has no Change
+ * Notes, so the change is recorded in the result: `previousDescription` beside the new one.
+ */
+export async function setTargetDescription(root: ProjectRoot, input: SetTargetDescriptionInput): Promise<MutationResult> {
+  return withSrsMutationLock(root, { operation: "set_target_description", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => setTargetDescriptionUnlocked(root, input));
+}
+
+async function setTargetDescriptionUnlocked(root: ProjectRoot, input: SetTargetDescriptionInput): Promise<MutationResult> {
+  const target = input.target.trim();
+  if (!target) return mutationFail("USAGE", "target is required");
+  // @req FR-NODE-276 AC-3
+  const description = checkTargetDescription(input.description);
+  if (typeof description !== "string") return description;
+
+  const map = readTargetMap(await readIndexFile(root));
+  if (isMutationResult(map)) return map;
+  const index = map.rows.findIndex((row) => row.target === target);
+  if (index < 0) return mutationFail("USAGE", `Target is not registered: ${target}`);
+  const previousDescription = (map.rows[index] as TargetEntry).description;
+  const dryRun = input.dryRun ?? false;
+  if (previousDescription === description) {
+    return withMutationEnvelope(
+      mutationOk({ target, previousDescription, description, written: false }),
+      mutationNoopEnvelope("set_target_description", map.file.relativePath, dryRun)
+    );
+  }
+
+  // @req FR-NODE-276 AC-1 — the one cell is replaced in place: re-rendering the row would also rewrite
+  // the padding of the cells around it.
+  const line = map.table.rowLines[index];
+  const column = map.table.headers.indexOf("Description");
+  const original = line === undefined ? undefined : map.file.lines[line - 1];
+  const replacement = original === undefined || column < 0 ? undefined : replaceTableCell(original, column, previousDescription, description);
+  if (line === undefined || original === undefined || replacement === undefined) {
+    return mutationFail("MUTATION_DENIED", `Target Map row for ${target} has no Description cell to rewrite`);
+  }
+  const plan = createPatchPlan(map.file, [{ type: "replaceLine", line, original, replacement }]);
+  const applied = await applyPatchPlan(plan, { dryRun });
+  return withMutationEnvelope(
+    mutationOk({ target, previousDescription, description, written: applied.written }),
+    mutationEnvelopeFromPlan("set_target_description", plan, dryRun, applied.written)
+  );
+}
+
 async function setActiveTargetUnlocked(root: ProjectRoot, input: SetActiveTargetInput): Promise<MutationResult> {
   const target = input.target.trim();
   if (!target) return mutationFail("USAGE", "target is required");
@@ -141,6 +209,11 @@ async function setActiveTargetUnlocked(root: ProjectRoot, input: SetActiveTarget
   const targetExists = rows.some((row) => row.target === target);
   if (!targetExists && !input.create) {
     return mutationFail("NOT_FOUND", `Target is not registered: ${target}`);
+  }
+  // @req FR-NODE-276 AC-4 — the description is used only when this call registers the row; dropping it
+  // for a registered target lost the value with a success reply.
+  if (targetExists && input.description !== undefined) {
+    return mutationFail("USAGE", `Target is already registered: ${target}; change its description with set-target-description (MCP set_target_description), not set-active-target --description`);
   }
   const created = targetExists ? undefined : newTargetRow(target, input);
   if (created && isMutationResult(created)) return created;

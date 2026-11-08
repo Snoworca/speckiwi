@@ -1,5 +1,6 @@
 import type { MutationResult } from "../types.js";
-import { classifyDocumentLines, openStructureAfter, SRS_RECORD_LINES, type ClassifyOptions, type DocumentLineKind } from "../parser/document-lines.js";
+import { atxHeadingLevel, classifyDocumentLines, openStructureAfter, SRS_RECORD_LINES, type ClassifyOptions, type DocumentLineKind } from "../parser/document-lines.js";
+import { isBlockHeadingLine, parseTopLevelSectionTitle } from "../parser/block-scanner.js";
 import { headingContainsForbiddenMarkdown } from "../parser/heading-content.js";
 import { mutationFail } from "./guards.js";
 
@@ -110,14 +111,24 @@ export function assertRequirementTitle<T = void>(label: string, value: string | 
  */
 export function assertPromotableBlock<T = void>(label: string, markdown: string): MutationResult<T> | undefined {
   const lines = markdown.split(/\r?\n/);
-  const headings = lines.filter((line) => /^###\s/.test(line));
-  if (headings.length !== 1 || !/^###\s/.test(lines[0] ?? "")) {
+  // A heading shown in a fence or indented code is text, as it is for the scanner. Every other ATX
+  // heading of level one to three is a heading, so the block is taken only when its one such heading is
+  // the requirement heading the scanner starts it on; `####` and below are its own sections.
+  // @req FR-NODE-260 AC-3
+  const classified = classifyDocumentLines(lines, SRS_RECORD_LINES);
+  const body = (index: number) => classified[index]?.body === true;
+  const level = (line: string, index: number) => (body(index) ? atxHeadingLevel(line) : undefined);
+  const headings = lines.filter((line, index) => level(line, index) === 3);
+  if (headings.length !== 1 || !body(0) || !isBlockHeadingLine(lines[0] ?? "")) {
     return mutationFail(
       "MUTATION_DENIED",
       `${label} must be exactly one requirement block beginning with its heading; found ${headings.length} requirement headings`
     ) as MutationResult<T>;
   }
-  const topLevel = lines.find((line) => /^#{1,2}\s/.test(line));
+  // The scanner also ends a section on a `## ` line it reads past any blanks (a lazy paragraph line).
+  const topLevel = lines.find(
+    (line, index) => (level(line, index) ?? 3) < 3 || (body(index) && parseTopLevelSectionTitle(line) !== undefined)
+  );
   if (topLevel !== undefined) {
     return mutationFail(
       "MUTATION_DENIED",

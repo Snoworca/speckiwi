@@ -16,6 +16,7 @@ import type {
 export type { RegisterScopesInput, RegisterScopesItemPlan, RegisterScopesOutput } from "../types.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { readScopeIndexTable, renderScopeIndexRow } from "./scope-index-table.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 
 // @req FR-NODE-064
 
@@ -51,6 +52,12 @@ export async function registerScopes(
 ): Promise<MutationResult<RegisterScopesOutput>> {
   // An explicit dryRun supersedes apply, so `--apply --dry-run` previews without writing.
   const dryRun = input.dryRun === true || input.apply !== true;
+  // @req FR-NODE-261 AC-3 — the index is read and then written, so another mutation must not write
+  // between the two; the lock and its bypass are the ones every other SRS mutation uses.
+  return withSrsMutationLock(root, { operation: "register_scopes", dryRun, ignoreLock: input.ignoreLock }, () => registerScopesUnlocked(root, dryRun));
+}
+
+async function registerScopesUnlocked(root: ProjectRoot, dryRun: boolean): Promise<MutationResult<RegisterScopesOutput>> {
   const workspace = await parseWorkspace(root);
   const indexFile: TextFile | undefined = workspace.files[0];
   if (!indexFile) return mutationFail("NOT_FOUND", "00.index.md not found");
@@ -98,12 +105,12 @@ export async function registerScopes(
   }
 
   if (dryRun || insertions.length === 0) {
-    return mutationOk({ dryRun, items });
+    return mutationOk({ dryRun, items, written: false });
   }
 
   const operations: PatchOperation[] = [{ type: "insertLines", line: scopeMapTable.insertLine, lines: insertions }];
   const plan = createPatchPlan(indexFile, operations);
-  await applyPatchPlan(plan, { dryRun: false });
+  const { written } = await applyPatchPlan(plan, { dryRun: false });
 
-  return mutationOk({ dryRun, items });
+  return mutationOk({ dryRun, items, written });
 }

@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { findSdsStatusRow } from "../parser/metadata-table.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { isSafeTaskName } from "./scaffold-step.js";
 import type { MutationResult, ProjectRoot } from "../types.js";
@@ -29,8 +30,6 @@ export interface SetSdsStatusValue {
 // @req FR-NODE-081 — §6 lifecycle order (index = forward rank).
 export const SDS_STATUS_ORDER = ["draft", "agreed", "superseded"] as const;
 
-const STATUS_ROW = /^\|\s*Status\s*\|\s*([^|]*?)\s*\|\s*$/;
-
 export async function setSdsStatus(root: ProjectRoot, input: SetSdsStatusInput): Promise<MutationResult<SetSdsStatusValue>> {
   if (!isSafeTaskName(input.task)) {
     return mutationFail("INVALID_STEP_NAME", `Task '${input.task}' must be a single path segment (no separators or traversal)`);
@@ -49,24 +48,15 @@ export async function setSdsStatus(root: ProjectRoot, input: SetSdsStatusInput):
   }
 
   // The Status row lives in the metadata table before the first section heading;
-  // Status cells in body tables must never be touched.
+  // Status cells in body tables must never be touched. A `## ` line or a row shown in a fence or
+  // indented code is an example, not the document's structure. @req FR-NODE-260 AC-2
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const lines = text.split(/\r?\n/);
-  let statusLine = -1;
-  let from = "";
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    if (line.startsWith("## ")) break;
-    const match = STATUS_ROW.exec(line);
-    if (match) {
-      statusLine = index;
-      from = (match[1] ?? "").trim();
-      break;
-    }
-  }
-  if (statusLine < 0) {
+  const row = findSdsStatusRow(lines);
+  if (row === undefined) {
     return mutationFail("NOT_FOUND", `design.md for step '${input.task}' has no metadata Status row`);
   }
+  const { index: statusLine, value: from } = row;
 
   if (!SDS_STATUS_ORDER.includes(from as (typeof SDS_STATUS_ORDER)[number])) {
     return mutationFail("INVALID_SDS_STATUS", `design.md carries an unknown Status '${from}' (expected ${SDS_STATUS_ORDER.join(", ")})`);

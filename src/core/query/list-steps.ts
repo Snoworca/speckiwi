@@ -1,4 +1,5 @@
 import { parseStepState } from "../parser/index-parser.js";
+import { findSdsStatusRow } from "../parser/metadata-table.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { loadStepDesign } from "../validator/validate-scoped.js";
 import type {
@@ -222,17 +223,11 @@ export async function listSteps(root: ProjectRoot, options: ListStepsOptions = {
 
 // @req FR-NODE-079
 /**
- * The design.md metadata-table Status value: the first `| Status | <value> |` row
- * before the first `## ` section heading (other tables in the body never leak in).
+ * The design.md metadata-table Status value, or undefined when the row is missing or empty: the row
+ * set-sds-status writes, found by the same reader (other tables in the body never leak in).
+ * @req FR-NODE-260 AC-2
  */
 function extractSdsStatus(lines: readonly string[]): string | undefined {
-  for (const line of lines) {
-    if (line.startsWith("## ")) return undefined;
-    const match = /^\|\s*Status\s*\|\s*([^|]*?)\s*\|\s*$/.exec(line);
-    if (match) {
-      const value = (match[1] ?? "").trim();
-      return value === "" ? undefined : value;
-    }
-  }
-  return undefined;
+  const value = findSdsStatusRow(lines)?.value;
+  return value === "" ? undefined : value;
 }

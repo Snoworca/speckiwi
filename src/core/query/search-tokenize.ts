@@ -358,8 +358,9 @@ export function splitQueryWords(query: string, vocabulary: SearchVocabulary = EM
     const terms = [...new Set(parts.flat())];
     if (terms.length === 0) continue;
     // Words that fold to the same terms ("lock Lock locks") are one word: they count once for
-    // coverage and for the score.
-    const key = JSON.stringify(parts);
+    // coverage and for the score. @req FR-NODE-262 AC-3 — so are words with the same parts in another
+    // order (`completed-work work-completed`): the key is the parts as a sorted multiset.
+    const key = JSON.stringify(parts.map((part) => JSON.stringify(part)).sort());
     if (seen.has(key)) continue;
     seen.add(key);
     words.push({ text, script: hangul ? "hangul" : "other", terms, parts });

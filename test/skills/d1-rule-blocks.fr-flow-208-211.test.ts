@@ -124,22 +124,22 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
   },
   "FR-FLOW-209": {
     "skills/claude": [
-      "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)\t15\t7287441c:1 c4d1e424:1 3fda81f9:1 ad332335:1 47fcb43d:1 97d93c95:1 f1b90184:1 069bfe61:1 fedf5f55:1 e090372b:1 836ee316:1 b7586751:1 5ce42c99:1 06b389ea:1 cb3f91d5:1",
+      "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)\t15\t7287441c:1 c4d1e424:1 3fda81f9:1 ad332335:1 47fcb43d:1 97d93c95:1 f1b90184:1 c9b58f8c:1 fedf5f55:1 e090372b:1 836ee316:1 b7586751:1 5ce42c99:1 06b389ea:1 cb3f91d5:1",
       "SKILL.md\t### 9.1 작성자 컨텍스트\t10\tf496c86c:1 c054a537:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
       "SKILL.md\t### 10.3 출력 스키마\t27\ta56726cd:1 021fb596:1 27032e39:1 b9b8ab92:1 b68c3150:1 021fb596:1 2d2b4dac:1 631d4c4c:1 374ca6fa:1 bd3d33aa:1 4e877f3f:1 a35c03a6:1 5426aa43:1 ed2d6de9:1 e5890a48:1 d10b36aa:1 39d4b54e:1 ec5e9af8:1 b6e56484:1 39d4b54e:1 34d8e0c7:1 d61e285c:1 39d4b54e:1 a363748f:1 d10b36aa:1 f1b90184:1 9d0321a5:1"
     ],
     "skills/codex": [
-      "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)\t15\t7287441c:1 c4d1e424:1 3fda81f9:1 ad332335:1 47fcb43d:1 97d93c95:1 f1b90184:1 069bfe61:1 fedf5f55:1 e090372b:1 836ee316:1 b7586751:1 5ce42c99:1 06b389ea:1 cb3f91d5:1",
+      "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)\t15\t7287441c:1 c4d1e424:1 3fda81f9:1 ad332335:1 47fcb43d:1 97d93c95:1 f1b90184:1 c9b58f8c:1 fedf5f55:1 e090372b:1 836ee316:1 b7586751:1 5ce42c99:1 06b389ea:1 cb3f91d5:1",
       "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tcb2239cb:1 3557c2f2:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
       "references/extended-workflow.md\t### 10.3 출력 스키마\t27\ta56726cd:1 021fb596:1 27032e39:1 b9b8ab92:1 b68c3150:1 021fb596:1 2d2b4dac:1 631d4c4c:1 374ca6fa:1 bd3d33aa:1 4e877f3f:1 a35c03a6:1 5426aa43:1 ed2d6de9:1 e5890a48:1 d10b36aa:1 39d4b54e:1 ec5e9af8:1 b6e56484:1 39d4b54e:1 34d8e0c7:1 d61e285c:1 39d4b54e:1 a363748f:1 d10b36aa:1 f1b90184:1 9d0321a5:1"
     ],
     "skills/etc": [
-      "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)\t15\t7287441c:1 c4d1e424:1 3fda81f9:1 ad332335:1 47fcb43d:1 97d93c95:1 f1b90184:1 069bfe61:1 fedf5f55:1 e090372b:1 836ee316:1 b7586751:1 5ce42c99:1 06b389ea:1 cb3f91d5:1",
+      "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)\t15\t7287441c:1 c4d1e424:1 3fda81f9:1 ad332335:1 47fcb43d:1 97d93c95:1 f1b90184:1 c9b58f8c:1 fedf5f55:1 e090372b:1 836ee316:1 b7586751:1 5ce42c99:1 06b389ea:1 cb3f91d5:1",
       "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tc0a00764:1 3557c2f2:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
       "references/extended-workflow.md\t### 10.3 출력 스키마\t27\ta56726cd:1 021fb596:1 27032e39:1 b9b8ab92:1 b68c3150:1 021fb596:1 2d2b4dac:1 631d4c4c:1 374ca6fa:1 bd3d33aa:1 4e877f3f:1 a35c03a6:1 5426aa43:1 ed2d6de9:1 e5890a48:1 d10b36aa:1 39d4b54e:1 ec5e9af8:1 b6e56484:1 39d4b54e:1 34d8e0c7:1 d61e285c:1 39d4b54e:1 a363748f:1 d10b36aa:1 f1b90184:1 9d0321a5:1"
     ],
     ".agents/skills": [
-      "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)\t15\t7287441c:1 c4d1e424:1 3fda81f9:1 ad332335:1 47fcb43d:1 97d93c95:1 f1b90184:1 069bfe61:1 fedf5f55:1 e090372b:1 836ee316:1 b7586751:1 5ce42c99:1 06b389ea:1 cb3f91d5:1",
+      "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)\t15\t7287441c:1 c4d1e424:1 3fda81f9:1 ad332335:1 47fcb43d:1 97d93c95:1 f1b90184:1 c9b58f8c:1 fedf5f55:1 e090372b:1 836ee316:1 b7586751:1 5ce42c99:1 06b389ea:1 cb3f91d5:1",
       "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tcb2239cb:1 3557c2f2:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
       "references/extended-workflow.md\t### 10.3 출력 스키마\t27\ta56726cd:1 021fb596:1 27032e39:1 b9b8ab92:1 b68c3150:1 021fb596:1 2d2b4dac:1 631d4c4c:1 374ca6fa:1 bd3d33aa:1 4e877f3f:1 a35c03a6:1 5426aa43:1 ed2d6de9:1 e5890a48:1 d10b36aa:1 39d4b54e:1 ec5e9af8:1 b6e56484:1 39d4b54e:1 34d8e0c7:1 d61e285c:1 39d4b54e:1 a363748f:1 d10b36aa:1 f1b90184:1 9d0321a5:1"
     ]

@@ -77,7 +77,8 @@ const R = {
   log3: ["AC-3", "a short verdict list does not pass",
     "`prd_items[]` 의 길이가 PRD 항목 수와 다른 라운드는 통과하지 않는다."],
   log4: ["AC-3", "the item count and where a requirement cites an item",
-    "PRD 항목 수는 `### PRD-` 로 시작하는 줄의 수다. 요구가 PRD 항목을 인용하는 곳은 그 요구의 Rationale 이다(예: `AC-3 ← PRD-4`)."],
+    // FR-NODE-262 AC-2: the count is the heading lines outside fenced code, the PRD reader's count.
+    "PRD 항목 수는 코드 블록과 HTML 주석 밖의 `### PRD-` 제목 줄 수다 — PRD 리더가 돌려주고 `kiwi-prd` 의 `prd-quote` 명령이 출력하는 수다. 요구가 PRD 항목을 인용하는 곳은 그 요구의 Rationale 이다(예: `AC-3 ← PRD-4`)."],
   a1: ["AC-4", "(a) an unaccepted or contradicted item fails",
     "(a) `intent` · `goal` · `in-scope` 항목을 근거로 인용한 요구나 AC 가 없거나, 요구나 AC 가 그 항목과 반대로 말하면 그 항목의 판정은 fail 이고 루프는 통과하지 않는다."],
   // FR-FLOW-205 AC-4 last sentence (fix-r4 4b): a rejected item leaves the fail check.

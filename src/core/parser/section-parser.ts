@@ -42,6 +42,15 @@ function canonicalSectionName(name: string): string {
   return CANONICAL_SECTIONS.get(normalizeSectionName(name)) ?? name.trim();
 }
 
+/**
+ * The name of a requirement-block section heading (`#### Name`), or undefined when the line is not
+ * one. Ask it only of a line the document classifier reads as body: the section parser and every
+ * writer that finds where a section ends use this one test, so they cannot disagree about it.
+ */
+export function parseSectionHeadingName(line: string): string | undefined {
+  return line.startsWith("#### ") ? line.replace(/^####\s+/, "").trim() : undefined;
+}
+
 export function parseRequirementSections(
   block: RequirementBlockRange,
   lines: string[],
@@ -56,9 +65,8 @@ export function parseRequirementSections(
   for (let line = block.startLine; line <= block.endLine; line += 1) {
     const text = lines[line - 1] ?? "";
     if (!isBody(line)) continue;
-    if (text.startsWith("#### ")) {
-      headings.push({ name: text.replace(/^####\s+/, "").trim(), line });
-    }
+    const name = parseSectionHeadingName(text);
+    if (name !== undefined) headings.push({ name, line });
   }
   const sections: Record<string, SectionRange> = {};
   headings.forEach((heading, index) => {

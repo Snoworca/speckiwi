@@ -562,6 +562,7 @@ export interface DiffStepsOptions {
 export interface RegisterScopesInput {
   apply?: boolean;
   dryRun?: boolean;
+  ignoreLock?: boolean;
 }
 export type RegisterScopesSkipReason = "cannot-infer-prefix" | "prefix-conflict";
 export interface RegisterScopesItemPlan {
@@ -572,6 +573,8 @@ export interface RegisterScopesItemPlan {
 export interface RegisterScopesOutput {
   dryRun: boolean;
   items: RegisterScopesItemPlan[];
+  /** True exactly when `00.index.md` changed. @req FR-NODE-261 AC-3 */
+  written: boolean;
 }
 
 export interface RetargetInput {

@@ -75,7 +75,9 @@ describe("set active target mutation", () => {
       description: "bad | target"
     });
 
-    expect(result).toMatchObject({ ok: false, error: { code: "MUTATION_DENIED" } });
+    // FR-NODE-276 AC-3: a created row's description goes through the one description check, whose
+    // refusal is USAGE (it was MUTATION_DENIED while registration had its own table-cell check).
+    expect(result).toMatchObject({ ok: false, error: { code: "USAGE" } });
     await expect(readFile(indexPath, "utf8")).resolves.toBe(before);
   });
 });

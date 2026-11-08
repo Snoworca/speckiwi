@@ -30,3 +30,18 @@ export function assertSafeMarkdownTableCells<T = void>(cells: Record<string, str
   }
   return undefined;
 }
+
+export function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Replaces table cell `column` (0-based) when its trimmed text is exactly `from`, keeping the spaces
+ * around it and every other byte of the line; whole-cell match keeps `5.2` off `5.2.0`. The cell ends
+ * at the next pipe or, for a row without its closing pipe (which the parser reads), at the end of the
+ * line. Undefined when the line has no such cell.
+ */
+export function replaceTableCell(line: string, column: number, from: string, to: string): string | undefined {
+  const pattern = new RegExp(`^(\\s*\\|(?:[^|]*\\|){${column}}\\s*)${escapeRegExp(from)}(\\s*(?:\\||$))`);
+  return pattern.test(line) ? line.replace(pattern, (_match, head: string, tail: string) => `${head}${to}${tail}`) : undefined;
+}

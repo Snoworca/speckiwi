@@ -1,6 +1,6 @@
 import { TYPE_PREFIX, type Diagnostic } from "../types.js";
 import { PRD_EFFECTS, PRD_EXCLUSION_CLASSES, PRD_KINDS, PRD_SECTIONS, PRD_STATES, type PrdDocument, type PrdItem } from "./model.js";
-import { sectionRange } from "./parse.js";
+import { prdBodyLines, sectionRange } from "./parse.js";
 
 // @req FR-NODE-240 AC-1 — `prd check` reports each grammar fault with its own code. The codes are
 // PRD-scoped and kept here rather than in the SRS diagnostic registry: that registry is the SRS
@@ -137,10 +137,11 @@ function checkRequirementGrammar(doc: PrdDocument): Diagnostic[] {
 }
 
 function checkItemsOutsideItems(doc: PrdDocument): Diagnostic[] {
-  const items = sectionRange(doc.lines, PRD_SECTIONS.items);
+  const body = prdBodyLines(doc.lines);
+  const items = sectionRange(doc.lines, PRD_SECTIONS.items, body);
   return doc.lines.flatMap((line, index) => {
     const inside = items !== undefined && index > items[0] && index < items[1];
-    return line.startsWith("### PRD-") && !inside
+    return body[index] && line.startsWith("### PRD-") && !inside
       ? [prdDiagnostic(doc, PRD_DIAGNOSTIC_CODES.itemOutsideItems, `A PRD item heading sits outside "${PRD_SECTIONS.items}"`, index + 1)]
       : [];
   });

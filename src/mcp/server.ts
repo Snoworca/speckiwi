@@ -241,7 +241,7 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     dryRun: z.boolean().optional(),
     ignoreLock: z.boolean().optional()
   },
-  register_scopes: { apply: z.boolean().optional(), dryRun: z.boolean().optional() },
+  register_scopes: { apply: z.boolean().optional(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   // @req IR-MCP-006 — the inputs of the `rename-scope` CLI command.
   rename_scope: RENAME_SCOPE_SCHEMA,
   // @req FR-NODE-243 AC-6
@@ -312,6 +312,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     ignoreLock: z.boolean().optional()
   },
   set_target_goal: { target: z.string(), goal: z.string().min(1).max(500), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
+  // @req FR-NODE-276 AC-2 — the core refuses an empty, piped or control-character description with USAGE.
+  set_target_description: { target: z.string(), description: z.string(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   add_completed_work: {
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     summary: z.string(),

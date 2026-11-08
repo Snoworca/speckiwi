@@ -4,6 +4,7 @@ import { createTextFileSnapshot } from "../fs/read-text.js";
 import { isStalePatchError } from "../patch/apply-patch.js";
 import { applyPatchPlans } from "../patch/apply-patch-plans.js";
 import { createPatchPlan, renderPatchedLines, type PatchOperation, type PatchPlan } from "../patch/patch-plan.js";
+import { scanRequirementBlocks } from "../parser/block-scanner.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { validateWorkspace } from "../validator/validate-workspace.js";
 import type { Diagnostic, MutationEnvelope, MutationResult, ParsedWorkspace, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
@@ -205,9 +206,8 @@ function ambiguousReferences(workspace: ParsedWorkspace, input: RequirementIdCol
       if (!line.includes(input.duplicateId)) return;
       const lineNo = index + 1;
       if (occurrenceHeadingKeys.has(explicitReferenceKey({ filePath: file.relativePath, line: lineNo }))) return;
-      const inRenamedBlock = file.relativePath === input.rename.filePath && lineNo >= input.rename.headingLine;
-      const isHeading = /^###\s+/.test(line);
-      if (inRenamedBlock && isHeading && lineNo === input.rename.headingLine) return;
+      // The selected occurrence's heading line, which the plan has matched against the parsed records.
+      if (file.relativePath === input.rename.filePath && lineNo === input.rename.headingLine) return;
       if (file.relativePath === input.keep.filePath && lineNo === input.keep.headingLine) return;
       if (ownLines.has(explicitReferenceKey({ filePath: file.relativePath, line: lineNo }))) return;
       references.push({ filePath: file.relativePath, line: lineNo, excerpt: line.trim().slice(0, 160) });
@@ -276,6 +276,29 @@ function repairEnvelope(plans: PatchPlan[], dryRun: boolean, written: boolean): 
     ),
     preview: plans.flatMap((plan) => plan.operations.flatMap((operation) => ("replacement" in operation ? [operation.replacement] : [])))
   };
+}
+
+/**
+ * @req FR-NODE-261 AC-1 — whether the documents as the repair would leave them hold the replacement ID
+ * on more than one requirement heading. The planner refuses an ID already in the workspace; this
+ * catches the one the repair's own reference edits would put on another heading, and it is asked
+ * before the first write, so a refusal never follows a write.
+ */
+function replacementCollisionAfter(workspace: ParsedWorkspace, plans: readonly PatchPlan[], replacementId: string): MutationResult<RequirementIdCollisionRepairOutput> | undefined {
+  const sources = new Set(workspace.records.map((record) => record.filePath));
+  const patched = plans.filter((plan) => sources.has(plan.file.relativePath));
+  const patchedPaths = new Set(patched.map((plan) => plan.file.relativePath));
+  const headings = [
+    ...workspace.records.filter((record) => record.id === replacementId && !patchedPaths.has(record.filePath)).map((record) => ({ filePath: record.filePath, line: record.headingLine })),
+    ...patched.flatMap((plan) =>
+      scanRequirementBlocks(renderPatchedLines(plan), plan.file.relativePath)
+        .blocks.filter((block) => block.heading.id === replacementId)
+        .map((block) => ({ filePath: plan.file.relativePath, line: block.startLine }))
+    )
+  ];
+  if (headings.length <= 1) return undefined;
+  const collision = diagnostic("SRS-E032", "error", `Replacement Requirement ID would collide after repair: ${replacementId}`, headings[0]!, { replacementId, headings });
+  return mutationFail("GENERATED_ID_COLLISION", `Replacement Requirement ID would collide after repair: ${replacementId}`, [collision]);
 }
 
 async function assertFreshPlans(plans: PatchPlan[]): Promise<void> {
@@ -402,14 +425,12 @@ export async function applyRequirementIdCollisionRepair(root: ProjectRoot, input
     if (patchPlans.length === 0) return mutationFail("STALE_PATCH", "Requirement ID collision repair has no patchable files");
     try {
       if (!input.dryRun) await assertFreshPlans(patchPlans);
+      const collision = replacementCollisionAfter(workspace, patchPlans, plan.replacementId);
+      if (collision) return collision;
       // Every touched document is written as one transaction: a failed write restores the ones before it.
       const { written } = await applyPatchPlans(patchPlans, { dryRun: input.dryRun ?? false });
       const postWorkspace = input.dryRun ? workspace : await parseWorkspace(root);
       const postGroups = toGroups(postWorkspace, duplicateDiagnostics(postWorkspace));
-      const replacementCollision = postGroups.find((group) => group.duplicateId === plan.replacementId);
-      if (replacementCollision) {
-        return mutationFail("GENERATED_ID_COLLISION", `Replacement Requirement ID still collides after repair: ${plan.replacementId}`, [replacementCollision.diagnostic]);
-      }
       const pendingDuplicateGroups = postGroups.map((group) => group.duplicateId).sort();
       const result = mutationOk<RequirementIdCollisionRepairOutput>({
         duplicateId: input.duplicateId,

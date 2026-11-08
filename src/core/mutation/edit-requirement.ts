@@ -6,7 +6,7 @@ import { PRIORITY_LEVELS, RISK_LEVELS, type MutationResult, type ProjectRoot, ty
 import { assertOpensNoBlockBoundary, assertRequirementTitle } from "./block-prose.js";
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
-import { findSectionTable, loadRecordWithWorkspace, planMetadataWrite, planTableRowUpdate, type RowSection } from "./internal.js";
+import { findSectionTable, loadRecordWithWorkspace, planMetadataWrite, planTableRowUpdate, sectionEndLine, type RowSection } from "./internal.js";
 import { acceptanceCriterionLine, refuseExpiredMarker } from "./render-requirement.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { assertSafeMarkdownTableCells, tableCellText } from "./table-cell.js";
@@ -115,15 +115,7 @@ function assertTitleText(label: string, value: string): MutationResult | undefin
 function sectionContentRange(file: TextFile, record: RequirementRecord, heading: string): { startLine: number; endLine: number } | undefined {
   const start = record.sectionLines?.[heading];
   if (!start) return undefined;
-  const end = record.blockEndLine ?? file.lines.length;
-  let nextHeading = end + 1;
-  for (let line = start + 1; line <= end; line += 1) {
-    if ((file.lines[line - 1] ?? "").startsWith("#### ")) {
-      nextHeading = line;
-      break;
-    }
-  }
-  return { startLine: start + 1, endLine: nextHeading - 1 };
+  return { startLine: start + 1, endLine: sectionEndLine(file, record, start) };
 }
 
 async function applyGranularPlan(

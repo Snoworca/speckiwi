@@ -62,6 +62,15 @@ export function parseTopLevelSectionTitle(line: string): string | undefined {
   return match?.[1]?.trim();
 }
 
+/**
+ * Whether the line is a third-level (`### `) heading, where the scanner starts a requirement block (or
+ * reports a malformed requirement heading) inside a Requirements section. The scanner and the promotion
+ * check ask it, so a promoted block holds exactly the headings the scanner reads. @req FR-NODE-260 AC-3
+ */
+export function isBlockHeadingLine(line: string): boolean {
+  return line.startsWith("### ");
+}
+
 function isRequirementsSection(title: string): boolean {
   return /\brequirements?\b/i.test(title);
 }
@@ -98,7 +107,7 @@ export function scanRequirementBlocks(
       // @req FR-PARSE-035 — a well-formed block here is invisible to every query, mutation and
       // validation rule. Reporting it does not change that; it just stops the invisibility being
       // silent, which is how an author ends up filing work against an id the tool does not have.
-      if (line.startsWith("### ")) {
+      if (isBlockHeadingLine(line)) {
         const stranded = parseRequirementHeading(line);
         if (stranded) {
           diagnostics.push(
@@ -115,7 +124,7 @@ export function scanRequirementBlocks(
       return;
     }
 
-    if (line.startsWith("### ")) {
+    if (isBlockHeadingLine(line)) {
       const heading = parseRequirementHeading(line);
       if (heading) {
         starts.push({ heading, line: lineNumber });

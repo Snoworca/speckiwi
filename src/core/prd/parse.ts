@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { classifyDocumentLines } from "../parser/document-lines.js";
 import { parseMarkdownTableResult } from "../parser/table.js";
 import { formatPrdPointer } from "./pointer.js";
 import { PRD_SECTIONS, type PrdDocument, type PrdItem, type PrdUserBlock } from "./model.js";
@@ -58,20 +59,29 @@ export function quoteText(lines: readonly string[]): string {
     .trim();
 }
 
+/**
+ * Whether each line is document text, as the shared classifier reads it. @req FR-NODE-262 AC-1 — a
+ * `## ` or `### ` line inside fenced code is text of the block it sits in, never a section or item
+ * boundary.
+ */
+export function prdBodyLines(lines: readonly string[]): boolean[] {
+  return classifyDocumentLines(lines).map((line) => line.body);
+}
+
 /** 0-based [start, end) of the section whose heading line is exactly `heading`; undefined when absent. */
-export function sectionRange(lines: readonly string[], heading: string): [number, number] | undefined {
-  const start = lines.indexOf(heading);
+export function sectionRange(lines: readonly string[], heading: string, body: readonly boolean[] = prdBodyLines(lines)): [number, number] | undefined {
+  const start = lines.findIndex((line, index) => body[index] && line === heading);
   if (start < 0) return undefined;
-  const next = lines.findIndex((line, index) => index > start && line.startsWith("## "));
+  const next = lines.findIndex((line, index) => index > start && body[index] && line.startsWith("## "));
   return [start, next < 0 ? lines.length : next];
 }
 
-function blocksIn(lines: readonly string[], range: [number, number] | undefined): Block[] {
+function blocksIn(lines: readonly string[], body: readonly boolean[], range: [number, number] | undefined): Block[] {
   if (!range) return [];
   const blocks: Block[] = [];
   for (let index = range[0] + 1; index < range[1]; index += 1) {
     const line = lines[index]!;
-    if (line.startsWith("### ")) blocks.push({ heading: line.slice(4), start: index, lines: [line] });
+    if (body[index] && line.startsWith("### ")) blocks.push({ heading: line.slice(4), start: index, lines: [line] });
     else blocks[blocks.length - 1]?.lines.push(line);
   }
   return blocks;
@@ -170,6 +180,7 @@ export function parsePrd(content: PrdContent, path: string): PrdDocument {
   const text = typeof content === "string" ? content : bytesOf(content).toString("utf8");
   const lines = text.replace(/\r\n/g, "\n").split("\n");
   const header = headerFields(lines);
+  const body = prdBodyLines(lines);
   const document: PrdDocument = {
     path,
     pointer: prdPointer(path, content),
@@ -177,10 +188,10 @@ export function parsePrd(content: PrdContent, path: string): PrdDocument {
     approved: header.values.Approved ?? "",
     requestSha256Cell: header.values["Request SHA256"] ?? "",
     requestSha256Line: header.requestLine,
-    userBlocks: blocksIn(lines, sectionRange(lines, PRD_SECTIONS.userRequest))
+    userBlocks: blocksIn(lines, body, sectionRange(lines, PRD_SECTIONS.userRequest, body))
       .filter((block) => block.heading.startsWith("U-"))
       .map(parseUserBlock),
-    items: blocksIn(lines, sectionRange(lines, PRD_SECTIONS.items))
+    items: blocksIn(lines, body, sectionRange(lines, PRD_SECTIONS.items, body))
       .filter((block) => block.heading.startsWith("PRD-"))
       .map(parseItem),
     lines

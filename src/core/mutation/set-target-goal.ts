@@ -2,6 +2,7 @@ import path from "node:path";
 import { readUtf8File } from "../fs/read-text.js";
 import { applyPatchPlan } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
+import { findHeadingMatching, findTargetGoalBlocks, TARGET_MAP_HEADING } from "../parser/index-parser.js";
 import { parseMarkdownTable } from "../parser/table.js";
 import type { MutationResult, ProjectRoot, TextFile } from "../types.js";
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
@@ -16,8 +17,6 @@ import { withSrsMutationLock } from "./srs-lock.js";
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F]/;
 const MAX_GOAL_LENGTH = 500;
-const TARGET_HEADING_RE = /^### Target:\s+(\S+)\s*$/;
-const GOAL_LABEL_RE = /^\*\*Goal:\*\*\s*(.+)$/;
 
 export interface SetTargetGoalInput {
   target: string;
@@ -33,9 +32,7 @@ export interface SetTargetGoalOutput {
   written: boolean;
 }
 
-function findTargetMapEnd(lines: readonly string[]): number | undefined {
-  const targetHeadingIdx = lines.findIndex((line) => /^##\s+\d+\.\s+Target Map$/.test(line.trim()));
-  if (targetHeadingIdx < 0) return undefined;
+function findTargetMapEnd(lines: readonly string[], targetHeadingIdx: number): number | undefined {
   let tableEnd = -1;
   for (let i = targetHeadingIdx + 1; i < lines.length; i += 1) {
     const text = lines[i] ?? "";
@@ -51,21 +48,15 @@ function findTargetMapEnd(lines: readonly string[]): number | undefined {
   return cursor + 1;
 }
 
+/**
+ * The target's goal block (1-based lines), found by the parser's own goal-block reader, so the goal
+ * lands where the parser reads it and a block shown in code or a comment is left as it is.
+ * @req FR-NODE-260 AC-2
+ */
 function findTargetGoalBlock(lines: readonly string[], target: string): { headingLine: number; goalLine?: number } | undefined {
-  for (let i = 0; i < lines.length; i += 1) {
-    const match = TARGET_HEADING_RE.exec(lines[i] ?? "");
-    if (match && match[1] === target) {
-      for (let j = i + 1; j < lines.length; j += 1) {
-        const inner = lines[j] ?? "";
-        if (/^#{1,3}\s/.test(inner)) break;
-        if (GOAL_LABEL_RE.test(inner)) {
-          return { headingLine: i + 1, goalLine: j + 1 };
-        }
-      }
-      return { headingLine: i + 1 };
-    }
-  }
-  return undefined;
+  const block = findTargetGoalBlocks(lines).find((candidate) => candidate.target === target);
+  if (block === undefined) return undefined;
+  return { headingLine: block.heading + 1, ...(block.goal === undefined ? {} : { goalLine: block.goal + 1 }) };
 }
 
 export async function setTargetGoal(root: ProjectRoot, input: SetTargetGoalInput): Promise<MutationResult<SetTargetGoalOutput>> {
@@ -96,7 +87,9 @@ async function setTargetGoalUnlocked(root: ProjectRoot, input: SetTargetGoalInpu
   const rendered = goal.replace(/[\r\n]+/g, " ").replace(/\s{2,}/g, " ").trim();
 
   const file: TextFile = await readUtf8File(path.join(root.root, "docs", "spec", "00.index.md"), root.root);
-  const targetHeadingIdx = file.lines.findIndex((line) => /^##\s+\d+\.\s+Target Map$/.test(line.trim()));
+  // The Target Map the parser reads, so a fenced or indented copy of its heading is not taken for it.
+  // @req FR-NODE-260 AC-2
+  const targetHeadingIdx = findHeadingMatching(file.lines, TARGET_MAP_HEADING);
   if (targetHeadingIdx < 0) return mutationFail("MUTATION_DENIED", "Target Map heading is missing");
   const targetTable = parseMarkdownTable(file.lines, targetHeadingIdx + 1);
   if (!targetTable) return mutationFail("MUTATION_DENIED", "Target Map table is missing");
@@ -120,7 +113,7 @@ async function setTargetGoalUnlocked(root: ProjectRoot, input: SetTargetGoalInpu
       lines: ["", `**Goal:** ${rendered}`]
     });
   } else {
-    const tableEnd = findTargetMapEnd(file.lines);
+    const tableEnd = findTargetMapEnd(file.lines, targetHeadingIdx);
     if (!tableEnd) return mutationFail("MUTATION_DENIED", "Could not locate Target Map insertion line");
     operations.push({
       type: "insertLines",

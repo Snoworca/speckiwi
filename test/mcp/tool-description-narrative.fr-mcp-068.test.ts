@@ -52,7 +52,8 @@ describe("FR-MCP-068 — the narrative-section route is named where an agent loo
     // 109 since 5.3.1 added the six roadmap tools (IR-MCP-009).
     // 110 since 5.3.3 added `check_review_round` (FR-NODE-274).
     // 114 since 5.3.6 added `add_related_doc`, `add_change_note` (FR-MCP-049), `edit_acceptance_criterion` and `append_acceptance_criterion` (FR-MCP-072).
-    expect(renderToolNames()).toHaveLength(114);
+    // 115 since 5.3.7 added `set_target_description` (FR-NODE-276).
+    expect(renderToolNames()).toHaveLength(115);
   });
 
   it("FR-MCP-068 AC-4: deleting either added sentence from the shipped description turns its check red", () => {

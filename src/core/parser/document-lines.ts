@@ -68,7 +68,17 @@ export function skipCodeSpan(line: string, at: number): number {
   }
 }
 
-const ATX_HEADING = /^ {0,3}#{1,6}(\s|$)/;
+const ATX_HEADING = /^ {0,3}(#{1,6})(?:\s|$)/;
+
+/**
+ * The level (1 to 6) of an ATX heading line as CommonMark reads it (up to three spaces in), or
+ * undefined. Ask it of a line the classifier reads as body: the classifier ends a paragraph on it, and
+ * the promotion check counts the headings of a block with it.
+ */
+export function atxHeadingLevel(text: string): number | undefined {
+  return ATX_HEADING.exec(text)?.[1]?.length;
+}
+
 const THEMATIC_BREAK = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
 const SETEXT_UNDERLINE = /^ {0,3}(?:=+|-+)[ \t]*$/;
 const BLOCK_QUOTE_MARKER = /^ {0,3}>/;
@@ -206,7 +216,7 @@ function continuesParagraph(text: string): boolean {
     afterQuoteMarker(cursor) === undefined &&
     listItemAt(cursor) === undefined &&
     fenceAt(text) === undefined &&
-    !ATX_HEADING.test(text) &&
+    atxHeadingLevel(text) === undefined &&
     !THEMATIC_BREAK.test(text) &&
     !HTML_COMMENT_START.test(text)
   );
@@ -369,7 +379,7 @@ export function classifyDocumentLines(lines: readonly string[], options: Classif
       if (hide(index, "comment", end, false)) return not(line, "comment", end === undefined);
     }
 
-    const endsParagraph = ATX_HEADING.test(text) || THEMATIC_BREAK.test(text) || (paragraphOpen && SETEXT_UNDERLINE.test(text));
+    const endsParagraph = atxHeadingLevel(text) !== undefined || THEMATIC_BREAK.test(text) || (paragraphOpen && SETEXT_UNDERLINE.test(text));
     const continues = paragraphOpen && !endsParagraph;
     paragraphOpen = !endsParagraph;
     return body(line, cursor, continues);

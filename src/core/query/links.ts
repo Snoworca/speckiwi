@@ -1,6 +1,7 @@
 import path from "node:path";
 import { access } from "node:fs/promises";
 import { fileReferences, relatedDocsDestinations, relatedDocsPath, traceLinkPaths, type FileReference } from "../parser/file-references.js";
+import { findMarkdownLinksInDocument } from "../parser/markdown-links.js";
 import { checkPrdReferenceFiles } from "../prd/files.js";
 import { judgeDiscardedTraceTargets } from "../discarded-trace-target.js";
 import type { ParsedWorkspace } from "../types.js";
@@ -19,8 +20,15 @@ export interface LinkCheckResult {
    * which is how five dangling `Related Docs` paths survived two releases in this repository.
    */
   broken: Array<{ requirementId: string; reference: string; reason: string; code: string }>;
+  /**
+   * @req FR-PARSE-048 AC-4 — the broken local links of the index body. They belong to no requirement,
+   * so they are kept apart from `broken`, whose shape stays as it is; the line is 1-based.
+   */
+  brokenIndexLinks: Array<{ filePath: string; line: number; reference: string; reason: string; code: string }>;
   networkAccess: false;
 }
+
+const INDEX_PATH = "docs/spec/00.index.md";
 
 async function exists(filePath: string): Promise<boolean> {
   try {
@@ -89,5 +97,32 @@ export async function checkLinks(workspace: ParsedWorkspace): Promise<LinkCheckR
       code: "SRS-W079"
     });
   }
-  return { checked, broken, networkAccess: false };
+  const index = await checkIndexBodyLinks(workspace);
+  return { checked: checked + index.checked, broken, brokenIndexLinks: index.broken, networkAccess: false };
+}
+
+/**
+ * @req FR-PARSE-048 AC-4 — every inline link and link reference definition in the body of the index
+ * (not code, not a comment, as the shared link extractor reads it) whose destination names a local file.
+ * The index sits in docs/spec, the directory a Related Docs link resolves against, so a destination
+ * resolves the way a Related Docs one does.
+ */
+async function checkIndexBodyLinks(workspace: ParsedWorkspace): Promise<{ checked: number; broken: LinkCheckResult["brokenIndexLinks"] }> {
+  // A workspace built by hand (a test double of the parser) may carry no files; it has no index body then.
+  const file = (workspace.files ?? []).find((candidate) => candidate.relativePath === INDEX_PATH);
+  const broken: LinkCheckResult["brokenIndexLinks"] = [];
+  let checked = 0;
+  if (!file) return { checked, broken };
+  for (const [index, links] of findMarkdownLinksInDocument(file.lines).entries()) {
+    for (const link of links) {
+      if (link.kind !== "inline" && link.kind !== "definition") continue;
+      const target = relatedDocsPath(link.destination.value);
+      if (target === undefined) continue;
+      checked += 1;
+      if (!(await exists(path.resolve(workspace.root.root, target)))) {
+        broken.push({ filePath: INDEX_PATH, line: index + 1, reference: link.destination.value, reason: "local file missing", code: "SRS-W003" });
+      }
+    }
+  }
+  return { checked, broken };
 }

@@ -13,7 +13,7 @@ import { appendAcceptanceCriterion, setAcceptanceCriteriaChecked, editAcceptance
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { addTraceLink, setSupersede } from "../../core/mutation/add-trace.js";
 import { addRequirement } from "../../core/mutation/add-requirement.js";
-import { registerTarget, setActiveTarget } from "../../core/mutation/set-active-target.js";
+import { registerTarget, setActiveTarget, setTargetDescription } from "../../core/mutation/set-active-target.js";
 import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
 import { setTargetStatus } from "../../core/mutation/set-target-status.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
@@ -404,7 +404,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .argument("<target>")
     .option("--create", "register the target in Target Map when missing")
     .option("--type <type>", `target type when --create is used: ${TARGET_TYPES_SENTENCE}`)
-    .option("--description <text>", "target description when --create is used")
+    .option("--description <text>", "target description when --create registers the target; refused for a registered target (use set-target-description)")
     .option("--dry-run")
     .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
@@ -416,6 +416,26 @@ export function registerMutationCommands(command: Command, context: CliContext):
         ...(typeof options.description === "string" ? { description: options.description } : {}),
         dryRun: Boolean(options.dryRun),
         ignoreLock: Boolean(options.ignoreLock)
+      });
+      output(context, { json: options.json || command.opts().json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", 5);
+    });
+
+  // @req FR-NODE-276 AC-2 — the MCP tool set_target_description is the normal path for an agent
+  // (target-scoped SRS mutations go through MCP); this command is its CLI form.
+  command
+    .command("set-target-description")
+    .argument("<target>")
+    .requiredOption("--description <text>", "the new Target Map description of a registered target")
+    .option("--dry-run")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
+    .option("--json")
+    .action(async (target: string, options) => {
+      const result = await setTargetDescription(await rootFrom(command.opts()), {
+        target,
+        description: options.description,
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);
@@ -994,11 +1014,13 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .command("register-scopes")
     .option("--apply", "insert the planned Scope Map rows")
     .option("--dry-run")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (options) => {
       const result = await registerScopes(await rootFrom(command.opts()), {
         apply: Boolean(options.apply),
-        ...(options.dryRun ? { dryRun: true } : {})
+        ...(options.dryRun ? { dryRun: true } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);

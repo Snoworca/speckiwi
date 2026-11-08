@@ -517,6 +517,12 @@ export const toolSpecs: readonly ToolSpec[] = [
   // because moving the active target is ordinary agent work; recording a target as released is a
   // release decision, and no agent makes that unattended.
   mutationSpec("set-target-status", undefined, "workspace", "setTargetStatus", [DRY_RUN, IGNORE_LOCK]),
+  // @req FR-NODE-276 AC-2
+  mutationSpec("set-target-description", mcp("set_target_description", "Replaces the Target Map description of a registered target, rewriting only that one cell, and returns the previous description beside the new one, since the index keeps no change notes. The description is one line without a pipe; an unregistered target is refused, and creating a target with its first description belongs to `set_active_target`. Writes the Target Map row."), "workspace", "setTargetDescription", [
+    opt("--description <text>", "description"),
+    DRY_RUN,
+    IGNORE_LOCK
+  ]),
   mutationSpec("set-target-goal", mcp("set_target_goal", "Records the goal sentence for a target, which every later reader of that target sees, folding any line break in it down to a single space so the index table it lands in survives. Writes that target's Goal line."), "workspace", "setTargetGoal", [
     opt("--goal <text>", "goal"),
     DRY_RUN,
@@ -695,7 +701,9 @@ export const toolSpecs: readonly ToolSpec[] = [
   // register-scopes: real CLI mutation (promote_step_requirement moved to `step promote`, IR-CLI-074).
   mutationSpec("register-scopes", mcp("register_scopes", "Registers scope documents that exist on disk but are missing from the index's Scope Map, creating no document and adding no SRS Documents row. It previews by default and changes nothing on disk until `apply` is passed. Writes the index."), "workspace", "registerScopes", [
     opt("--apply", "apply"),
-    DRY_RUN
+    DRY_RUN,
+    // @req FR-NODE-261 AC-3 — the mutation takes the SRS lock, so it exposes the same bypass.
+    IGNORE_LOCK
   ]),
 
   // ---- workflow mutation commands (registerReadCommands, under `workflow`) ----

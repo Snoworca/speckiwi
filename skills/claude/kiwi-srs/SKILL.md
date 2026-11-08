@@ -18,7 +18,7 @@ description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데
 node -e "const f=require('fs').readFileSync(process.argv[1],'latin1').replace(/\r\n/g,'\n');const a=f.indexOf('\n## 1. User Request')+1;const b=f.indexOf('\n## ',a)+1;if(a<1||b<=a)process.exit(2);const h=require('crypto').createHash('sha256').update(f.slice(a,b),'latin1').digest('hex');console.log(h);const r=f.split('\n').find(l=>l.startsWith('| Request SHA256 |'));process.exit(r&&r.includes(h)?0:1)" docs/prd/<file>.prd.md
 ```
 
-**판정 기록.** 검증 라운드마다 `eval_iter{N}.json` 의 `prd_items[]` 에 PRD 항목마다 판정 하나를 항목 순서대로 적고, `srs_items[]` 에는 이번 실행이 추가하거나 바꾼 요구와 AC 마다 판정 하나를 적는다. 이번 실행이 건드리지 않은 기존 요구는 PRD 와 대조하지 않는다 — (b)·(c) 판정도 이번 실행이 추가하거나 바꾼 요구와 AC 에만 한다. `prd_items[]` 의 길이가 PRD 항목 수와 다른 라운드는 통과하지 않는다. PRD 항목 수는 `### PRD-` 로 시작하는 줄의 수다. 요구가 PRD 항목을 인용하는 곳은 그 요구의 Rationale 이다(예: `AC-3 ← PRD-4`).
+**판정 기록.** 검증 라운드마다 `eval_iter{N}.json` 의 `prd_items[]` 에 PRD 항목마다 판정 하나를 항목 순서대로 적고, `srs_items[]` 에는 이번 실행이 추가하거나 바꾼 요구와 AC 마다 판정 하나를 적는다. 이번 실행이 건드리지 않은 기존 요구는 PRD 와 대조하지 않는다 — (b)·(c) 판정도 이번 실행이 추가하거나 바꾼 요구와 AC 에만 한다. `prd_items[]` 의 길이가 PRD 항목 수와 다른 라운드는 통과하지 않는다. PRD 항목 수는 코드 블록과 HTML 주석 밖의 `### PRD-` 제목 줄 수다 — PRD 리더가 돌려주고 `kiwi-prd` 의 `prd-quote` 명령이 출력하는 수다. 요구가 PRD 항목을 인용하는 곳은 그 요구의 Rationale 이다(예: `AC-3 ← PRD-4`).
 
 **판정 셋.**
 - (a) `intent` · `goal` · `in-scope` 항목을 근거로 인용한 요구나 AC 가 없거나, 요구나 AC 가 그 항목과 반대로 말하면 그 항목의 판정은 fail 이고 루프는 통과하지 않는다. `State` 가 `rejected` 인 항목은 이 fail 검사에서도 빠진다. `Effect` 가 in-scope 인 확정 proposal 은 in-scope 항목처럼 이 fail 검사를 받는다. `REQ_PATH` 가 PRD 항목 ID 를 지명한 wave excerpt 이면 (a) 는 그 excerpt 가 지명한 항목만 검사하고, 지명되지 않은 항목은 `prd_items[]` 에 `other-wave` 로 적는다.

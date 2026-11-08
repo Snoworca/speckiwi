@@ -4,6 +4,8 @@ import type { ProjectRoot, RequirementRecord, TextFile } from "../types.js";
 import type { DirtyEdge } from "../query/summary.js";
 import { parseMarkdownTable, parseMetadataRows, renderRowByHeader, splitTableRow, type ParsedTable } from "../parser/table.js";
 import type { PatchOperation } from "../patch/patch-plan.js";
+import { classifyDocumentLines, SRS_RECORD_LINES } from "../parser/document-lines.js";
+import { parseSectionHeadingName } from "../parser/section-parser.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 
 // FR-NODE-033: origin-aware record lookup. When origin/stepName are omitted the lookup
@@ -345,10 +347,18 @@ function blankBefore(file: TextFile, line: number): string[] {
   return next !== undefined && next.trim() !== "" ? [""] : [];
 }
 
-/** The last line of the section whose heading is at `headingLine`. */
-function sectionEndLine(file: TextFile, record: RequirementRecord, headingLine: number): number {
-  const following = Object.values(record.sectionLines ?? {}).filter((line) => line > headingLine);
-  return following.length > 0 ? Math.min(...following) - 1 : (record.blockEndLine ?? file.lines.length);
+/**
+ * The last line of the section whose heading is at `headingLine`: the line before the next section
+ * heading the parser reads, or the block's last line. A `#### ` line in a fence, indented code or an
+ * HTML comment is the section's own text, as it is for the parser. @req FR-NODE-260 AC-1
+ */
+export function sectionEndLine(file: TextFile, record: RequirementRecord, headingLine: number): number {
+  const end = record.blockEndLine ?? file.lines.length;
+  const lines = classifyDocumentLines(file.lines, SRS_RECORD_LINES);
+  for (let line = headingLine + 1; line <= end; line += 1) {
+    if (lines[line - 1]?.body === true && parseSectionHeadingName(file.lines[line - 1] ?? "") !== undefined) return line - 1;
+  }
+  return end;
 }
 
 function planNewSection(
@@ -401,10 +411,9 @@ export function findSectionInsertionLine(
   const end = record.blockEndLine ?? file.lines.length;
   if (start) {
     let lastBodyLine = start;
-    for (let line = start + 1; line <= end; line += 1) {
-      const text = file.lines[line - 1] ?? "";
-      if (text.startsWith("#### ")) break;
-      if (text.trim() !== "") lastBodyLine = line;
+    const sectionEnd = sectionEndLine(file, record, start);
+    for (let line = start + 1; line <= sectionEnd; line += 1) {
+      if ((file.lines[line - 1] ?? "").trim() !== "") lastBodyLine = line;
     }
     return { mode: "append", line: lastBodyLine + 1 };
   }
@@ -437,19 +446,15 @@ export function findSectionBodyRange(
 ): SectionBodyRange | undefined {
   const start = record.sectionLines?.[headingText];
   if (!start) return undefined;
-  const end = record.blockEndLine ?? file.lines.length;
+  const end = sectionEndLine(file, record, start);
   let bodyStart = start + 1;
   while (bodyStart <= end && (file.lines[bodyStart - 1] ?? "").trim() === "") bodyStart += 1;
   // Skipping blank lines can walk past an empty body onto the next heading. Returning that heading
   // as the body made a replace overwrite it, and validate saw nothing wrong. @req FR-NODE-270 AC-11
-  if (bodyStart > end || (file.lines[bodyStart - 1] ?? "").startsWith("#### ")) {
-    return { empty: true, headingLine: start };
-  }
+  if (bodyStart > end) return { empty: true, headingLine: start };
   let bodyEnd = bodyStart;
   for (let line = bodyStart; line <= end; line += 1) {
-    const text = file.lines[line - 1] ?? "";
-    if (text.startsWith("#### ")) break;
-    if (text.trim() !== "") bodyEnd = line;
+    if ((file.lines[line - 1] ?? "").trim() !== "") bodyEnd = line;
   }
   return { empty: false, startLine: bodyStart, endLine: bodyEnd };
 }

@@ -19,6 +19,8 @@ const EXPECTED_KINDS: Record<string, MutationToolKind> = {
   add_completed_work: "log-append",
   set_active_target: "workspace",
   set_target_goal: "workspace",
+  // @req FR-NODE-276 AC-2 — a Target Map row, no requirement id.
+  set_target_description: "workspace",
   init_project: "workspace",
   add_requirement: "workspace",
   workflow_pipeline_emit: "workspace",
