@@ -41,3 +41,20 @@ export function readRecoveryForCommand(commandName: string): CliRecoveryHint {
   if (commandName === "active-target") return { command: "active-target", message: "Inspect the active target before selecting target-scoped work." };
   return { command: "list", message: "List requirements with valid filters before retrying the read command." };
 }
+
+/** The read commands whose usage error keeps the recovery `readRecoveryForCommand` names for them. */
+const READ_RECOVERY_COMMANDS: ReadonlySet<string> = new Set(["show", "summary", "search", "active-target", "list"]);
+
+/**
+ * The recovery of a usage error, given the command path that failed (`["orchestrate", "run", "status"]`).
+ * A read command keeps its own recovery; any other command points at its own `--help`, which lists
+ * the options it takes, rather than at the requirement list. An empty path is a command the tree does
+ * not know. @req IR-MCP-011 AC-6
+ */
+export function usageRecoveryForCommand(commandPath: readonly string[]): CliRecoveryHint {
+  const name = commandPath[0];
+  if (name === undefined) return { command: "--help", message: "Run speckiwi --help for the commands it knows, then retry." };
+  if (READ_RECOVERY_COMMANDS.has(name)) return readRecoveryForCommand(name);
+  const help = `${commandPath.join(" ")} --help`;
+  return { command: help, message: `Run speckiwi ${help} for the options this command takes, then retry.` };
+}

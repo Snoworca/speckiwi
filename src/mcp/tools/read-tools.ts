@@ -143,6 +143,9 @@ function repairPlanInput(input: Record<string, unknown>): RequirementIdCollision
 // CLI leaf it mirrors and runs the CLI, so there is exactly one implementation of every verb and the
 // two surfaces cannot diverge. The CLI's exit code is carried through: 2 is a gate refusal, 1 an
 // operational error, 0 success (FR-NODE-137), and the payload is the CLI's own envelope.
+// @req IR-MCP-011 AC-5 — the envelope is standard output alone. Commander writes a usage error to
+// standard error beside it, and read together the two parsed as neither, which sent the envelope's
+// code and recovery back inside an `error` string.
 export async function callOrchestrateTool(
   binding: OrchestrateToolBinding,
   input: Record<string, unknown>,
@@ -152,23 +155,33 @@ export async function callOrchestrateTool(
   const { main } = await import("../../cli/index.js");
   // @req FR-NODE-221 — this process is a session, so a held run lock fence is this session's or another's.
   declareSessionProcess();
-  const chunks: string[] = [];
-  const sink = () => ({ write: (text: string) => { chunks.push(text); return true; } }) as unknown as NodeJS.WriteStream;
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const sink = (chunks: string[]) => ({ write: (text: string) => { chunks.push(text); return true; } }) as unknown as NodeJS.WriteStream;
   let argv: string[];
   try {
     // @req FR-MCP-059 AC-1 — an accepted per-call root becomes the CLI's own `--root`, which the
     // leaf already takes as a global option; omitting it leaves the argv exactly as it is today.
     argv = orchestrateArgv(binding, input, context?.root ?? deps.root);
   } catch (error) {
-    return { ok: false, error: (error as Error).message };
+    // @req IR-MCP-011 AC-1 — an argument the chosen leaf does not take; the CLI never ran.
+    return mcpFailure("USAGE", (error as Error).message, {
+      recovery: { tool: binding.tool, message: "Call again without that argument; each field's description names the actions that take it." }
+    });
   }
-  const exitCode = await main(argv, { stdout: sink(), stderr: sink() });
-  const text = chunks.join("");
-  try {
-    return { ...(JSON.parse(text) as Record<string, unknown>), exitCode };
-  } catch {
-    return { ok: false, error: text.trim().length > 0 ? text.trim() : `orchestrate ${binding.path.join(" ")} produced no output`, exitCode };
+  const exitCode = await main(argv, { stdout: sink(stdout), stderr: sink(stderr) });
+  const text = stdout.join("").trim();
+  const errorText = stderr.join("").trim();
+  const extra = errorText.length > 0 ? { stderr: errorText } : {};
+  if (text.length > 0) {
+    try {
+      return { ...(JSON.parse(text) as Record<string, unknown>), exitCode, ...extra };
+    } catch {
+      // falls through to the unreadable-output answer below
+    }
   }
+  const output = [errorText, text].filter((part) => part.length > 0).join("\n");
+  return { ...(mcpFailure("ORCHESTRATE_OUTPUT_UNREADABLE", output.length > 0 ? output : `orchestrate ${binding.path.join(" ")} produced no output`) as Record<string, unknown>), exitCode };
 }
 
 /**

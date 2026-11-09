@@ -235,6 +235,11 @@ export interface OrchestrateToolOption {
   readonly dest: string;
   readonly encoding: "boolean" | "string" | "json" | "array";
   readonly required?: boolean;
+  /**
+   * The selector values whose leaf takes this option, on a binding with a selector. Absent, every
+   * leaf the binding reaches takes it. @req IR-MCP-011
+   */
+  readonly onlyFor?: readonly string[];
 }
 
 /**
@@ -262,6 +267,21 @@ function o(flag: string, dest: string, encoding: OrchestrateToolOption["encoding
 }
 
 const DRY_RUN_OPTION = o("--dry-run", "dryRun", "boolean");
+
+/** The option, passed only to the leaves the given selector values choose. @req IR-MCP-011 */
+function onlyFor(option: OrchestrateToolOption, ...values: string[]): OrchestrateToolOption {
+  return { ...option, onlyFor: values };
+}
+
+/**
+ * Which selector values take a scoped option, in the words both the schema field and the refusal
+ * use: `accepted only when action is lock or unlock`. `undefined` for an option every leaf takes.
+ * @req IR-MCP-011 AC-4
+ */
+export function optionScopeText(binding: OrchestrateToolBinding, option: OrchestrateToolOption): string | undefined {
+  if (!binding.selector || !option.onlyFor) return undefined;
+  return `accepted only when ${binding.selector.dest} is ${option.onlyFor.join(" or ")}`;
+}
 const RUN_ID_OPTION = o("--run-id", "runId");
 const JOURNAL_OPTION = o("--journal", "journal");
 const LEDGER_OPTION = o("--ledger", "ledger");
@@ -296,7 +316,9 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
     tool: "orchestrate_run_lock", description: "Takes, releases or reports the repository-wide orchestrator run lock, keyed on the git common directory so linked worktrees contend for one lock. Writes the lock file under that directory when taking it and removes that file when releasing it; the status action changes nothing at all. While the session that took the lock is alive, only that session can release it (unlock here, or orchestrate_run_abort); any other caller is refused and nothing is removed. A refusal and the status answer name the lease, the fence state and the release step that can work.",
     path: ["run", "lock"],
     kind: "mutation",
-    options: [o("--owner", "owner"), DRY_RUN_OPTION],
+    // @req IR-MCP-011 — `unlock` takes no owner (it never matches the holder by name, IR-CLI-105)
+    // and `status` changes nothing, so it takes neither.
+    options: [onlyFor(o("--owner", "owner"), "lock"), onlyFor(DRY_RUN_OPTION, "lock", "unlock")],
     selector: { dest: "action", index: 1, values: ["lock", "unlock", "status"] }
   },
   { tool: "orchestrate_run_abort", description: "Ends the current run on purpose and records why, so a later session reads a halted run rather than an abandoned one, and releases the repository-wide run lock once that record lands — a refused record keeps the lock deliberately, because a run that could not record its own end is one nobody should join. Writes an abort event into the run journal.", path: ["run", "abort"], kind: "mutation", options: [o("--reason", "reason", "string", true), RUN_ID_OPTION, JOURNAL_OPTION, DRY_RUN_OPTION] },
@@ -390,8 +412,16 @@ export function orchestrateArgv(
   for (const option of binding.options) {
     const value = input[option.dest];
     if (value === undefined || value === null) continue;
+    // A false boolean adds no flag, so it reaches no leaf and nothing refuses it (5.3.8 behaviour).
+    if (option.encoding === "boolean" && value !== true) continue;
+    // @req IR-MCP-011 AC-1 — refused here, before the CLI runs, rather than passed to a leaf that
+    // does not take it and answers with a commander usage error.
+    const chosen = binding.selector ? segments[binding.selector.index] : undefined;
+    if (binding.selector && option.onlyFor && !option.onlyFor.includes(chosen as string)) {
+      throw new Error(`${option.dest} is ${optionScopeText(binding, option)}, not when ${binding.selector.dest} is ${chosen}; call again without ${option.dest}`);
+    }
     if (option.encoding === "boolean") {
-      if (value === true) argv.push(option.flag);
+      argv.push(option.flag);
       continue;
     }
     if (option.encoding === "array") {

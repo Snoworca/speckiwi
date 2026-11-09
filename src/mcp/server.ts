@@ -29,7 +29,7 @@ import { PRD_TOOL_SCHEMAS, registerPrdTools } from "./tools/prd-tools.js";
 import { ROADMAP_TOOL_SCHEMAS } from "./tools/roadmap-tools.js";
 import { registerResources } from "./resources.js";
 import { MCP_READ_DIAGNOSTICS_LIMIT } from "./read-diagnostics.js";
-import { ORCHESTRATE_TOOL_BINDINGS } from "../cli/commands/orchestrate.js";
+import { optionScopeText, ORCHESTRATE_TOOL_BINDINGS } from "../cli/commands/orchestrate.js";
 import { ROADMAP_BINDINGS } from "../cli/commands/roadmap.js";
 
 // IR-CLI-045 / REL-MCP-004: MCP 서버 기동 표면은 root 파라미터를 노출하지 않는다 (cwd discovery 전용).
@@ -115,7 +115,11 @@ function orchestrateToolSchemas(): Record<string, Record<string, z.ZodTypeAny>> 
           : option.encoding === "array" ? z.array(z.string())
             : option.encoding === "json" ? z.union([z.string(), z.record(z.string(), z.unknown())])
               : z.string();
-      shape[option.dest] = option.required ? base : base.optional();
+      const field = option.required ? base : base.optional();
+      // @req IR-MCP-011 AC-4 — the schema is one flat object, so an argument some actions refuse says
+      // so on its field; the encoder refuses it for the others.
+      const scope = optionScopeText(binding, option);
+      shape[option.dest] = scope ? field.describe(scope) : field;
     }
     out[binding.tool] = shape;
   }

@@ -8,7 +8,7 @@ import { registerSkillCommands } from "./commands/skills.js";
 import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerRepairCommands } from "./commands/repair.js";
 import { registerSyncAppendixCommand } from "./commands/sync-appendix.js";
-import { readRecoveryForCommand, writeCliStructuredError } from "./errors.js";
+import { usageRecoveryForCommand, writeCliStructuredError } from "./errors.js";
 import { attachInputJsonHelp, expandInputJsonArgv, tryRenderHelpJson } from "./input-json.js";
 
 /**
@@ -27,7 +27,8 @@ function jsonMode(argv: string[], command: ReturnType<typeof buildCommand>): boo
   return argv.includes("--json") || Boolean(command.getOptionValue("json"));
 }
 
-function commandNameFromArgv(argv: string[]): string {
+/** Where the command name sits in argv, or -1 when there is none. */
+function commandIndexFromArgv(argv: string[]): number {
   const valueOptions = new Set(["--root", "--format", "--fields", "--target", "--status", "--type", "--scope", "--tag", "--stability", "--priority", "--related-doc", "--evidence-reference", "--trace-reference", "--limit", "--offset"]);
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index] ?? "";
@@ -37,9 +38,35 @@ function commandNameFromArgv(argv: string[]): string {
       continue;
     }
     if (token.startsWith("-")) continue;
-    return token;
+    return index;
   }
-  return "list";
+  return -1;
+}
+
+function commandNameFromArgv(argv: string[]): string {
+  const index = commandIndexFromArgv(argv);
+  return index < 0 ? "list" : (argv[index] as string);
+}
+
+/**
+ * The command path a usage error belongs to: the command name and each subcommand token after it
+ * that the command tree knows (`orchestrate run status`). Empty when the name is not a command.
+ * @req IR-MCP-011 AC-6
+ */
+function commandPathFromArgv(argv: string[], program: ReturnType<typeof buildProgram>): string[] {
+  const name = commandNameFromArgv(argv);
+  const childNamed = (parent: typeof program, token: string) =>
+    parent.commands.find((child) => child.name() === token || child.aliases().includes(token));
+  let current = childNamed(program, name);
+  if (!current) return [];
+  const path = [current.name()];
+  for (let index = commandIndexFromArgv(argv) + 1; index < argv.length; index += 1) {
+    const next = childNamed(current, argv[index] ?? "");
+    if (!next) break;
+    current = next;
+    path.push(next.name());
+  }
+  return path;
 }
 
 /** System calls that only change the filesystem; a failure in one is a write failure, never a read or parse one. */
@@ -102,7 +129,7 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
   } catch (error) {
     const message = (error as { message?: string }).message ?? "invalid --input-json payload";
     if (jsonMode(argv, command)) {
-      writeCliStructuredError(io, "CLI_USAGE_ERROR", message, { recovery: readRecoveryForCommand(commandNameFromArgv(argv)) });
+      writeCliStructuredError(io, "CLI_USAGE_ERROR", message, { recovery: usageRecoveryForCommand(commandPathFromArgv(argv, command)) });
     } else {
       io.stderr.write(`${message}\n`);
     }
@@ -121,8 +148,7 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
     const exitCode = maybeCode.exitCode === 1 || maybeCode.exitCode === undefined ? 2 : maybeCode.exitCode;
     const isCommanderUsageError = typeof maybeCode.code === "string" && maybeCode.code.startsWith("commander.");
     if (isCommanderUsageError && jsonMode(argv, command)) {
-      const commandName = commandNameFromArgv(argv);
-      writeCliStructuredError(io, "CLI_USAGE_ERROR", maybeCode.message ?? "command failed", { recovery: readRecoveryForCommand(commandName) });
+      writeCliStructuredError(io, "CLI_USAGE_ERROR", maybeCode.message ?? "command failed", { recovery: usageRecoveryForCommand(commandPathFromArgv(argv, command)) });
       return exitCode;
     }
     if (jsonMode(argv, command)) {

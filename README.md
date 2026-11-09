@@ -771,7 +771,7 @@ speckiwi orchestrate run status --json                      # who holds the run 
 
 The two skills share the journal file. `validate`, `wave status` and `resume` each read one skill's lines: `--engine` picks which, and defaults to `kiwi-orchestrator`. An unknown value is refused rather than defaulted.
 
-**On Windows, a run lock held by a live session cannot be released from outside it.** The session that holds the run lock keeps a named pipe open until it releases the lock or its MCP server exits. Meanwhile `speckiwi orchestrate run unlock` and `run abort` refuse with `run-lock-held-by-live-session`. The session releases the lock itself, through MCP `orchestrate_run_lock` (`action: "unlock"`) or `orchestrate_run_abort`, or by being closed. `run status` names the holder's pid and lease expiry, and says how to release the lock.
+**On Windows, a run lock held by a live session cannot be released from outside it.** The session that holds the run lock keeps a named pipe open until it releases the lock or its MCP server exits. Meanwhile `speckiwi orchestrate run unlock` and `run abort` refuse with `run-lock-held-by-live-session`. The session releases the lock itself, through MCP `orchestrate_run_lock` (`action: "unlock"`) or `orchestrate_run_abort`, or by being closed. `run status` names the holder's pid and lease expiry, and says how to release the lock. `orchestrate_run_lock` takes `owner` only with `action: "lock"`, and `dryRun` only with `lock` or `unlock`: `unlock` never matches the holder by name, so an `owner` given with `unlock` or `status` is refused with `USAGE` before the command runs.
 
 The other `orchestrate` and `workflow` subcommands are driven by the skills, not by hand. `speckiwi orchestrate --help` and `speckiwi workflow --help` list them.
 
@@ -1770,7 +1770,7 @@ speckiwi orchestrate run status --json                      # 실행 잠금을 �
 
 두 스킬은 저널 파일 하나를 함께 씁니다. `validate`, `wave status`, `resume`은 각각 한 스킬의 줄만 읽습니다. 어느 스킬의 줄을 읽을지는 `--engine`으로 고르며, 기본값은 `kiwi-orchestrator`입니다. 모르는 값을 주면 기본값으로 바꾸지 않고 거부합니다.
 
-**Windows에서는 살아 있는 세션이 쥔 실행 잠금을 그 세션 밖에서 풀 수 없습니다.** 실행 잠금을 쥔 세션은 잠금을 풀거나 MCP 서버가 종료될 때까지 이름 있는 파이프를 열어 둡니다. 그동안 `speckiwi orchestrate run unlock`과 `run abort`는 `run-lock-held-by-live-session`으로 거부합니다. 잠금은 그 세션이 직접 풀어야 합니다. MCP `orchestrate_run_lock`(`action: "unlock"`)이나 `orchestrate_run_abort`를 쓰거나, 세션을 닫으면 잠금이 풀립니다. `run status`는 잠금을 쥔 프로세스의 pid와 임대 만료 시각을 알려 주고, 잠금을 푸는 방법도 안내합니다.
+**Windows에서는 살아 있는 세션이 쥔 실행 잠금을 그 세션 밖에서 풀 수 없습니다.** 실행 잠금을 쥔 세션은 잠금을 풀거나 MCP 서버가 종료될 때까지 이름 있는 파이프를 열어 둡니다. 그동안 `speckiwi orchestrate run unlock`과 `run abort`는 `run-lock-held-by-live-session`으로 거부합니다. 잠금은 그 세션이 직접 풀어야 합니다. MCP `orchestrate_run_lock`(`action: "unlock"`)이나 `orchestrate_run_abort`를 쓰거나, 세션을 닫으면 잠금이 풀립니다. `run status`는 잠금을 쥔 프로세스의 pid와 임대 만료 시각을 알려 주고, 잠금을 푸는 방법도 안내합니다. `orchestrate_run_lock`은 `owner`를 `action: "lock"`에서만, `dryRun`을 `lock`과 `unlock`에서만 받습니다. `unlock`은 잠금을 쥔 쪽을 이름으로 대조하지 않기 때문에, `unlock`이나 `status`에 `owner`를 주면 명령을 실행하기 전에 `USAGE`로 거부합니다.
 
 그 밖의 `orchestrate`와 `workflow` 하위 명령은 사람이 아니라 스킬이 실행합니다. `speckiwi orchestrate --help`와 `speckiwi workflow --help`가 그 목록을 보여 줍니다.
 
