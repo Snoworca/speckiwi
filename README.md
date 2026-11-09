@@ -71,7 +71,7 @@ You need Node.js 22 or newer, Git, and a coding agent: Claude Code, Codex, OpenC
 
    > *Use kiwi-pipeline: a user can reset their password by email.*
 
-   `kiwi-pipeline` writes the requirement, implements it test-first, reviews the code and checks that tests cover it. It asks you before each step. [How work flows](#en-pipeline) explains each step.
+   `kiwi-pipeline` first records your request word for word in a PRD under `docs/prd/` and asks you to approve it. Then it writes the requirement, implements it test-first, reviews the code and checks that tests cover it. It asks you before each step. [How work flows](#en-pipeline) explains each step.
 
 If your situation differs:
 
@@ -96,7 +96,7 @@ If your situation differs:
 - **Work mode**: how the project takes work: `wait` (the default), `sdd`, `vibe` or `tdd`. See [Work modes and steps](#en-work-modes).
 - **Step**: a small unit of work drafted under `docs/spec/steps/<name>/` and later promoted into a scope document. The step a `vibe` or `tdd` session works on is the **Active Task**.
 - **SDS** (Software Design Specification): a short design that an agent writes right before coding. It is written only when you ask for one. See [The SDS on request](#en-sds-opt-in).
-- **Host checkout**: the main working tree that holds the SRS, as opposed to a linked git worktree.
+- **Host checkout**: the checkout whose session writes the SRS. It is the main working tree or a linked git worktree; the other linked worktrees of a run are its lanes.
 - **Wave**: one part of a large job, with its own requirements and its own worker. Waves whose dependencies are done form a **stage**, and the waves of a stage run in parallel. See [Parallel waves](#en-waves).
 - **MCP server**: `speckiwi mcp`, the stdio server through which agents read and change the SRS. Registered at **user scope**, it serves every project of your user account.
 
@@ -110,13 +110,13 @@ If your situation differs:
 | --- | --- | --- |
 | A feature or change you can describe in a sentence or two | `kiwi-pipeline`: *"Use kiwi-pipeline: users can export reports as CSV."* | Writes the requirement, implements it test-first, reviews the code and checks test coverage. Asks before each step. |
 | Work that spans several scopes, or arrives as a list of parts | `kiwi-orchestrator`: *"Use kiwi-orchestrator: add SSO login."* | Proposes a path and asks you to confirm it: one `kiwi-tdd` step, or a run split into parallel waves. A bug report is reproduced with `kiwi-bug-repro` first. Resumable. |
-| An epic, a roadmap or long research | `kiwi-wave-master` | Splits the work into ordered waves with a target each. Runs the waves whose dependencies are done in parallel. Resumable. |
-| Record a requirement only | `kiwi-srs` | Writes the requirement and its acceptance criteria, then stops. |
+| An epic, a roadmap or long research | `kiwi-wave-master` | Splits the work into ordered waves under one product target. Runs the waves whose dependencies are done in parallel. Resumable. |
+| Record a requirement only | `kiwi-srs` | Records your request as a PRD for you to approve, writes the requirement and its acceptance criteria, then stops. |
 | An existing codebase with no SRS | `kiwi-srs-from-code` | Drafts SRS documents from the code, one per scope. |
 | You already changed the code | `kiwi-srs-sync` | Reads `git diff` and brings the SRS up to date. |
 | A bug you want confirmed before it is fixed | `kiwi-bug-repro` | Reads the bug report, narrows down likely causes in the code, and reproduces the bug as a failing test, from the smallest test up to a build run in a temporary directory. It fixes nothing. If it cannot reproduce the bug, it asks you for what is missing. |
 | An urgent bug | `kiwi-hot-fix` | Reproduces it first with `kiwi-bug-repro`, fixes it until that test passes, and runs regression. Then hands the SRS update to `kiwi-srs-sync`. |
-| Review local changes or PR comments | `kiwi-review-fix-loop` | Reviews, fixes and reviews again. |
+| Review local changes or PR comments | `kiwi-review-fix-loop` | Reviews, fixes the findings that block and reviews again. |
 | Commit and push, or open a PR | `kiwi-commit-auto-push` or `kiwi-commit-auto-pr` | Commits and pushes, then records the commit as evidence on the matching requirements. `kiwi-commit-auto-pr` also creates or updates the PR. |
 | "What should I do next?" | `kiwi-pipeline --none-cycle` | Recommends the next step without running anything. |
 
@@ -125,7 +125,7 @@ If your situation differs:
 | Option | Effect |
 | --- | --- |
 | `--auto` | Makes the routine decisions the skill would otherwise ask you about. It still stops on a failure, or on a question only you can answer. |
-| `--max` | Verifies more strictly, with more independent reviewers and a stricter pass condition. |
+| `--max` | Verifies more strictly. What it adds depends on the skill, such as a second independent pass or mutation and adversarial runs; each skill's `SKILL.md` says which. |
 | `--mini` / `--loops N` | Caps each review-and-fix loop at 3 rounds, or at N rounds. |
 | `--serial` | Runs the parallel steps of `kiwi-orchestrator` and `kiwi-wave-master` one at a time. Saying "one at a time" works too. |
 | `--sds` | On `kiwi-pipeline`, `kiwi-orchestrator` and `kiwi-wave-master`, writes a design (SDS) before implementing. Off by default. Saying "use SDS" works too. See [The SDS on request](#en-sds-opt-in). |
@@ -136,10 +136,10 @@ If your situation differs:
 
 A new feature or change goes through four skills: `kiwi-srs` → (`kiwi-srs-feasibility`) → `kiwi-pm` → `kiwi-review-fix-loop --close-reqs`. They work from the Requirement IDs that `kiwi-srs` wrote. `kiwi-pipeline` runs this chain for you.
 
-1. **`kiwi-srs`** writes or updates the requirement and its acceptance criteria.
+1. **`kiwi-srs`** writes or updates the requirement and its acceptance criteria. When the request is not a PRD yet, it first has `kiwi-prd` record it under `docs/prd/`, and writes no requirement until you approve that PRD (`--auto` goes on with it unapproved).
 2. **`kiwi-srs-feasibility`** checks feasibility and stability. It runs only when a requirement is still `draft`, or when its implementability is unverified. A blocker or an ambiguity can send the work to `kiwi-srs-research`, and the pipeline then asks you which way to go.
 3. **`kiwi-pm --req-filter <REQ-ID,...>`** hands those requirements to one `kiwi-coder` run. `kiwi-coder` works test-first: a failing test that cites `<REQ-ID> AC-<n>`, the smallest change that passes it, then refactoring. `kiwi-pm` then marks each requirement whose criteria all have tests `implemented`.
-4. **`kiwi-review-fix-loop --close-reqs`** reviews the code and fixes what it finds. It promotes a requirement to `verified` once regression passes, no finding is open, and every acceptance criterion has a test.
+4. **`kiwi-review-fix-loop --close-reqs`** reviews the code. It keeps a finding only when a run proves it; a functional defect it cannot prove goes to you as a residual. It fixes the kept findings that block (a broken acceptance criterion, a reproduction on a normal path, lost data or values, a valid input refused, a security hole), and records the rest as declared limits that do not block. It promotes a requirement to `verified` once regression passes, no blocking finding or residual remains, and every acceptance criterion has a test. Otherwise it stops and asks you (`NEEDS_USER`), for example when a residual remains, when blocking findings remain at the round cap or past the token budget, or when most of them came from earlier rounds' fixes.
 
 **Every workflow that implements code ends the same way: a code review, then a test-sufficiency check.** The check runs `speckiwi coverage --tests` (MCP `check_test_sufficiency`). Every acceptance criterion in scope needs a test whose line cites `<REQ-ID> AC-<n>`. When tests are missing, one subagent adds them, once. A gap that remains keeps the requirement from becoming `verified`.
 
@@ -435,18 +435,18 @@ The Kiwi skills use MCP tools for every read and every SRS change. The matching 
 
 | Category | Tools |
 | --- | --- |
-| Target & goal | `get_active_target`, `list_targets`, `set_active_target`, `set_target_goal`, `summarize_target` |
+| Target & goal | `get_active_target`, `list_targets`, `set_active_target`, `set_target_goal`, `set_target_description`, `summarize_target` |
 | Read | `list_requirements`, `get_requirement`, `list_completed_work`, `search_requirements`, `get_next_work_order` |
 | Status & stability | `update_status`, `update_stability` |
 | Evidence & trace | `check_acceptance_criteria`, `add_verification_evidence`, `add_trace_link` |
-| Authoring & editing | `add_requirement`, `append_section_note`, `add_completed_work`, `edit_requirement_fields`, `edit_requirement_table_rows`, `replace_acceptance_criteria`, `expire_acceptance_criterion`, `supersede_requirement` |
+| Authoring & editing | `add_requirement`, `append_section_note`, `add_change_note`, `add_related_doc`, `add_completed_work`, `edit_requirement_fields`, `edit_requirement_table_rows`, `replace_acceptance_criteria`, `edit_acceptance_criterion`, `append_acceptance_criterion`, `expire_acceptance_criterion`, `supersede_requirement` |
 | Work mode | `get_work_mode`, `set_work_mode` |
 | Steps & TDD First | `claim_step`, `scaffold_step`, `validate_step`, `synthesize_step_srs`, `promote_step_requirement`, `update_step_state`, `set_sds_status`, `list_steps`, `check_vibe_gate` |
 | Duplicate-ID repair | `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair`, `apply_requirement_id_collision_repair` |
 | Workspace | `validate_spec`, `sync_index`, `init_project`, `register_scopes`, `scaffold_scope`, `rename_scope`, `mcp_workspace_info` |
-| SDS & test sufficiency | `check_sds`, `check_test_sufficiency` |
+| SDS, test sufficiency & review | `check_sds`, `check_test_sufficiency`, `check_review_round` |
 | PRD | `check_prd`, `list_prd_items`, `get_prd_item`, `search_prd_items`, `prd_cursor`, `check_prd_coverage` |
-| Roadmap | `list_roadmap_items`, `get_roadmap_item`, `add_roadmap_item`, `update_roadmap_item`, `sync_roadmap_actuals` |
+| Roadmap | `list_roadmap_items`, `get_roadmap_item`, `check_roadmap`, `add_roadmap_item`, `update_roadmap_item`, `sync_roadmap_actuals` |
 | Compatibility | `add_compatibility_check`, `refresh_compatibility_check`, `revoke_compatibility_check`, `list_compat_edges`, `list_dirty_edges` |
 | Orchestrator run surface | 31 `orchestrate_*` tools: the run lock and journal, routing probe and freeze, the wave schedule and wave status, verification rounds, wave close, resume and replay, and the `--auto` gate decision. |
 | Workflow & pipeline | 15 `workflow_*` tools: pipeline emit/status/tail, worklog, artifacts (SDS files included), session status, and repair and reclassification records. |
@@ -485,7 +485,8 @@ Each skill's `SKILL.md` lists all of its options.
 
 | Skill | What it does |
 | --- | --- |
-| `kiwi-srs` | Analyzes a new request or a change request, and registers or aligns the SRS requirements for it. |
+| `kiwi-prd` | Writes your request word for word into a PRD under `docs/prd/`, asks what is missing one question at a time, and asks you to approve it. The PRD is a record of the request; the SRS stays the source of requirements. `kiwi-srs`, `kiwi-tdd`, `kiwi-step`, `kiwi-orchestrator` and `kiwi-wave-master` call it first when their input is not a PRD. |
+| `kiwi-srs` | Analyzes a new request or a change request, and registers or aligns the SRS requirements for it. It checks the result against the approved PRD. |
 | `kiwi-srs-from-code` | Reverse-engineers an existing codebase into draft SRS documents, one per scope. |
 | `kiwi-srs-feasibility` | Evaluates the Active Target's requirements for feasibility, risk and stability. |
 | `kiwi-srs-research` | Researches ambiguous requirements, blockers, external constraints and risks. |
@@ -508,7 +509,7 @@ Each skill's `SKILL.md` lists all of its options.
 
 | Skill | What it does |
 | --- | --- |
-| `kiwi-review-fix-loop` | Reviews local changes or PR comments, fixes them and reviews again. It reviews code only. With `--close-reqs` (self-review mode only), it also promotes the affected requirements to `verified`. |
+| `kiwi-review-fix-loop` | Reviews local changes or PR comments, fixes the findings that block and reviews again, as [How work flows](#en-pipeline) describes. It reviews code only. From the second round it reviews, by default, what changed since the last round and the files those changes reach (`speckiwi review-round check`, MCP `check_review_round`). With `--close-reqs` (self-review mode only), it also promotes the affected requirements to `verified`. |
 | `kiwi-commit-auto-push` | Commits and pushes, with the matching Requirement IDs in the message. After the push it records the commit as evidence on those requirements. |
 | `kiwi-commit-auto-pr` | Commits and pushes, then creates or updates a GitHub PR and records it as evidence. |
 
@@ -518,9 +519,9 @@ Each skill's `SKILL.md` lists all of its options.
 | --- | --- |
 | `kiwi-pipeline` | Runs the chain in [How work flows](#en-pipeline), asking before each step. It reads the skills' journal, `kiwi/pipeline.jsonl`. A call without a work request, such as a status question, runs no chain. `--none-cycle` recommends a single next step. |
 | `kiwi-orchestrator` | Takes one work item, probes it and proposes a route: one `kiwi-tdd` step, or an orchestrated run in [parallel waves](#en-waves). A step route needs the `tdd` work mode; otherwise it asks whether to switch, and recommends the orchestrated run. When the input reports a bug, it first reproduces it with `kiwi-bug-repro`, and stops if the bug does not reproduce. Resumable. |
-| `kiwi-wave-master` | Splits an epic, a roadmap or long research into ordered waves, registers a target per wave, and runs them under the same parallel rules as `kiwi-orchestrator`. Resumable. |
+| `kiwi-wave-master` | Splits an epic, a roadmap or long research into ordered waves, authors their SRS once under one product target, and runs them under the same parallel rules as `kiwi-orchestrator`. Resumable. |
 
-`kiwi-orchestrator` also takes `--work`, `--base-branch` and `--lanes N`. `kiwi-wave-master` also takes `--drive`, which also opens the integration-test and cost gates that `--auto` alone stops at.
+`kiwi-orchestrator` also takes `--work`, `--base-branch`, `--lanes N` and `--existing-srs <target>`. Use `--existing-srs` when the target's requirements are already written: without it the run authors the SRS again, which adds or supersedes requirements. `kiwi-wave-master` also takes `--drive`, which also opens the integration-test and cost gates that `--auto` alone stops at.
 
 The same skill set ships in three source trees, one per agent family: **`skills/claude`** for Claude Code, **`skills/codex`** for Codex (with Codex invocation and clarification wording), and **`skills/etc`** for OpenCode, Hermes and local LLMs (Agent Skills format, with a single evaluator by default).
 
@@ -639,10 +640,10 @@ speckiwi history FR-APP-001                  # change history of one requirement
 speckiwi changed-since 2026-07-01            # requirements changed on or after a date
 speckiwi stale                               # evolving requirements unchanged for 90 days (--evolving-age)
 speckiwi attention                           # requirements needing attention
-speckiwi links check                         # broken trace links and Related Docs links
+speckiwi links check                         # broken trace links, Related Docs links and index body links
 ```
 
-`links check` exits `0` even when it finds broken links, so read its report rather than its exit code.
+`links check` exits `0` even when it finds broken links, so read its report rather than its exit code. A broken local link in the body of `docs/spec/00.index.md` is listed apart from the requirements' links, under `brokenIndexLinks` in `--json`.
 
 `release-readiness --json` also prints the command that tags the target's SRS baseline (`baselineCommand`), of the form `git tag srs-<target>-baseline`. Run it once the target is ready. For a target `v1.0.0`:
 
@@ -695,14 +696,17 @@ speckiwi append-note FR-APP-001 --section rationale --mode replace --text "rewri
 speckiwi append-note FR-APP-001 --section rationale --mode replace --text "rewritten rationale" --confirm-replace
 speckiwi edit-requirement-table-rows FR-APP-001 --section change_notes \
   --operations '[{"kind":"update","rowIndex":0,"values":{"reason":"corrected reason"}}]'
+speckiwi append-ac FR-APP-001 --text "rejects an expired token"
 speckiwi set-target-goal v0.1.0 --goal "first usable release"
+speckiwi set-target-description v0.1.0 --description "first usable release"
 speckiwi set-active-target v0.2.0 --create    # register v0.2.0 and make it the Active Target
 speckiwi set-target-status v0.1.0 completed   # planned|active|frozen|completed|released|archived
 speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summary "..."
 ```
 
 - A code trace names a file path with no `:line` suffix. `links check` checks that the path exists.
-- `set-active-target` without `--create` only switches to a target that is already registered.
+- `set-active-target` without `--create` only switches to a target that is already registered. Its `--description` applies only when it creates the target; for a registered target it is refused, and `set-target-description` (MCP `set_target_description`) changes the description.
+- `append-ac` (MCP `append_acceptance_criterion`) appends one unchecked criterion, numbered one above the highest number the requirement ever used, expired ones included. MCP `edit_acceptance_criterion` rewrites the text of one criterion. Both refuse a `verified` requirement, like `replace_acceptance_criteria`.
 - `set-target-status` refuses any status other than `active` for the Active Target. Move the Active Target first, as above.
 - Most mutation commands accept `--json`, `--dry-run` and `--ignore-lock`. A failed mutation exits with `5`.
 - Discarding a protected requirement is refused unless `update-status` also gets `--confirm-discard-verified`. Protected means Status `verified`, Stability `stable` or `frozen`, or `implemented` with verification evidence.
@@ -870,7 +874,7 @@ What it removes, and what it checks first:
 | What | What is removed | When it is kept |
 | --- | --- | --- |
 | `kiwi-*` skill directories | the whole directory, when its install metadata names this agent and skill and its checksum still matches | you edited it, you wrote it (no install metadata), or it is a symlink |
-| `_shared/kiwi/` beside the skills | each shared contract file that is byte-identical to the bundled copy and that no remaining skill uses; `--dry-run` does not list these | it differs from the bundled copy |
+| `_shared/kiwi/` beside the skills | each shared contract file that matches the bundled copy, line endings aside, and that no remaining skill uses; `--dry-run` does not list these | it differs from the bundled copy |
 | `.mcp.json` | the `speckiwi` key, **whatever it holds**; other servers and keys stay, and the file is never deleted | the file is not a JSON object with an `mcpServers` map |
 | `.claude/settings.json`, `.codex/hooks.json` | the hook entry that runs the trace runner; the file goes only if that leaves it empty | the file is not valid JSON, or the entry has a shape it does not recognize |
 | `.git/hooks/pre-commit`, `docs/.kiwi/hooks/*.mjs` | the file, when it is byte-identical to what the installer writes | you edited it |
@@ -1064,7 +1068,7 @@ Node.js 22 이상, Git, 그리고 코딩 에이전트(Claude Code, Codex, OpenCo
 
    > *kiwi-pipeline으로 진행해줘: 사용자가 이메일로 비밀번호를 재설정할 수 있다.*
 
-   `kiwi-pipeline`은 요구사항을 쓰고, 테스트를 먼저 쓰는 방식으로 구현하고, 코드를 리뷰한 뒤, 테스트가 그 요구사항을 다루는지 확인합니다. 각 단계를 진행하기 전에 사용자에게 묻습니다. 단계별 설명은 [작업이 진행되는 방식](#ko-pipeline)에 있습니다.
+   `kiwi-pipeline`은 먼저 요청을 원문 그대로 `docs/prd/` 아래 PRD에 기록하고 승인을 요청합니다. 그다음 요구사항을 쓰고, 테스트를 먼저 쓰는 방식으로 구현하고, 코드를 리뷰한 뒤, 테스트가 그 요구사항을 다루는지 확인합니다. 각 단계를 진행하기 전에 사용자에게 묻습니다. 단계별 설명은 [작업이 진행되는 방식](#ko-pipeline)에 있습니다.
 
 상황이 다르다면 다음을 보십시오.
 
@@ -1089,7 +1093,7 @@ Node.js 22 이상, Git, 그리고 코딩 에이전트(Claude Code, Codex, OpenCo
 - **작업 모드(work mode)**: 프로젝트가 작업을 받는 방식이며, `wait`(기본값), `sdd`, `vibe`, `tdd` 중 하나입니다. [작업 모드와 step](#ko-work-modes)을 참조하십시오.
 - **Step**: `docs/spec/steps/<name>/` 아래에서 초안을 쓰고 나중에 scope 문서로 승격하는 작은 작업 단위입니다. `vibe`나 `tdd` 세션이 작업 중인 step을 **Active Task**라고 합니다.
 - **SDS**(Software Design Specification): 에이전트가 코딩 직전에 쓰는 짧은 설계입니다. 사용자가 요청할 때만 씁니다. [요청할 때만 쓰는 SDS](#ko-sds-opt-in)를 참조하십시오.
-- **호스트 체크아웃(host checkout)**: SRS를 가진 주 작업 트리이며, 연결된 git worktree와 대비되는 쪽입니다.
+- **호스트 체크아웃(host checkout)**: SRS를 쓰는 세션이 있는 체크아웃입니다. 주 작업 트리일 수도 있고 연결된 git worktree일 수도 있으며, 실행에 속한 나머지 연결된 worktree는 그 레인(lane)입니다.
 - **Wave**: 큰 작업을 나눈 한 부분이며, 자기 요구사항과 자기 워커를 가집니다. 의존하는 wave가 모두 끝난 wave들이 **stage** 하나를 이루고, 한 stage의 wave들은 병렬로 실행됩니다. [병렬 wave](#ko-waves)를 참조하십시오.
 - **MCP 서버**: 에이전트가 SRS를 읽고 고칠 때 거치는 stdio 서버 `speckiwi mcp`입니다. 이 서버는 **사용자 범위(user scope)**에 등록되므로, 그 사용자 계정의 모든 프로젝트에서 쓰입니다.
 
@@ -1103,13 +1107,13 @@ Node.js 22 이상, Git, 그리고 코딩 에이전트(Claude Code, Codex, OpenCo
 | --- | --- | --- |
 | 한두 문장으로 설명할 수 있는 기능이나 변경 | `kiwi-pipeline`: *"kiwi-pipeline으로 진행해줘: 사용자가 보고서를 CSV로 내보낼 수 있다."* | 요구사항을 쓰고, 테스트를 먼저 쓰는 방식으로 구현하고, 코드를 리뷰한 뒤 테스트 커버리지를 확인합니다. 각 단계 전에 사용자에게 묻습니다. |
 | 여러 scope에 걸치거나, 여러 부분의 목록으로 주어지는 작업 | `kiwi-orchestrator`: *"kiwi-orchestrator로 진행해줘: SSO 로그인 추가."* | 경로를 제안하고 사용자의 확인을 받습니다. 경로는 `kiwi-tdd` step 하나이거나, 병렬 wave로 나눈 실행입니다. 버그 보고는 먼저 `kiwi-bug-repro`로 재현합니다. 재개할 수 있습니다. |
-| 에픽, 로드맵, 긴 연구 | `kiwi-wave-master` | 작업을 순서 있는 wave로 나누고 wave마다 대상을 하나씩 둡니다. 의존하는 wave가 끝난 wave들을 병렬로 실행합니다. 재개할 수 있습니다. |
-| 요구사항만 기록 | `kiwi-srs` | 요구사항과 수용 기준을 쓰고 멈춥니다. |
+| 에픽, 로드맵, 긴 연구 | `kiwi-wave-master` | 작업을 제품 대상 하나 아래에서 순서 있는 wave로 나눕니다. 의존하는 wave가 끝난 wave들을 병렬로 실행합니다. 재개할 수 있습니다. |
+| 요구사항만 기록 | `kiwi-srs` | 요청을 PRD로 기록해 승인을 받고, 요구사항과 수용 기준을 쓴 뒤 멈춥니다. |
 | SRS가 없는 기존 코드베이스 | `kiwi-srs-from-code` | 코드를 읽고 scope마다 SRS 문서 초안을 하나씩 만듭니다. |
 | 코드를 이미 고친 경우 | `kiwi-srs-sync` | `git diff`를 읽고 SRS를 최신 상태로 맞춥니다. |
 | 고치기 전에 확인하고 싶은 버그 | `kiwi-bug-repro` | 버그 보고를 읽고 코드에서 원인 후보를 좁힌 뒤, 가장 작은 테스트부터 임시 디렉터리에서의 빌드 실행까지 넓혀 가며 버그를 실패하는 테스트로 재현합니다. 아무것도 고치지 않습니다. 재현하지 못하면 무엇이 더 필요한지 사용자에게 묻습니다. |
 | 긴급 버그 | `kiwi-hot-fix` | 먼저 `kiwi-bug-repro`로 버그를 재현하고, 그 테스트가 통과하도록 고친 뒤 회귀 테스트를 실행합니다. 그다음 SRS 갱신을 `kiwi-srs-sync`에 넘깁니다. |
-| 로컬 변경이나 PR 코멘트 리뷰 | `kiwi-review-fix-loop` | 리뷰하고, 고치고, 다시 리뷰합니다. |
+| 로컬 변경이나 PR 코멘트 리뷰 | `kiwi-review-fix-loop` | 리뷰하고, 통과를 막는 지적을 고치고, 다시 리뷰합니다. |
 | 커밋과 push, 또는 PR 생성 | `kiwi-commit-auto-push` 또는 `kiwi-commit-auto-pr` | 커밋하고 push한 뒤, 그 커밋을 해당 요구사항의 검증 증거로 기록합니다. `kiwi-commit-auto-pr`은 PR도 만들거나 갱신합니다. |
 | "다음에 뭘 하면 되지?" | `kiwi-pipeline --none-cycle` | 아무것도 실행하지 않고 다음 단계를 추천합니다. |
 
@@ -1118,7 +1122,7 @@ Node.js 22 이상, Git, 그리고 코딩 에이전트(Claude Code, Codex, OpenCo
 | 옵션 | 효과 |
 | --- | --- |
 | `--auto` | 원래 사용자에게 물었을 일상적인 결정을 스킬이 대신 내립니다. 실패했을 때나 사용자만 답할 수 있는 질문 앞에서는 여전히 멈춥니다. |
-| `--max` | 독립 리뷰어를 늘리고 통과 조건을 높여 더 엄격하게 검증합니다. |
+| `--max` | 더 엄격하게 검증합니다. 무엇을 더하는지는 스킬마다 다르며(독립 검증을 한 번 더 하거나, 뮤테이션과 적대적 실행을 더하는 식입니다), 각 스킬의 `SKILL.md`에 적혀 있습니다. |
 | `--mini` / `--loops N` | 리뷰·수정 루프마다 반복 횟수를 최대 3회, 또는 최대 N회로 제한합니다. |
 | `--serial` | `kiwi-orchestrator`와 `kiwi-wave-master`에서 병렬로 도는 단계를 하나씩 실행합니다. "하나씩 해줘"라고 말해도 됩니다. |
 | `--sds` | `kiwi-pipeline`, `kiwi-orchestrator`, `kiwi-wave-master`에서 구현하기 전에 설계(SDS)를 씁니다. 기본값은 꺼짐입니다. "SDS로 해줘"라고 말해도 됩니다. [요청할 때만 쓰는 SDS](#ko-sds-opt-in)를 참조하십시오. |
@@ -1129,10 +1133,10 @@ Node.js 22 이상, Git, 그리고 코딩 에이전트(Claude Code, Codex, OpenCo
 
 새 기능이나 변경은 네 스킬을 차례로 거칩니다: `kiwi-srs` → (`kiwi-srs-feasibility`) → `kiwi-pm` → `kiwi-review-fix-loop --close-reqs`. 네 스킬은 모두 `kiwi-srs`가 쓴 요구사항 ID를 기준으로 일합니다. 이 흐름은 `kiwi-pipeline`이 대신 실행합니다.
 
-1. **`kiwi-srs`**가 요구사항과 수용 기준을 쓰거나 갱신합니다.
+1. **`kiwi-srs`**가 요구사항과 수용 기준을 쓰거나 갱신합니다. 요청이 아직 PRD가 아니면 먼저 `kiwi-prd`가 요청을 `docs/prd/` 아래에 기록하게 하고, 사용자가 그 PRD를 승인하기 전에는 요구사항을 쓰지 않습니다(`--auto`는 승인되지 않은 PRD로 진행합니다).
 2. **`kiwi-srs-feasibility`**가 구현 가능성과 Stability를 점검합니다. 이 단계는 요구사항이 아직 `draft`이거나 구현 가능성이 검증되지 않았을 때만 실행됩니다. 차단 요인이나 모호한 점이 있으면 작업이 `kiwi-srs-research`로 넘어갈 수 있습니다. 그러면 파이프라인이 어느 쪽으로 갈지 사용자에게 묻습니다.
 3. **`kiwi-pm --req-filter <REQ-ID,...>`**가 그 요구사항들을 `kiwi-coder` 실행 하나에 넘깁니다. `kiwi-coder`는 테스트를 먼저 씁니다. `<REQ-ID> AC-<n>`을 인용한 실패하는 테스트를 쓰고, 그 테스트를 통과하는 최소한의 변경을 한 뒤, 리팩터링합니다. 그다음 `kiwi-pm`은 모든 수용 기준에 테스트가 있는 요구사항을 `implemented`로 표시합니다.
-4. **`kiwi-review-fix-loop --close-reqs`**가 코드를 리뷰하고 찾은 문제를 고칩니다. 회귀 테스트가 통과하고, 남은 지적이 없고, 모든 수용 기준에 테스트가 있으면 요구사항을 `verified`로 승격합니다.
+4. **`kiwi-review-fix-loop --close-reqs`**가 코드를 리뷰합니다. 실행으로 입증된 지적만 남기고, 입증하지 못한 기능 결함은 residual로 사용자에게 넘깁니다. 남긴 지적 중 통과를 막는 지적(수용 기준 위반, 평범한 경로에서의 재현, 데이터나 값의 손실, 맞는 입력의 거부, 보안 문제)을 고치며, 나머지는 통과를 막지 않는 선언된 한계로 기록합니다. 회귀 테스트가 통과하고, 통과를 막는 지적과 residual이 남지 않고, 모든 수용 기준에 테스트가 있으면 요구사항을 `verified`로 승격합니다. 그렇지 않으면 멈추고 사용자에게 묻습니다(`NEEDS_USER`). 예를 들어 residual이 남았을 때, 통과를 막는 지적이 남은 채 회차 상한이나 토큰 예산에 닿았을 때, 그 지적의 과반이 앞 회차의 수정에서 생겼을 때입니다.
 
 **코드를 구현하는 모든 워크플로는 같은 방식으로 끝납니다. 코드 리뷰를 한 뒤 테스트 충분성을 확인합니다.** 이 확인은 `speckiwi coverage --tests`(MCP `check_test_sufficiency`)로 합니다. 범위 안의 모든 수용 기준에는 그 줄에 `<REQ-ID> AC-<n>`을 인용한 테스트가 있어야 합니다. 테스트가 빠져 있으면 서브에이전트 하나가 한 번 채웁니다. 그래도 공백이 남으면 그 요구사항은 `verified`가 되지 못합니다.
 
@@ -1428,18 +1432,18 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 
 | 범주 | 도구 |
 | --- | --- |
-| 대상과 목표 | `get_active_target`, `list_targets`, `set_active_target`, `set_target_goal`, `summarize_target` |
+| 대상과 목표 | `get_active_target`, `list_targets`, `set_active_target`, `set_target_goal`, `set_target_description`, `summarize_target` |
 | 조회 | `list_requirements`, `get_requirement`, `list_completed_work`, `search_requirements`, `get_next_work_order` |
 | Status와 Stability | `update_status`, `update_stability` |
 | 증거와 추적 | `check_acceptance_criteria`, `add_verification_evidence`, `add_trace_link` |
-| 작성과 편집 | `add_requirement`, `append_section_note`, `add_completed_work`, `edit_requirement_fields`, `edit_requirement_table_rows`, `replace_acceptance_criteria`, `expire_acceptance_criterion`, `supersede_requirement` |
+| 작성과 편집 | `add_requirement`, `append_section_note`, `add_change_note`, `add_related_doc`, `add_completed_work`, `edit_requirement_fields`, `edit_requirement_table_rows`, `replace_acceptance_criteria`, `edit_acceptance_criterion`, `append_acceptance_criterion`, `expire_acceptance_criterion`, `supersede_requirement` |
 | 작업 모드 | `get_work_mode`, `set_work_mode` |
 | Step과 TDD First | `claim_step`, `scaffold_step`, `validate_step`, `synthesize_step_srs`, `promote_step_requirement`, `update_step_state`, `set_sds_status`, `list_steps`, `check_vibe_gate` |
 | 중복 ID 복구 | `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair`, `apply_requirement_id_collision_repair` |
 | 작업 공간 | `validate_spec`, `sync_index`, `init_project`, `register_scopes`, `scaffold_scope`, `rename_scope`, `mcp_workspace_info` |
-| SDS와 테스트 충분성 | `check_sds`, `check_test_sufficiency` |
+| SDS, 테스트 충분성, 리뷰 | `check_sds`, `check_test_sufficiency`, `check_review_round` |
 | PRD | `check_prd`, `list_prd_items`, `get_prd_item`, `search_prd_items`, `prd_cursor`, `check_prd_coverage` |
-| 로드맵 | `list_roadmap_items`, `get_roadmap_item`, `add_roadmap_item`, `update_roadmap_item`, `sync_roadmap_actuals` |
+| 로드맵 | `list_roadmap_items`, `get_roadmap_item`, `check_roadmap`, `add_roadmap_item`, `update_roadmap_item`, `sync_roadmap_actuals` |
 | 호환성 | `add_compatibility_check`, `refresh_compatibility_check`, `revoke_compatibility_check`, `list_compat_edges`, `list_dirty_edges` |
 | 오케스트레이터 실행 | `orchestrate_*` 31개: 실행 잠금과 저널, 경로 탐색과 경로 동결, wave 일정과 wave 상태, 검증 라운드, wave 종료, 재개와 재생, `--auto` 모드의 판정을 다룹니다. |
 | 워크플로와 파이프라인 | `workflow_*` 15개 — 파이프라인 emit/status/tail, 작업 기록(worklog), 산출물(SDS 파일 포함), 세션 상태, 복구와 재분류 기록을 다룹니다. |
@@ -1478,7 +1482,8 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 
 | 스킬 | 하는 일 |
 | --- | --- |
-| `kiwi-srs` | 새 요청이나 변경 요청을 분석하고, 그에 맞게 SRS 요구사항을 등록하거나 기존 요구사항과 맞춥니다. |
+| `kiwi-prd` | 요청을 원문 그대로 `docs/prd/` 아래 PRD에 쓰고, 빠진 것을 한 번에 하나씩 물은 뒤 승인을 요청합니다. PRD는 요청의 기록이며, 요구사항의 원본은 여전히 SRS입니다. `kiwi-srs`, `kiwi-tdd`, `kiwi-step`, `kiwi-orchestrator`, `kiwi-wave-master`는 입력이 PRD가 아니면 이 스킬을 먼저 부릅니다. |
+| `kiwi-srs` | 새 요청이나 변경 요청을 분석하고, 그에 맞게 SRS 요구사항을 등록하거나 기존 요구사항과 맞춥니다. 결과는 승인된 PRD와 대조합니다. |
 | `kiwi-srs-from-code` | 기존 코드베이스를 역분석해 scope마다 SRS 문서 초안을 하나씩 만듭니다. |
 | `kiwi-srs-feasibility` | Active Target의 요구사항을 구현 가능성, 위험, Stability의 관점에서 평가합니다. |
 | `kiwi-srs-research` | 모호한 요구사항, 차단 요인, 외부 제약, 위험을 조사합니다. |
@@ -1501,7 +1506,7 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 
 | 스킬 | 하는 일 |
 | --- | --- |
-| `kiwi-review-fix-loop` | 로컬 변경이나 PR 코멘트를 리뷰하고, 고치고, 다시 리뷰합니다. 코드만 리뷰합니다. `--close-reqs`를 주면(셀프 리뷰 모드에서만) 영향을 받은 요구사항을 `verified`로 승격합니다. |
+| `kiwi-review-fix-loop` | 로컬 변경이나 PR 코멘트를 리뷰하고, [작업이 진행되는 방식](#ko-pipeline)에 적은 대로 통과를 막는 지적을 고친 뒤 다시 리뷰합니다. 코드만 리뷰합니다. 2회차부터는 기본적으로 직전 회차 뒤에 바뀐 부분과 그 변경이 닿는 파일을 리뷰합니다(`speckiwi review-round check`, MCP `check_review_round`). `--close-reqs`를 주면(셀프 리뷰 모드에서만) 영향을 받은 요구사항을 `verified`로 승격합니다. |
 | `kiwi-commit-auto-push` | 해당 요구사항 ID를 메시지에 넣어 커밋하고 push합니다. push한 뒤에는 그 커밋을 해당 요구사항의 검증 증거로 기록합니다. |
 | `kiwi-commit-auto-pr` | 커밋하고 push한 뒤, GitHub PR을 만들거나 갱신하고 그 PR을 검증 증거로 기록합니다. |
 
@@ -1511,9 +1516,9 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 | --- | --- |
 | `kiwi-pipeline` | [작업이 진행되는 방식](#ko-pipeline)의 흐름을 실행하며, 각 단계 전에 사용자에게 묻습니다. 스킬의 저널인 `kiwi/pipeline.jsonl`을 읽습니다. 상태 질문처럼 작업 요청이 없는 호출은 흐름을 실행하지 않습니다. `--none-cycle`은 다음 단계 하나를 추천합니다. |
 | `kiwi-orchestrator` | 작업 하나를 받아 살펴본 뒤 경로를 제안합니다. 경로는 `kiwi-tdd` step 하나이거나 [병렬 wave](#ko-waves)로 진행하는 오케스트레이션 실행입니다. step 경로에는 `tdd` 작업 모드가 필요합니다. 그 모드가 아니면 모드를 바꿀지 묻고, 오케스트레이션 실행을 권합니다. 입력이 버그 보고이면 먼저 `kiwi-bug-repro`로 재현하고, 재현되지 않으면 멈춥니다. 재개할 수 있습니다. |
-| `kiwi-wave-master` | 에픽, 로드맵, 긴 연구를 순서 있는 wave로 나누고, wave마다 대상을 등록한 뒤, `kiwi-orchestrator`와 같은 병렬 규칙으로 실행합니다. 재개할 수 있습니다. |
+| `kiwi-wave-master` | 에픽, 로드맵, 긴 연구를 순서 있는 wave로 나누고, 제품 대상 하나 아래에서 SRS를 한 번 저작한 뒤, `kiwi-orchestrator`와 같은 병렬 규칙으로 실행합니다. 재개할 수 있습니다. |
 
-`kiwi-orchestrator`는 `--work`, `--base-branch`, `--lanes N`도 받습니다. `kiwi-wave-master`는 `--drive`도 받습니다. `--drive`를 주면 `--auto`만으로는 멈추는 통합 테스트 검사 단계와 비용 검사 단계도 넘어갑니다.
+`kiwi-orchestrator`는 `--work`, `--base-branch`, `--lanes N`, `--existing-srs <target>`도 받습니다. 대상의 요구사항이 이미 작성되어 있으면 `--existing-srs`를 주십시오. 이 옵션이 없으면 실행이 SRS를 다시 저작하므로 요구사항이 새로 생기거나 기존 요구사항이 대체됩니다. `kiwi-wave-master`는 `--drive`도 받습니다. `--drive`를 주면 `--auto`만으로는 멈추는 통합 테스트 검사 단계와 비용 검사 단계도 넘어갑니다.
 
 같은 스킬 묶음이 에이전트 계열마다 하나씩, 세 소스 트리로 배포됩니다. **`skills/claude`**는 Claude Code용입니다. **`skills/codex`**는 Codex용이며, Codex의 호출 방식과 질문 문구를 씁니다. **`skills/etc`**는 OpenCode, Hermes, 로컬 LLM용이며, Agent Skills 형식을 쓰고 기본으로 평가자 하나를 둡니다.
 
@@ -1632,10 +1637,10 @@ speckiwi history FR-APP-001                  # 요구사항 하나의 변경 이
 speckiwi changed-since 2026-07-01            # 지정한 날짜와 그 이후에 바뀐 요구사항
 speckiwi stale                               # 90일 동안 바뀌지 않은 evolving 요구사항(--evolving-age)
 speckiwi attention                           # 주의가 필요한 요구사항
-speckiwi links check                         # 깨진 추적 링크와 Related Docs 링크
+speckiwi links check                         # 깨진 추적 링크, Related Docs 링크, 인덱스 본문 링크
 ```
 
-`links check`는 깨진 링크를 찾아도 `0`으로 끝납니다. 그러므로 종료 코드가 아니라 보고서를 읽으십시오.
+`links check`는 깨진 링크를 찾아도 `0`으로 끝납니다. 그러므로 종료 코드가 아니라 보고서를 읽으십시오. `docs/spec/00.index.md` 본문의 깨진 로컬 링크는 요구사항의 링크와 따로, `--json`의 `brokenIndexLinks` 아래에 나옵니다.
 
 `release-readiness --json`은 대상의 SRS 기준선에 태그를 다는 명령(`baselineCommand`)도 출력합니다. 이 명령의 형식은 `git tag srs-<target>-baseline`입니다. 대상이 준비되면 이 명령을 실행하십시오. 대상이 `v1.0.0`이라면 다음과 같습니다.
 
@@ -1688,14 +1693,17 @@ speckiwi append-note FR-APP-001 --section rationale --mode replace --text "rewri
 speckiwi append-note FR-APP-001 --section rationale --mode replace --text "rewritten rationale" --confirm-replace
 speckiwi edit-requirement-table-rows FR-APP-001 --section change_notes \
   --operations '[{"kind":"update","rowIndex":0,"values":{"reason":"corrected reason"}}]'
+speckiwi append-ac FR-APP-001 --text "rejects an expired token"
 speckiwi set-target-goal v0.1.0 --goal "first usable release"
+speckiwi set-target-description v0.1.0 --description "first usable release"
 speckiwi set-active-target v0.2.0 --create    # v0.2.0을 등록하고 Active Target으로 지정
 speckiwi set-target-status v0.1.0 completed   # planned|active|frozen|completed|released|archived
 speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summary "..."
 ```
 
 - 코드 추적 링크에는 `:line` 접미사 없이 파일 경로만 적습니다. `links check`가 그 경로가 있는지 확인합니다.
-- `set-active-target`은 `--create`가 없으면 이미 등록된 대상으로만 전환합니다.
+- `set-active-target`은 `--create`가 없으면 이미 등록된 대상으로만 전환합니다. `--description`은 대상을 새로 만들 때만 적용되고, 이미 등록된 대상에 주면 거부됩니다. 설명을 바꾸려면 `set-target-description`(MCP `set_target_description`)을 쓰십시오.
+- `append-ac`(MCP `append_acceptance_criterion`)는 체크되지 않은 수용 기준 하나를 덧붙이며, 번호는 그 요구사항이 지금까지 쓴 가장 큰 번호(만료된 것 포함)보다 하나 큽니다. MCP `edit_acceptance_criterion`은 수용 기준 하나의 텍스트를 다시 씁니다. 둘 다 `replace_acceptance_criteria`처럼 `verified` 요구사항은 거부합니다.
 - `set-target-status`는 Active Target에 `active`가 아닌 상태를 주면 거부합니다. 위의 예처럼 먼저 Active Target을 옮기십시오.
 - 대부분의 변경 명령은 `--json`, `--dry-run`, `--ignore-lock`을 받습니다. 변경이 실패하면 종료 코드 `5`로 끝납니다.
 - 보호된 요구사항을 폐기하려 하면, `update-status`에 `--confirm-discard-verified`를 함께 주지 않는 한 거부됩니다. 보호된 요구사항이란 Status가 `verified`이거나, Stability가 `stable` 또는 `frozen`이거나, 검증 증거가 있는 `implemented` 요구사항입니다.
@@ -1863,7 +1871,7 @@ speckiwi remove --global --apply    # 이 프로젝트 대신 에이전트의 �
 | 항목 | 제거하는 것 | 남기는 경우 |
 | --- | --- | --- |
 | `kiwi-*` 스킬 디렉터리 | 설치 메타데이터가 이 에이전트와 스킬을 가리키고 체크섬이 여전히 일치하면 디렉터리 전체 | 사용자가 고쳤거나, 직접 썼거나(설치 메타데이터 없음), 심볼릭 링크인 경우 |
-| 스킬 옆의 `_shared/kiwi/` | 패키지에 포함된 사본과 바이트 단위로 같고, 남은 스킬 중 어느 것도 쓰지 않는 공용 계약 파일 각각. `--dry-run`은 이 파일들을 나열하지 않음 | 패키지에 포함된 사본과 다른 경우 |
+| 스킬 옆의 `_shared/kiwi/` | 줄 끝을 빼면 패키지에 포함된 사본과 같고, 남은 스킬 중 어느 것도 쓰지 않는 공용 계약 파일 각각. `--dry-run`은 이 파일들을 나열하지 않음 | 패키지에 포함된 사본과 다른 경우 |
 | `.mcp.json` | **값과 관계없이** `speckiwi` 키. 다른 서버와 키는 남고, 파일은 절대 삭제하지 않음 | 파일이 `mcpServers` 맵을 가진 JSON 객체가 아닌 경우 |
 | `.claude/settings.json`, `.codex/hooks.json` | 추적 실행기를 실행하는 훅 항목. 그 결과 파일이 비었을 때만 파일도 삭제 | 파일이 올바른 JSON이 아니거나, 항목의 형태를 알아보지 못하는 경우 |
 | `.git/hooks/pre-commit`, `docs/.kiwi/hooks/*.mjs` | 설치기가 쓰는 내용과 바이트 단위로 같은 파일 | 사용자가 고친 경우 |
