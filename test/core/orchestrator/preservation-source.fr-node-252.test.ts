@@ -754,9 +754,9 @@ describe("FR-NODE-252 AC-4 a context skip in every combination of title, options
     { source: "fixture.name", key: "${fixture.name}" }
   ];
   const options = ["", "{ timeout: 5000 }, "];
+  // An `.each(rows)` callback takes no context, only the row (preservation.fr-node-265.test.ts).
   const callees = [
     { call: "it", parameters: (context: string) => `(${context})` },
-    { call: "it.each(ROWS)", parameters: (context: string) => `(${context})` },
     { call: "it.for(ROWS)", parameters: (context: string) => `({ value }, ${context})` },
     { call: "onFencedPlatform", parameters: (context: string) => `(${context})` }
   ];

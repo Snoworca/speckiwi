@@ -42,10 +42,31 @@ function commandNameFromArgv(argv: string[]): string {
   return "list";
 }
 
-function classifyUnhandledError(error: { code?: string; message?: string }): { code: string; exitCode: number; recoveryCommand: string } {
+/** System calls that only change the filesystem; a failure in one is a write failure, never a read or parse one. */
+const FILESYSTEM_WRITE_SYSCALLS: ReadonlySet<string> = new Set(["rename", "write", "unlink", "rmdir", "mkdir", "copyfile"]);
+
+interface UnhandledError {
+  code?: string;
+  message?: string;
+  syscall?: string;
+  cause?: { syscall?: string };
+}
+
+/** A failed filesystem write, either the error itself or the write a failed restore was answering. */
+function isFilesystemWriteError(error: UnhandledError): boolean {
+  const syscall = error.syscall ?? error.cause?.syscall;
+  return syscall !== undefined && FILESYSTEM_WRITE_SYSCALLS.has(syscall);
+}
+
+function classifyUnhandledError(error: UnhandledError): { code: string; exitCode: number; recoveryCommand: string } {
   // @req FR-ARCH-002 AC-3 — no root found exits 2 in every output mode.
   if ((error.message ?? "").startsWith("Could not resolve SpecKiwi project root")) {
     return { code: "PROJECT_ROOT_NOT_FOUND", exitCode: 2, recoveryCommand: "init" };
+  }
+  // @req FR-NODE-279 AC-4 — a write that failed names its path in the message; calling it a workspace
+  // parse error, because that path is 00.index.md, sent the user to `init` for a read-only file.
+  if (isFilesystemWriteError(error)) {
+    return { code: "FILESYSTEM_WRITE_ERROR", exitCode: 5, recoveryCommand: "validate" };
   }
   if (error.code === "ENOENT" || /docs\/spec|00\.index\.md/.test(error.message ?? "")) {
     return { code: "WORKSPACE_PARSE_ERROR", exitCode: 4, recoveryCommand: "init" };

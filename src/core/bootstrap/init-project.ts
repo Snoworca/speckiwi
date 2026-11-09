@@ -75,6 +75,12 @@ export interface InitProjectOutput {
   skipped: string[];
   updated: string[];
   removed: string[];
+  /**
+   * True when the run created, updated or removed something and was not a dry run. The SRS lock
+   * refreshes the status cache after a call that reports a write. Set by `initProject`; doctor
+   * reuses this shape for its own agent-file repair and leaves it out. @req FR-NODE-280 AC-1
+   */
+  written?: boolean;
   warnings?: string[];
   /** Present when skills or the MCP registration were requested. @req FR-NODE-223 */
   onboarding?: InitOnboardingReport;
@@ -654,6 +660,7 @@ async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): 
   }
   await installHooks(root.root, output, warnings, Boolean(input.force), dryRun);
   if (input.registerMcp || input.installSkills) output.onboarding = await onboardAgents(root.root, input, output, warnings, dryRun);
+  output.written = !dryRun && output.created.length + output.updated.length + output.removed.length > 0;
   return mutationOk(output);
 }
 

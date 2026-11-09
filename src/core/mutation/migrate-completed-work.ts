@@ -1,8 +1,8 @@
 import path from "node:path";
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { readUtf8File } from "../fs/read-text.js";
-import { applyPatchPlan } from "../patch/apply-patch.js";
-import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
+import { applyPatchPlans, type NewDocument } from "../patch/apply-patch-plans.js";
+import { createPatchPlan, type PatchOperation, type PatchPlan } from "../patch/patch-plan.js";
 import { parseMarkdownTable } from "../parser/table.js";
 import type { MutationResult, ProjectRoot } from "../types.js";
 import { mutationOk } from "./guards.js";
@@ -45,11 +45,11 @@ export async function migrateCompletedWork(root: ProjectRoot, input: MigrateComp
   //    preserving the index table column layout verbatim.
   const headerText = indexFile.lines[table.startLine - 1] ?? "";
   const separatorText = indexFile.lines[table.startLine] ?? "";
-  const historyExists = await access(historyAbs).then(() => true).catch(() => false);
-  if (!historyExists) {
+  const newDocuments: NewDocument[] = [];
+  const plans: PatchPlan[] = [];
+  if (!existsSync(historyAbs)) {
     const lines = [HISTORY_BANNER, "", "## 7. Completed Work Log", "", headerText, separatorText, ...rowTexts];
-    await mkdir(path.dirname(historyAbs), { recursive: true });
-    await writeFile(historyAbs, `${lines.join("\n")}\n`, "utf8");
+    newDocuments.push({ path: historyAbs, text: `${lines.join("\n")}\n` });
   } else {
     const historyFile = await readUtf8File(historyAbs, root.root);
     const historyHeading = findHeading(historyFile.lines, HISTORY_HEADING_RE);
@@ -58,7 +58,7 @@ export async function migrateCompletedWork(root: ProjectRoot, input: MigrateComp
       const appendOp: PatchOperation = { type: "appendLines", lines: ["", "## 7. Completed Work Log", "", headerText, separatorText, ...rowTexts] };
       const lastLine = historyFile.lines.at(-1);
       if (lastLine !== undefined) appendOp.expectedLastLine = lastLine;
-      await applyPatchPlan(createPatchPlan(historyFile, [appendOp]), { dryRun: false });
+      plans.push(createPatchPlan(historyFile, [appendOp]));
     } else {
       const insertAt = historyTable.endLine + 1;
       const insertOp: PatchOperation = { type: "insertLines", line: insertAt, lines: rowTexts };
@@ -66,7 +66,7 @@ export async function migrateCompletedWork(root: ProjectRoot, input: MigrateComp
       if (before !== undefined) insertOp.expectedBefore = before;
       const after = historyFile.lines[insertAt - 1];
       if (after !== undefined) insertOp.expectedAfter = after;
-      await applyPatchPlan(createPatchPlan(historyFile, [insertOp]), { dryRun: false });
+      plans.push(createPatchPlan(historyFile, [insertOp]));
     }
   }
 
@@ -78,7 +78,10 @@ export async function migrateCompletedWork(root: ProjectRoot, input: MigrateComp
     endLine: rowLines[rowLines.length - 1]!,
     lines: [headerText, separatorText]
   };
-  await applyPatchPlan(createPatchPlan(indexFile, [removeOp]), { dryRun: false });
+  plans.push(createPatchPlan(indexFile, [removeOp]));
+  // @req FR-NODE-279 AC-1 — the history file and the index are one change: an index that cannot be
+  // written puts the history file back (a created one removed), so no row ends up in both.
+  await applyPatchPlans(plans, { dryRun: false, newDocuments });
 
   return {
     ...mutationOk({ moved: rowTexts.length, written: true }),

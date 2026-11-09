@@ -16,6 +16,7 @@ import { getWorkMode } from "./work-mode.js";
 import { mutationEnvelopeFromPlan } from "./envelope.js";
 import { DEFAULT_REQUIREMENT_STABILITY, prefixForType, refuseExpiredMarker, renderRequirementBlock, traceRowCells, type RenderRequirementInput } from "./render-requirement.js";
 import { refuseDiscardedTraceTargets, refuseDiscardedTraceTargetsBeforeLock } from "./add-trace.js";
+import { normalizeSeedRows } from "./seed-rows.js";
 import { assertOpensNoBlockBoundary, assertPromotableBlock, assertRequirementTitle } from "./block-prose.js";
 import { assertSafeMarkdownTableCell, assertSafeMarkdownTableCells } from "./table-cell.js";
 import { checkIndexRollupsWritableAt, syncIndexRollupsAfterWrite } from "./sync-index.js";
@@ -271,9 +272,14 @@ function buildOutputRecord(input: ResolvedAddRequirementInput, id: string, fileP
 }
 
 export async function addRequirement(root: ProjectRoot, input: AddRequirementInput): Promise<MutationResult<AddRequirementOutput>> {
-  const discardedRefusal = await refuseDiscardedTraceTargetsBeforeLock<AddRequirementOutput>(root, (input.trace ?? []).map(traceRowCells));
+  // @req FR-NODE-281 AC-6 — every channel's rows are read here first, so the discarded-target check
+  // below and everything after it see the rows that will be written.
+  const rows = normalizeSeedRows(input);
+  if (!rows.ok) return mutationFail("USAGE", rows.message);
+  const normalizedInput: AddRequirementInput = { ...input, evidence: rows.evidence, trace: rows.trace };
+  const discardedRefusal = await refuseDiscardedTraceTargetsBeforeLock<AddRequirementOutput>(root, rows.trace.map(traceRowCells));
   if (discardedRefusal) return discardedRefusal;
-  return withSrsMutationLock(root, { operation: "add_requirement", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addRequirementUnlocked(root, input));
+  return withSrsMutationLock(root, { operation: "add_requirement", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addRequirementUnlocked(root, normalizedInput));
 }
 
 async function addRequirementUnlocked(root: ProjectRoot, input: AddRequirementInput): Promise<MutationResult<AddRequirementOutput>> {

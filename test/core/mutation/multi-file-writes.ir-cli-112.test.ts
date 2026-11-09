@@ -46,16 +46,36 @@ const MUTATION_DIR = path.resolve("src", "core", "mutation");
  * Mutations that still write two documents one after the other, each with the reason it is not yet
  * on the shared transaction. Every entry is a known gap, reported, not an accepted design.
  */
-const SEQUENTIAL_WRITE_RESIDUALS: Record<string, string> = {
-  "migrate-completed-work.ts": "creates the history document when it is absent; applyPatchPlans only patches existing documents"
-};
+const SEQUENTIAL_WRITE_RESIDUALS: Record<string, string> = {};
 
 /** Loops that write one document at most once: a retry around a single write that returns after it. */
 const SINGLE_WRITE_LOOPS: Record<string, string> = {
   "add-requirement.ts:addRequirementUnlocked": "retries the id allocation; the only write is followed by a return"
 };
 
-/** Functions that call applyPatchPlan inside a loop, or more than once, per file. */
+/**
+ * True when `patch` runs after `write` on the same path: it starts later, it is not on the other branch
+ * of a condition, and no return or throw ends the path of `write` first.
+ */
+function runsAfter(write: ts.Node, patch: ts.Node): boolean {
+  if (patch.getStart() < write.getEnd()) return false;
+  let shared: ts.Node = write;
+  while (!(shared.getStart() <= patch.getStart() && patch.getEnd() <= shared.getEnd())) shared = shared.parent;
+  if (ts.isIfStatement(shared) || ts.isConditionalExpression(shared)) return false;
+  for (let node: ts.Node = write; node.parent !== shared; node = node.parent) {
+    const parent = node.parent;
+    if (!ts.isBlock(parent)) continue;
+    const rest = parent.statements.slice(parent.statements.indexOf(node as ts.Statement) + 1);
+    if (rest.some((statement) => ts.isReturnStatement(statement) || ts.isThrowStatement(statement))) return false;
+  }
+  return true;
+}
+
+/**
+ * Functions that call applyPatchPlan inside a loop or more than once, or that patch (applyPatchPlan or
+ * applyPatchPlans) after a direct writeFile: a new document written outside the transaction, then a
+ * patch that can still fail and leave it behind.
+ */
 function sequentialWriters(fileName: string, text: string): string[] {
   const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true);
   const found: string[] = [];
@@ -63,18 +83,23 @@ function sequentialWriters(fileName: string, text: string): string[] {
     ts.isForOfStatement(node) || ts.isForStatement(node) || ts.isForInStatement(node) || ts.isWhileStatement(node) || ts.isDoStatement(node);
   const isFunction = (node: ts.Node) => ts.isFunctionLike(node);
   const visitFunction = (fn: ts.Node, name: string) => {
-    let calls = 0;
+    const patches: ts.Node[] = [];
+    const transactions: ts.Node[] = [];
+    const directWrites: ts.Node[] = [];
     let inLoop = false;
     const walk = (node: ts.Node, loopDepth: number) => {
       if (node !== fn && isFunction(node)) return;
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "applyPatchPlan") {
-        calls += 1;
+        patches.push(node);
         if (loopDepth > 0) inLoop = true;
       }
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "applyPatchPlans") transactions.push(node);
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "writeFile") directWrites.push(node);
       ts.forEachChild(node, (child) => walk(child, loopDepth + (isLoop(node) ? 1 : 0)));
     };
     walk(fn, 0);
-    if (inLoop || calls > 1) found.push(`${fileName}:${name}`);
+    const patchAfterWrite = directWrites.some((write) => [...patches, ...transactions].some((patch) => runsAfter(write, patch)));
+    if (inLoop || patches.length > 1 || patchAfterWrite) found.push(`${fileName}:${name}`);
   };
   const scan = (node: ts.Node) => {
     if (isFunction(node)) {
@@ -133,6 +158,17 @@ describe("IR-CLI-112 mutations that write several documents use the shared trans
     expect(sequentialWriters("x.ts", "async function f(ps) { for (const p of ps) await applyPatchPlan(p, { dryRun: false }); }")).toEqual(["x.ts:f"]);
     expect(sequentialWriters("y.ts", "async function g(a, b) { await applyPatchPlan(a, o); await applyPatchPlan(b, o); }")).toEqual(["y.ts:g"]);
     expect(sequentialWriters("z.ts", "async function h(a) { await applyPatchPlan(a, o); }")).toEqual([]);
+  });
+
+  // @req FR-NODE-279 AC-1 — scaffold-scope wrote its new document with writeFile and then patched the
+  // index; the index write could still fail and leave the document behind.
+  it("the scan recognises a direct writeFile followed by a patch write", () => {
+    expect(sequentialWriters("w.ts", "async function k(p, a) { await writeFile(p, 'x'); await applyPatchPlan(a, o); }")).toEqual(["w.ts:k"]);
+    expect(sequentialWriters("m.ts", "async function m(p, a) { if (c) { await writeFile(p, 'x'); } await applyPatchPlan(a, o); }")).toEqual(["m.ts:m"]);
+    expect(sequentialWriters("t.ts", "async function t(p, a) { await writeFile(p, 'x'); await applyPatchPlans([a], o); }")).toEqual(["t.ts:t"]);
+    // One document either way: a create on one branch and a patch on the other, or a create that returns.
+    expect(sequentialWriters("b.ts", "async function b(p, a) { if (c) { await writeFile(p, 'x'); } else { await applyPatchPlan(a, o); } }")).toEqual([]);
+    expect(sequentialWriters("r.ts", "async function r(p, a) { if (c) { await writeFile(p, 'x'); return 1; } await applyPatchPlan(a, o); }")).toEqual([]);
   });
 
   // @req IR-CLI-112 AC-3

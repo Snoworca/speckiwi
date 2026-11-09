@@ -64,15 +64,23 @@ export async function applyPatchPlan(plan: PatchPlan, options: { dryRun: boolean
   if (options.staleCheck !== false) {
     await assertFreshSnapshot(plan);
   }
-  const tmp = path.join(dirname(plan.file.path), `.speckiwi-${randomUUID()}.tmp`);
+  await replaceFileAtomically(plan.file.path, text);
+  return { written: true, filePath: plan.file.path, preview };
+}
+
+/**
+ * Writes `text` to a temporary file beside `filePath` and renames it over the target, so a reader
+ * never sees a half-written document. The target is created when it does not exist.
+ */
+export async function replaceFileAtomically(filePath: string, text: string): Promise<void> {
+  const tmp = path.join(dirname(filePath), `.speckiwi-${randomUUID()}.tmp`);
   await writeFile(tmp, text, "utf8");
   try {
     // Windows reports a target a scanner briefly holds as EPERM/EBUSY; the shared short retry absorbs it.
-    await retryBusy(() => rename(tmp, plan.file.path));
+    await retryBusy(() => rename(tmp, filePath));
   } catch (error) {
     // The target was not replaced, so the temporary copy must not stay beside it.
     await rm(tmp, { force: true });
     throw error;
   }
-  return { written: true, filePath: plan.file.path, preview };
 }

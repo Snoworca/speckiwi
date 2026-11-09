@@ -620,7 +620,8 @@ export const toolSpecs: readonly ToolSpec[] = [
     opt("--value <value>", "value"),
     opt("--apply", "apply"),
     opt("--confirm", "confirm"),
-    DRY_RUN
+    DRY_RUN,
+    IGNORE_LOCK
   ]),
   mutationSpec("retarget", undefined, "workspace", "retarget", [
     opt("--from <target>", "from"),

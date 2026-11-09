@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { hostname } from "node:os";
 import { link, lstat, mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
@@ -520,6 +521,10 @@ async function refreshCache(root: ProjectRoot, lockMetadata: SrsMutationLockMeta
   }
 }
 
+function srsIndexExists(root: ProjectRoot): boolean {
+  return existsSync(path.join(root.root, "docs", "spec", "00.index.md"));
+}
+
 async function refreshCacheDiagnostics(root: ProjectRoot, lockMetadata: SrsMutationLockMetadata | null): Promise<Diagnostic[]> {
   return (await refreshCache(root, lockMetadata)).diagnostics;
 }
@@ -551,7 +556,9 @@ export async function withSrsMutationLock<T>(root: ProjectRoot, options: SrsMuta
   if (isRefusal(acquired)) return acquired as MutationResult<T>;
   const lock = acquired;
 
-  const pre = options.dryRun ? undefined : await refreshCache(root, lock.metadata);
+  // @req FR-NODE-280 — before the first init there is no index to describe, and that is the
+  // expected state of a first run rather than a cache failure; the refresh after the write builds it.
+  const pre = options.dryRun || !srsIndexExists(root) ? undefined : await refreshCache(root, lock.metadata);
   const preDiagnostics = [...lock.diagnostics, ...(pre?.diagnostics ?? [])];
   let result: MutationResult<T> | undefined;
   let releaseDiagnostics: Diagnostic[] = [];

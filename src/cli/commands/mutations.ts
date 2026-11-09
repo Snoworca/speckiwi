@@ -757,6 +757,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--apply", "apply a type/scope migration (still requires --confirm)")
     .option("--confirm", "confirm sign-off for a type/scope migration write")
     .option("--dry-run")
+    .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
     .action(async (id, options) => {
       const dryRun = options.dryRun ? true : options.apply ? false : undefined;
@@ -765,7 +766,8 @@ export function registerMutationCommands(command: Command, context: CliContext):
         field: options.field as UpdateFieldName,
         value: options.value,
         signOff: Boolean(options.confirm),
-        ...(dryRun !== undefined ? { dryRun } : {})
+        ...(dryRun !== undefined ? { dryRun } : {}),
+        ...(options.ignoreLock ? { ignoreLock: true } : {})
       });
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);

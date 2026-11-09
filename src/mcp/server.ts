@@ -8,7 +8,8 @@ import path from "node:path";
 import { z } from "zod";
 import { TARGET_TYPES } from "../core/target-types.js";
 import { REPORT_PATH_TOKEN_REGEX } from "../core/completed-work/report-paths.js";
-import { createTestMcpServer, type McpDependencies, type McpServerHandle } from "./adapter.js";
+import { createTestMcpServer, type McpDependencies, type McpServerHandle, type McpToolHandler } from "./adapter.js";
+import { mcpFailure } from "./errors.js";
 import { getServerMetadata, type PackageInfo } from "./metadata.js";
 // @req FR-MCP-060 — imported for its side-effect-free projection only, and read inside a function
 // body: `schemas.ts` imports this module back for `toolSchemas` and `isReadOnlyTool`, so a top-level
@@ -41,11 +42,40 @@ const MCP_SERVER_METADATA = getServerMetadata(requirePackage("../../package.json
 
 export function createMcpServer(deps: McpDependencies): McpServerHandle {
   const server = createTestMcpServer(deps);
-  registerReadTools(server, deps);
-  registerMutationTools(server, deps);
-  registerPrdTools(server, deps);
-  registerResources(server, deps);
+  // @req FR-NODE-281 AC-7 — every mutation tool is registered through this one seam, whichever file
+  // registers it, so a tool added later refuses an undeclared argument without being listed here.
+  const registrar: McpServerHandle = {
+    ...server,
+    registerTool: (name, handler, metadata) =>
+      server.registerTool(name, isReadOnlyTool(name) ? handler : refusingUndeclaredArguments(name, handler), metadata)
+  };
+  registerReadTools(registrar, deps);
+  registerMutationTools(registrar, deps);
+  registerPrdTools(registrar, deps);
+  registerResources(registrar, deps);
   return server;
+}
+
+/**
+ * A mutation tool's handler that refuses, writing nothing, an argument the tool does not declare.
+ *
+ * Dropping it was the alternative, and it loses the caller's value while the write goes ahead:
+ * `add_requirement` with `traceLinks` (its trace input is `trace`) wrote the requirement with no
+ * trace rows and answered ok. The workspace gate runs before this handler, so `root` and an
+ * undeclared `workspaceRoot` are still answered by the gate, and a tool that admits `workspaceRoot`
+ * declares it in its schema. A read-only tool is not wrapped and keeps ignoring an undeclared
+ * argument. @req FR-NODE-281 AC-7
+ */
+function refusingUndeclaredArguments(name: string, handler: McpToolHandler): McpToolHandler {
+  return (input, context) => {
+    const declared = toolSchemas[name] ?? {};
+    const undeclared = Object.keys(input).filter((key) => !declaresArgument(declared, key));
+    if (undeclared.length === 0) return handler(input, context);
+    const named = undeclared.map((key) => `"${key}"`).join(", ");
+    return mcpFailure("USAGE", `${name} does not declare ${undeclared.length === 1 ? "the argument" : "the arguments"} ${named}; nothing was written`, {
+      metadata: { undeclared }
+    });
+  };
 }
 
 /**
@@ -462,7 +492,9 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   // FR-MCP-053 — step SRS synthesis mutation tool (forwards to the FR-NODE-041/073 core engine).
   synthesize_step_srs: { task: z.string(), dryRun: z.boolean().optional() },
   // FR-NODE-080/FR-NODE-081 — SDS stub scaffold and lifecycle-status mutation tools.
-  scaffold_step: { task: z.string(), target: z.string().optional(), dryRun: z.boolean().optional() },
+  // `sds` is read by the handler (FR-NODE-080 AC-5); undeclared, the protocol dropped it and a
+  // mutation tool now refuses it (FR-NODE-281 AC-7).
+  scaffold_step: { task: z.string(), target: z.string().optional(), sds: z.boolean().optional(), dryRun: z.boolean().optional() },
   set_sds_status: { task: z.string(), status: z.string(), dryRun: z.boolean().optional() },
   // FR-MCP-052 — work-mode tools (get_work_mode is read-only; set_work_mode is a workspace mutation).
   get_work_mode: {},
@@ -547,8 +579,12 @@ function declaresArgument(declared: Record<string, z.ZodTypeAny>, key: string): 
 /**
  * The arguments one tool is handed: what its own shape declares, plus the gate's keys when the
  * caller sent them. @req FR-MCP-063 AC-3
+ *
+ * A mutation tool is handed everything, because its handler refuses an argument it does not declare
+ * instead of losing it here. @req FR-NODE-281 AC-7
  */
 function narrowToDeclaredAndGateKeys(name: string, input: Record<string, unknown>): Record<string, unknown> {
+  if (!isReadOnlyTool(name)) return input;
   const declared = toolSchemas[name] ?? {};
   const narrowed: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(input)) {

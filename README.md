@@ -453,6 +453,8 @@ The Kiwi skills use MCP tools for every read and every SRS change. The matching 
 
 **115 tools ship in total.** The table names every tool a skill calls directly. The last two rows are families, documented in the skills that drive them. After an upgrade, trust the count that `speckiwi doctor` reports, because that is what the server registered.
 
+**A write tool refuses an argument it does not declare.** It fails with `USAGE` naming the argument and writes nothing; a read tool still ignores one. For example, `add_requirement` takes its trace rows as `trace`, and a call that passes `traceLinks` (the field name `get_requirement` returns) is refused. Before 5.3.8 such an argument was dropped and the call succeeded without it. `add_requirement` also refuses a trace or evidence row with a key it does not know, or a cell that is an object, an array or `null`.
+
 #### Per-call `workspaceRoot`
 
 The server writes SRS only at the root it found at startup. A session whose server is bound to the host checkout can still reach a linked worktree by passing an absolute `workspaceRoot` on the call: to read its SRS, and to read and write its workflow and orchestrator run state.
@@ -744,7 +746,7 @@ Get-Content payload.json -Raw | speckiwi edit-requirement --input-json -
 ```
 
 - **The keys are the camelCase argument names, not the flag spellings.** `--dry-run` is `dryRun`, and `--related-docs` is `relatedDocs`.
-- **A key the command does not recognize is dropped without a word.** A payload with `"dry-run": true` previews nothing, and the write happens. `speckiwi commands --json` prints each option's `flag` together with its payload key; check it when unsure.
+- **A key the command does not declare is refused.** A payload with `"dry-run": true` fails with `USAGE` naming the key and writes nothing (before 5.3.8 the key was dropped and the write happened). So is a value that cannot be written as given, such as an object or `null` where the option takes text; a number or a boolean passes as its text. `speckiwi commands --json` prints each option's `flag` together with its payload key; check it when unsure.
 - `--input-json <json>` also takes the object inline, for a value short enough for the command line.
 - **Subcommands inside a group do not have this channel**, including those that write: `workflow worklog-emit`, `step promote`, `orchestrate journal append`, `repair rules-references apply` and `skills install`. Keep their values on one line, or use MCP, which never touches a command line. Passing `--input-json` to one of them fails: commander reports `unknown option`, or first a missing required option.
 
@@ -1450,6 +1452,8 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 
 **총 115개 도구가 배포됩니다.** 표는 스킬이 직접 부르는 도구를 모두 나열합니다. 마지막 두 행은 도구군이며, 그 도구들을 쓰는 스킬의 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 그 개수가 서버가 실제로 등록한 도구 수입니다.
 
+**쓰기 도구는 선언하지 않은 인자를 거부합니다.** 그 인자를 밝힌 `USAGE` 오류로 끝나고 아무것도 쓰지 않습니다. 읽기 도구는 지금처럼 그런 인자를 무시합니다. 예를 들어 `add_requirement`는 trace 행을 `trace`로 받으므로, `traceLinks`(`get_requirement`가 돌려주는 필드 이름)를 넘긴 호출은 거부됩니다. 5.3.8 전에는 그런 인자가 버려지고 호출은 그 값 없이 성공했습니다. `add_requirement`는 모르는 키가 있는 trace·evidence 행이나, 객체·배열·`null`인 칸도 거부합니다.
+
 #### 호출마다 넘기는 `workspaceRoot`
 
 서버는 시작할 때 찾은 루트에만 SRS를 씁니다. 그래도 호스트 체크아웃에 바인딩된 서버를 쓰는 세션은 호출에 절대 경로 `workspaceRoot`를 넘겨 연결된 worktree에 접근할 수 있습니다. 이렇게 하면 그 worktree의 SRS를 읽을 수 있고, 그 worktree의 워크플로와 오케스트레이터 실행 상태를 읽고 쓸 수 있습니다.
@@ -1741,7 +1745,7 @@ Get-Content payload.json -Raw | speckiwi edit-requirement --input-json -
 ```
 
 - **키는 플래그 철자가 아니라 camelCase 인수 이름입니다.** `--dry-run`은 `dryRun`이고, `--related-docs`는 `relatedDocs`입니다.
-- **명령이 모르는 키는 아무 알림 없이 버려집니다.** `"dry-run": true`를 담은 페이로드는 아무것도 미리 보여 주지 않고, 쓰기가 그대로 일어납니다. `speckiwi commands --json`은 옵션마다 `flag`와 페이로드 키를 함께 출력하므로, 확실하지 않으면 이 출력을 확인하십시오.
+- **명령이 선언하지 않은 키는 거부됩니다.** `"dry-run": true`를 담은 페이로드는 그 키를 밝힌 `USAGE` 오류로 끝나고 아무것도 쓰지 않습니다(5.3.8 전에는 키가 버려지고 쓰기가 그대로 일어났습니다). 텍스트를 받는 옵션에 객체나 `null`처럼 그대로 쓸 수 없는 값을 주어도 거부됩니다. 숫자와 불리언은 그 텍스트로 전달됩니다. `speckiwi commands --json`은 옵션마다 `flag`와 페이로드 키를 함께 출력하므로, 확실하지 않으면 이 출력을 확인하십시오.
 - `--input-json <json>`은 명령줄에 넣을 만큼 짧은 값이라면 객체를 인라인으로도 받습니다.
 - **그룹 안의 하위 명령에는 이 통로가 없습니다.** 쓰기를 하는 하위 명령도 마찬가지이며, `workflow worklog-emit`, `step promote`, `orchestrate journal append`, `repair rules-references apply`, `skills install`이 여기에 해당합니다. 이런 명령에는 값을 한 줄로 넘기거나, 명령줄을 전혀 거치지 않는 MCP를 쓰십시오. 이들 명령에 `--input-json`을 주면 실패합니다. commander가 `unknown option`을 보고하거나, 그보다 먼저 필수 옵션이 빠졌다고 보고합니다.
 

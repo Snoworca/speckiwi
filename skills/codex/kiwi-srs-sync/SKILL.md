@@ -158,7 +158,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 
 ## §2 제안 mutation (호출 순서대로)
 ### CU-001 — update (FR-X-001)
-- 동작: append_section_note ({id, section: "Acceptance Criteria", note: "..."})
+- 동작: append_acceptance_criterion ({id, text: "..."})
 - 근거: src/x.ts:45-67 의 새 분기 추가가 AC-3 의 미정 케이스를 커버
 - 위험: 없음
 

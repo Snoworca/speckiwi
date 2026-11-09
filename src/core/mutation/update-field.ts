@@ -16,6 +16,7 @@ import { generateNextRequirementId } from "./add-requirement.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { planMetadataWrite } from "./internal.js";
 import { requirementReferenceRewrites } from "./requirement-references.js";
+import { withSrsMutationLock } from "./srs-lock.js";
 import { assertSafeMarkdownTableCell } from "./table-cell.js";
 
 /**
@@ -39,6 +40,8 @@ export interface UpdateFieldInput {
    * omitted; for line-replacement fields it defaults to false (write) and previews only when true.
    */
   dryRun?: boolean;
+  /** Migration (type/scope) only: write past a held SRS mutation lock (an SRS-only override). */
+  ignoreLock?: boolean;
 }
 
 export interface PlannedMove {
@@ -130,8 +133,7 @@ async function migrateTypeOrScope(
   const oldId = loaded.record.id;
   const plannedMove: PlannedMove = { oldId, newId, filePath: loaded.file.relativePath };
 
-  const dryRun = input.dryRun ?? true;
-  if (dryRun) {
+  if (isMigrationPreview(input)) {
     return mutationOk({ id: oldId, field: input.field, written: false, oldId, newId, dryRun: true, plannedMove });
   }
 
@@ -193,6 +195,28 @@ export async function updateField(
   root: ProjectRoot,
   input: UpdateFieldInput
 ): Promise<MutationResult<UpdateFieldOutput>> {
+  // @req FR-NODE-279 AC-3 — a migration allocates the new id from the documents it reads and then
+  // rewrites it into several of them, so the lock covers the whole migration, from the read on; a
+  // preview takes no lock, as every other mutation's preview.
+  if (isMigrationField(input.field)) {
+    return withSrsMutationLock(root, { operation: "update_field", dryRun: isMigrationPreview(input), ignoreLock: input.ignoreLock }, () => updateFieldUnlocked(root, input));
+  }
+  return updateFieldUnlocked(root, input);
+}
+
+function isMigrationField(field: string): boolean {
+  return (MIGRATION_FIELDS as readonly string[]).includes(field);
+}
+
+/** A type/scope migration previews unless the caller turns the dry run off. */
+function isMigrationPreview(input: UpdateFieldInput): boolean {
+  return input.dryRun ?? true;
+}
+
+async function updateFieldUnlocked(
+  root: ProjectRoot,
+  input: UpdateFieldInput
+): Promise<MutationResult<UpdateFieldOutput>> {
   const workspace = await parseWorkspace(root);
   const loaded = loadRecordWithFile(workspace, input.id);
   if (!loaded) {
@@ -203,7 +227,7 @@ export async function updateField(
   // FR-NODE-060 AC-1's single-line rewrite). Reject before building any patch, with no write.
   const unsafeValue = assertSafeMarkdownTableCell<UpdateFieldOutput>(`${input.field} value`, input.value);
   if (unsafeValue) return unsafeValue;
-  if ((MIGRATION_FIELDS as readonly string[]).includes(input.field)) {
+  if (isMigrationField(input.field)) {
     return migrateTypeOrScope(input, workspace, loaded);
   }
   if ((LINE_REPLACE_FIELDS as readonly string[]).includes(input.field)) {

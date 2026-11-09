@@ -14,7 +14,9 @@ import { isBindingReference, localBindings, parameterScopes, type JsSource, type
 //   registered through it runs on one branch per reference of the definition, each carrying that
 //   reference's markers plus the markers written on the call;
 // - hooks (`beforeEach` …), `vi` and `expectTypeOf` used as a call or a member, and the `expect`
-//   helpers (`expect.any(…)`, `expect.objectContaining(…)` …).
+//   helpers (`expect.any(…)`, `expect.objectContaining(…)` …);
+// - a case's context is the first parameter of its callback, the second for `.for(rows)`, and none for
+//   `.each(rows)`, whose parameters are the row (@req FR-NODE-265 AC-4).
 // Every occurrence of a test API name — the globals, every value imported from `vitest` or
 // `@jest/globals`, every alias — must be consumed by one of those forms. A global other than a case
 // function or `expect` that the file declares as its own binding (`(suite) => suite.file`) is that
@@ -207,10 +209,11 @@ function functionParameters(tokens: readonly JsToken[], start: number): number[]
 
 /**
  * The context parameter of a case: in the case callback — the last function argument of the titled
- * call whose group opens at `open` — the parameter at `position` (`1` for `.for(rows)`, whose
- * callback takes the row first; `0` otherwise). A destructured parameter reaches it as `skip`.
+ * call whose group opens at `open` — the parameter at `position`, or none when `position` is `null`.
+ * A destructured parameter reaches it as `skip`.
  */
-function caseContext(tokens: readonly JsToken[], open: number, position: number): CaseContext | null {
+function caseContext(tokens: readonly JsToken[], open: number, position: number | null): CaseContext | null {
+  if (position === null) return null;
   const callback = groupItems(tokens, open)
     .reverse()
     .map((start) => functionParameters(tokens, start))
@@ -226,6 +229,12 @@ function caseContext(tokens: readonly JsToken[], open: number, position: number)
     return { name: renamed ? (tokens[key + 2] as JsToken).value : "skip", via: "call" };
   }
   return null;
+}
+
+/** The callback parameter that is a case's context: none for `.each(rows)`, the second for `.for(rows)`. */
+function contextPosition(members: readonly string[]): number | null {
+  if (members.includes("each")) return null;
+  return members.includes("for") ? 1 : 0;
 }
 
 /** Whether the token at `index` is a skip call through `context`. */
@@ -289,7 +298,7 @@ export function testCaseSurface(source: JsSource): TestCaseSurface | null {
     const branches = definition.map((markers) => [...markers, ...chain.markers]);
     const record = { key: seen === 1 ? path : `${path} (${seen})`, title, branches, assertions: 0, contextSkips: 0 };
     cases.push(record);
-    stack.push({ path, end: (tokens[chain.end] as JsToken).match, context: caseContext(tokens, chain.end, chain.members.includes("for") ? 1 : 0), record });
+    stack.push({ path, end: (tokens[chain.end] as JsToken).match, context: caseContext(tokens, chain.end, contextPosition(chain.members)), record });
   }
   const locals = localBindings(tokens);
   const globals = [...GLOBAL_TEST_API].filter((name) => CASE_FUNCTIONS.has(name) || name === "expect" || !locals.has(name));

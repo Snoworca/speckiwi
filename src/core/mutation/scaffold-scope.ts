@@ -1,4 +1,3 @@
-import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   isScopeDocumentPath,
@@ -8,7 +7,7 @@ import {
   scopeDocumentName,
   type ScopeTemplateInfo
 } from "../bootstrap/templates.js";
-import { applyPatchPlan } from "../patch/apply-patch.js";
+import { applyPatchPlans } from "../patch/apply-patch-plans.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import type {
@@ -117,7 +116,6 @@ async function scaffoldScopeUnlocked(
   // The template is joined with LF; write it in the workspace's own line ending so the new document
   // does not arrive with a body that disagrees with every file beside it.
   const body = filePreview.split("\n").join(indexFile.newline);
-  await writeFile(newDocumentPath, `${body}${indexFile.newline}`, "utf8");
 
   // Both rows insert into the same index file. The patch planner applies operations in
   // descending line order, so the two insertions do not shift each other's target line.
@@ -126,7 +124,9 @@ async function scaffoldScopeUnlocked(
     { type: "insertLines", line: scopeMapTable.insertLine, lines: [scopeMapRow.value] }
   ];
   const plan = createPatchPlan(indexFile, operations);
-  await applyPatchPlan(plan, { dryRun: false });
+  // @req FR-NODE-279 AC-1 AC-4 — the new document and the index rows are one change: an index that
+  // cannot be written removes the document again, so a rerun does not leave a second one beside it.
+  await applyPatchPlans([plan], { dryRun: false, newDocuments: [{ path: newDocumentPath, text: `${body}${indexFile.newline}` }] });
 
   return mutationOk({ ...output, written: true });
 }
