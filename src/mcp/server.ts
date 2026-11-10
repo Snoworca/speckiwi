@@ -23,6 +23,7 @@ import {
   EDIT_ACCEPTANCE_CRITERION_SCHEMA,
   EXPIRE_ACCEPTANCE_CRITERION_SCHEMA,
   RENAME_SCOPE_SCHEMA,
+  RETARGET_REQUIREMENTS_SCHEMA,
   registerMutationTools
 } from "./tools/mutation-tools.js";
 import { PRD_TOOL_SCHEMAS, registerPrdTools } from "./tools/prd-tools.js";
@@ -285,6 +286,7 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   register_scopes: { apply: z.boolean().optional(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   // @req IR-MCP-006 — the inputs of the `rename-scope` CLI command.
   rename_scope: RENAME_SCOPE_SCHEMA,
+  retarget_requirements: RETARGET_REQUIREMENTS_SCHEMA,
   // @req FR-NODE-243 AC-6
   expire_acceptance_criterion: EXPIRE_ACCEPTANCE_CRITERION_SCHEMA,
   // @req FR-MCP-072 AC-1 AC-2

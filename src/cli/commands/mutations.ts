@@ -20,7 +20,7 @@ import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { syncIndexRollups } from "../../core/mutation/sync-index.js";
 import { editRequirementTableRows, replaceAcceptanceCriteria, updateRequirementFields } from "../../core/mutation/edit-requirement.js";
 import { updateField, type UpdateFieldName } from "../../core/mutation/update-field.js";
-import { retarget } from "../../core/mutation/retarget.js";
+import { retargetSelection } from "../../core/mutation/retarget.js";
 import { supersedeRequirement } from "../../core/mutation/supersede-requirement.js";
 import { scaffoldScope } from "../../core/mutation/scaffold-scope.js";
 import { registerScopes } from "../../core/mutation/register-scopes.js";
@@ -29,11 +29,9 @@ import { renameTarget } from "../../core/mutation/rename-target.js";
 import { expireAcceptanceCriterion } from "../../core/mutation/expire-ac.js";
 import { addRelatedDoc } from "../../core/mutation/add-related-doc.js";
 import { addChangeNote } from "../../core/mutation/add-change-note.js";
-import { parseWorkspace } from "../../core/parser/workspace-parser.js";
-import { listRequirements } from "../../core/query/lookup.js";
 import { validateReportPathToken } from "../../core/completed-work/report-paths.js";
 import type { CliContext } from "../command.js";
-import type { RequirementFilter, RequirementStatus, RequirementType } from "../../core/types.js";
+import type { RequirementStatus, RequirementType } from "../../core/types.js";
 import { writeHuman, writeJson } from "../formatters.js";
 import { parseDate } from "../option-parsers.js";
 import { runAgentCli } from "../agent-cli-runner.js";
@@ -793,43 +791,15 @@ export function registerMutationCommands(command: Command, context: CliContext):
       if (explicitIds.length === 0 && typeof options.from !== "string") {
         sub.error("error: retarget needs --from <target> or at least one --id <id>", { exitCode: 2, code: "commander.missingMandatoryOptionValue" });
       }
-      const root = await rootFrom(command.opts());
-      const workspace = await parseWorkspace(root);
-      const filter: RequirementFilter = {
-        ...(typeof options.from === "string" ? { target: options.from } : {}),
-        ...(typeof options.scope === "string" ? { scope: options.scope } : {}),
-        ...(typeof options.status === "string" ? { status: options.status as RequirementStatus } : {}),
-        ...(typeof options.type === "string" ? { type: options.type as RequirementType } : {})
-      };
-      const selected = listRequirements(workspace, filter).map((record) => record.id);
-      // @req IR-CLI-112 AC-3 — an id the caller named is checked against the selection before any
-      // write: one that names no requirement, or one the --from/--scope/--status/--type selection
-      // excludes, refuses the whole move rather than being skipped while the rest is applied.
-      const excluded = new Set(collect(options.exclude));
-      const named = explicitIds.filter((id) => !excluded.has(id));
-      const unknown = named.filter((id) => !workspace.records.some((record) => record.id === id));
-      const outside = named.filter((id) => !unknown.includes(id) && !selected.includes(id));
-      // An unregistered --from selects nothing, which would otherwise report a successful empty move;
-      // it is refused like rename-target --from and an unregistered --to.
-      const unregisteredFrom =
-        typeof options.from === "string" && !workspace.index.targets.some((entry) => entry.target === options.from);
-      const refusal = unregisteredFrom
-        ? mutationFail("NOT_FOUND", `Target is not registered in the Target Map: ${options.from}; nothing was moved`)
-        : unknown.length > 0
-          ? mutationFail("NOT_FOUND", `no requirement holds ${unknown.join(", ")}; nothing was moved`)
-          : outside.length > 0
-            ? mutationFail("MUTATION_DENIED", `${outside.join(", ")} is outside the --from/--scope/--status/--type selection; nothing was moved`)
-            : undefined;
-      if (refusal) {
-        output(context, { json: options.json || command.opts().json }, refusal);
-        command.setOptionValue("exitCode", 5);
-        return;
-      }
-      const ids = explicitIds.length > 0 ? explicitIds : selected;
-      const result = await retarget(root, {
-        ids,
-        toTarget: options.to,
+      // @req FR-MCP-073 AC-3 — the selection and its refusals are the core function MCP calls too.
+      const result = await retargetSelection(await rootFrom(command.opts()), {
+        ...(typeof options.from === "string" ? { from: options.from } : {}),
+        to: options.to,
         reason: options.reason,
+        ...(typeof options.scope === "string" ? { scope: options.scope } : {}),
+        ...(typeof options.status === "string" ? { status: options.status } : {}),
+        ...(typeof options.type === "string" ? { type: options.type } : {}),
+        ids: explicitIds,
         exclude: collect(options.exclude),
         dryRun: options.apply !== true,
         ...(options.ignoreLock ? { ignoreLock: true } : {})

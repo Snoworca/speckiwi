@@ -1,8 +1,9 @@
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import type { MutationResult, ProjectRoot, TextFile } from "../types.js";
 import { mutationFail, mutationOk } from "../mutation/guards.js";
 import { withSrsMutationLock } from "../mutation/srs-lock.js";
+import type { FileTransaction } from "../patch/file-transaction.js";
 import { initProject, type InitOnboardingReport, type InitProjectOutput } from "./init-project.js";
 import { unregisterSpeckiwiMcp, type AgentCliRunner } from "./mcp-registration.js";
 import { findGlobalDestinationCollision, removeProjectSkillCopies } from "./remove-project.js";
@@ -128,25 +129,34 @@ async function upgradeUnlocked(root: ProjectRoot, input: UpgradeProjectInput, ap
   // so the repairs never see the line the insertion would add.
   const indexPath = path.join(root.root, ...INDEX_RELATIVE_PATH.split("/"));
   const insertion = planRulesRowInsertion(await readFile(indexPath, "utf8").catch(() => undefined), warnings);
-  const references = await repairRulesReferences(root.root, srs.files, apply);
-  if (apply && insertion) await writeFile(indexPath, withRulesRowInserted(await readFile(indexPath, "utf8")), "utf8");
+  const repairs = await planRulesReferenceRepairs(root.root, srs.files);
+  // @req FR-NODE-263 — the repairs and the Rules row are written in the refresh's own file transaction,
+  // ahead of it, so a refresh that fails puts them back with everything it wrote itself.
+  const authorOwnedWrites = async (transaction: FileTransaction): Promise<void> => {
+    for (const rewrite of repairs.rewrites) await transaction.write(rewrite.absolutePath, rewrite.next);
+    if (insertion) await transaction.write(indexPath, withRulesRowInserted(await readFile(indexPath, "utf8")));
+  };
 
-  const initResult = await initProject(root, {
-    dryRun: !apply,
-    // This command already holds the lock; init must not try to take it again.
-    skipLock: true,
-    installSkills: input.installSkills !== false,
-    registerMcp: input.registerMcp !== false,
-    // Spread rather than passed as `false`, so a run without the flag hands init exactly the input it
-    // received before this option existed.
-    ...(input.installSkillsGlobal ? { installSkillsGlobal: true } : {}),
-    ...(input.projectInstall ? { projectInstall: true } : {}),
-    ...(input.agentCli ? { agentCli: input.agentCli } : {}),
-    ...(input.globalHomeDir ? { globalHomeDir: input.globalHomeDir } : {}),
-    ...(input.globalCodexHome ? { globalCodexHome: input.globalCodexHome } : {}),
-    ...(input.globalClaudeConfigDir ? { globalClaudeConfigDir: input.globalClaudeConfigDir } : {}),
-    ...(input.skillSourceBaseDir ? { skillSourceBaseDir: input.skillSourceBaseDir } : {})
-  });
+  const initResult = await initProject(
+    root,
+    {
+      dryRun: !apply,
+      // This command already holds the lock; init must not try to take it again.
+      skipLock: true,
+      installSkills: input.installSkills !== false,
+      registerMcp: input.registerMcp !== false,
+      // Spread rather than passed as `false`, so a run without the flag hands init exactly the input it
+      // received before this option existed.
+      ...(input.installSkillsGlobal ? { installSkillsGlobal: true } : {}),
+      ...(input.projectInstall ? { projectInstall: true } : {}),
+      ...(input.agentCli ? { agentCli: input.agentCli } : {}),
+      ...(input.globalHomeDir ? { globalHomeDir: input.globalHomeDir } : {}),
+      ...(input.globalCodexHome ? { globalCodexHome: input.globalCodexHome } : {}),
+      ...(input.globalClaudeConfigDir ? { globalClaudeConfigDir: input.globalClaudeConfigDir } : {}),
+      ...(input.skillSourceBaseDir ? { skillSourceBaseDir: input.skillSourceBaseDir } : {})
+    },
+    apply ? authorOwnedWrites : undefined
+  );
   if (!initResult.ok || !initResult.value) {
     // The refresh failure is the whole command's failure, reported verbatim rather than re-worded.
     // No input reaches this: initProject returns only a success result, and the lock it would otherwise
@@ -171,7 +181,7 @@ async function upgradeUnlocked(root: ProjectRoot, input: UpgradeProjectInput, ap
     applied: apply,
     init: initResult.value,
     ...(insertion ? { rulesRowInsertion: insertion } : {}),
-    references,
+    references: repairs.findings,
     hooks,
     boundaries: BOUNDARIES,
     removed,
@@ -297,20 +307,20 @@ function withRulesRowInserted(existing: string): string {
 }
 
 /**
- * Repairs dangling references in the managed agent files and the rules pointers the tool wrote into the
- * SRS documents, and reports — without touching — the ones found elsewhere under `docs/`. A note
+ * Plans the repair of dangling references in the managed agent files and the rules pointers the tool
+ * wrote into the SRS documents, and reports — never rewrites — the ones found elsewhere under `docs/`. A note
  * recording which rules version a project used to follow is a record, not a defect, and rewriting it
  * would corrupt the history it exists to keep. A requirement that quotes an old rules file is left to
  * its author; validation already reports it.
  */
-async function repairRulesReferences(
+async function planRulesReferenceRepairs(
   rootPath: string,
-  srsFiles: ReadonlyArray<{ relativePath: string; lines: readonly string[] }>,
-  apply: boolean
-): Promise<RulesReferenceFinding[]> {
+  srsFiles: ReadonlyArray<{ relativePath: string; lines: readonly string[] }>
+): Promise<{ findings: RulesReferenceFinding[]; rewrites: Array<{ absolutePath: string; next: string }> }> {
   const scan = await scanRulesReferences(rootPath);
   const isBroken = (document: string): boolean => !survivesRefresh(document);
   const findings: RulesReferenceFinding[] = [];
+  const rewrites: Array<{ absolutePath: string; next: string }> = [];
 
   const repairFiles = async (
     filePaths: readonly string[],
@@ -322,7 +332,7 @@ async function repairRulesReferences(
       if (text === undefined) continue;
       const rewritten = rewrite(text, filePath);
       if (rewritten.changes.length === 0) continue;
-      if (apply) await writeFile(absolutePath, rewritten.next, "utf8");
+      rewrites.push({ absolutePath, next: rewritten.next });
       for (const change of rewritten.changes) {
         findings.push({ filePath, line: change.line, location: `${filePath}:${change.line}`, from: change.from, to: change.to, action: "repair" });
       }
@@ -349,7 +359,7 @@ async function repairRulesReferences(
     });
   }
 
-  return findings;
+  return { findings, rewrites };
 }
 
 /**

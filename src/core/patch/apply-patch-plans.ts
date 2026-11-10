@@ -22,10 +22,18 @@ export interface NewDocument {
   readonly text: string;
 }
 
+/** A document the change renames, before any plan is written; a plan for it names its new path. @req FR-NODE-283 */
+export interface MovedDocument {
+  readonly from: string;
+  readonly to: string;
+}
+
 export interface ApplyPatchPlansOptions {
   readonly dryRun: boolean;
   /** Documents created in the same transaction, written before the patched documents. */
   readonly newDocuments?: readonly NewDocument[];
+  /** Documents renamed in the same transaction, first of all; undone last, after the writes that followed. */
+  readonly moves?: readonly MovedDocument[];
 }
 
 export async function applyPatchPlans(plans: readonly PatchPlan[], options: ApplyPatchPlansOptions): Promise<PlansResult> {
@@ -38,13 +46,20 @@ export async function applyPatchPlans(plans: readonly PatchPlan[], options: Appl
   // A document whose rendered text equals its current text has nothing to write and is left alone.
   const changed = plans.map((plan) => ({ plan, rendered: renderPlanText(plan) })).filter(({ rendered }) => rendered.changed);
   if (options.dryRun) return { written: false };
-  for (const { plan } of changed) await assertFreshSnapshot(plan);
+  const moves = options.moves ?? [];
+  // A moved document's plan names its new path; until the move it is checked where it still is.
+  const movedFrom = new Map(moves.map((move) => [move.to, move.from]));
+  for (const { plan } of changed) {
+    const from = movedFrom.get(plan.file.path);
+    await assertFreshSnapshot(from === undefined ? plan : { ...plan, file: { ...plan.file, path: from } });
+  }
   // A document that appeared since the change was planned is someone else's; creating it would overwrite it.
-  const appeared = newDocuments.find((document) => existsSync(document.path));
-  if (appeared !== undefined) throw new StalePatchError(appeared.path);
+  const appeared = [...newDocuments.map((document) => document.path), ...moves.map((move) => move.to)].find((filePath) => existsSync(filePath));
+  if (appeared !== undefined) throw new StalePatchError(appeared);
   await runFileTransaction(async (transaction) => {
+    for (const move of moves) await transaction.move(move.from, move.to);
     for (const document of newDocuments) await transaction.write(document.path, document.text);
     for (const { plan, rendered } of changed) await transaction.write(plan.file.path, rendered.text);
   });
-  return { written: newDocuments.length + changed.length > 0 };
+  return { written: moves.length + newDocuments.length + changed.length > 0 };
 }

@@ -1,10 +1,11 @@
 import type { Dirent } from "node:fs";
-import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import type { MutationResult, ProjectRoot } from "../types.js";
 import { mutationOk } from "../mutation/guards.js";
 import { withSrsMutationLock } from "../mutation/srs-lock.js";
+import { runFileTransaction, type FileTransaction } from "../patch/file-transaction.js";
 import {
   AGENT_INSTRUCTION_END_MARKER,
   AGENT_INSTRUCTION_HEADING_PREFIX,
@@ -222,7 +223,14 @@ export async function loadBundledHookRunner(name: string): Promise<string | unde
   }
 }
 
-async function installHooks(root: string, output: InitProjectOutput, warnings: string[], force: boolean, dryRun = false): Promise<void> {
+async function installHooks(
+  root: string,
+  output: InitProjectOutput,
+  warnings: string[],
+  transaction: FileTransaction,
+  force: boolean,
+  dryRun = false
+): Promise<void> {
   // docs/.kiwi scaffold: hook runner directory, trace output directory, and the
   // best-effort runner scripts the installed hooks delegate to.
   const kiwiHooksDir = path.join(root, "docs", ".kiwi", "hooks");
@@ -232,15 +240,21 @@ async function installHooks(root: string, output: InitProjectOutput, warnings: s
   }
   for (const runner of ["pre-commit.mjs", "trace.mjs"] as const) {
     const bundled = await loadBundledHookRunner(runner);
-    await writeIfMissing(path.join(kiwiHooksDir, runner), bundled ?? "#!/usr/bin/env node\nprocess.exit(0);\n", output, force, dryRun);
+    await writeIfMissing(path.join(kiwiHooksDir, runner), bundled ?? "#!/usr/bin/env node\nprocess.exit(0);\n", output, transaction, force, dryRun);
   }
 
-  await installGitPreCommitHook(root, output, warnings, dryRun);
-  await installClaudeSettings(root, output, warnings, force, dryRun);
-  await installCodexHooks(root, output, warnings, force, dryRun);
+  await installGitPreCommitHook(root, output, warnings, transaction, dryRun);
+  await installClaudeSettings(root, output, warnings, transaction, force, dryRun);
+  await installCodexHooks(root, output, warnings, transaction, force, dryRun);
 }
 
-async function installGitPreCommitHook(root: string, output: InitProjectOutput, warnings: string[], dryRun = false): Promise<void> {
+async function installGitPreCommitHook(
+  root: string,
+  output: InitProjectOutput,
+  warnings: string[],
+  transaction: FileTransaction,
+  dryRun = false
+): Promise<void> {
   const gitDir = path.join(root, ".git");
   const gitDirStat = await stat(gitDir).catch(() => undefined);
   if (!gitDirStat) {
@@ -269,7 +283,7 @@ async function installGitPreCommitHook(root: string, output: InitProjectOutput, 
   if (existing === undefined) {
     if (!dryRun) {
       await mkdir(path.dirname(hookPath), { recursive: true });
-      await writeFile(hookPath, renderGitPreCommitHook(), "utf8");
+      await transaction.write(hookPath, renderGitPreCommitHook());
     }
     output.created.push(hookPath);
     return;
@@ -284,7 +298,14 @@ async function installGitPreCommitHook(root: string, output: InitProjectOutput, 
   );
 }
 
-async function installClaudeSettings(root: string, output: InitProjectOutput, warnings: string[], force: boolean, dryRun = false): Promise<void> {
+async function installClaudeSettings(
+  root: string,
+  output: InitProjectOutput,
+  warnings: string[],
+  transaction: FileTransaction,
+  force: boolean,
+  dryRun = false
+): Promise<void> {
   const claudeDir = path.join(root, ".claude");
   if (await pathExists(path.join(claudeDir, "managed-settings.json"))) {
     warnings.push(
@@ -292,10 +313,17 @@ async function installClaudeSettings(root: string, output: InitProjectOutput, wa
     );
     return;
   }
-  await writeIfMissing(path.join(claudeDir, "settings.json"), renderClaudeSettings(), output, force, dryRun);
+  await writeIfMissing(path.join(claudeDir, "settings.json"), renderClaudeSettings(), output, transaction, force, dryRun);
 }
 
-async function installCodexHooks(root: string, output: InitProjectOutput, warnings: string[], force: boolean, dryRun = false): Promise<void> {
+async function installCodexHooks(
+  root: string,
+  output: InitProjectOutput,
+  warnings: string[],
+  transaction: FileTransaction,
+  force: boolean,
+  dryRun = false
+): Promise<void> {
   const codexDir = path.join(root, ".codex");
   let managedHooksOnly = false;
   try {
@@ -309,14 +337,21 @@ async function installCodexHooks(root: string, output: InitProjectOutput, warnin
       "Codex enterprise policy allow_managed_hooks_only = true detected in .codex/config.toml; skipped installing .codex/hooks.json."
     );
   } else {
-    await writeIfMissing(path.join(codexDir, "hooks.json"), renderCodexHooks(), output, force, dryRun);
+    await writeIfMissing(path.join(codexDir, "hooks.json"), renderCodexHooks(), output, transaction, force, dryRun);
   }
   // Codex only runs project hooks after the repository is trusted, so this
   // advisory is always surfaced regardless of the managed-hooks policy.
   warnings.push("Codex runs project hooks only after you trust the repository (codex: trust the repo when prompted).");
 }
 
-async function writeIfMissing(filePath: string, content: string, output: InitProjectOutput, force = false, dryRun = false): Promise<void> {
+async function writeIfMissing(
+  filePath: string,
+  content: string,
+  output: InitProjectOutput,
+  transaction: FileTransaction,
+  force = false,
+  dryRun = false
+): Promise<void> {
   let existed = false;
   try {
     await readFile(filePath, "utf8");
@@ -330,7 +365,7 @@ async function writeIfMissing(filePath: string, content: string, output: InitPro
   }
   if (!dryRun) {
     await mkdir(path.dirname(filePath), { recursive: true });
-    await writeFile(filePath, content.endsWith("\n") ? content : `${content}\n`, "utf8");
+    await transaction.write(filePath, content.endsWith("\n") ? content : `${content}\n`);
   }
   // A forced rewrite of an existing file is an update, not a creation (FR-NODE-085 AC-1 reporting contract).
   (existed ? output.updated : output.created).push(filePath);
@@ -342,7 +377,7 @@ async function writeIfMissing(filePath: string, content: string, output: InitPro
  * init therefore replaces them with the bundled content whenever they differ (AC-1) and prunes the
  * stale versioned rules files they supersede (AC-2), without the destructive force flag.
  */
-async function refreshRulesDocuments(root: string, output: InitProjectOutput, dryRun: boolean): Promise<void> {
+async function refreshRulesDocuments(root: string, output: InitProjectOutput, transaction: FileTransaction, dryRun: boolean): Promise<void> {
   const rulesDir = path.join(root, "docs", "rule");
   const bundled: ReadonlyArray<readonly [string, string]> = [
     [BUNDLED_SRS_RULES_FILENAME, await loadBundledRulesDocument()],
@@ -350,14 +385,14 @@ async function refreshRulesDocuments(root: string, output: InitProjectOutput, dr
     [BUNDLED_SDS_RULES_FILENAME, await loadBundledSdsRulesDocument()]
   ];
   for (const [name, content] of bundled) {
-    await writeOwnedDocument(path.join(rulesDir, name), content, output, dryRun);
+    await writeOwnedDocument(path.join(rulesDir, name), content, output, transaction, dryRun);
   }
-  await pruneStaleRulesDocuments(rulesDir, new Set(bundled.map(([name]) => name)), output, dryRun);
+  await pruneStaleRulesDocuments(rulesDir, new Set(bundled.map(([name]) => name)), output, transaction, dryRun);
 }
 
 // @req FR-NODE-085
 /** Writes a tool-owned document, reporting it as created, updated, or skipped when already identical. */
-async function writeOwnedDocument(filePath: string, content: string, output: InitProjectOutput, dryRun: boolean): Promise<void> {
+async function writeOwnedDocument(filePath: string, content: string, output: InitProjectOutput, transaction: FileTransaction, dryRun: boolean): Promise<void> {
   const desired = content.endsWith("\n") ? content : `${content}\n`;
   let existing: string | undefined;
   try {
@@ -371,7 +406,7 @@ async function writeOwnedDocument(filePath: string, content: string, output: Ini
   }
   if (!dryRun) {
     await mkdir(path.dirname(filePath), { recursive: true });
-    await writeFile(filePath, desired, "utf8");
+    await transaction.write(filePath, desired);
   }
   (existing === undefined ? output.created : output.updated).push(filePath);
 }
@@ -382,12 +417,18 @@ async function writeOwnedDocument(filePath: string, content: string, output: Ini
  * left holding two rules documents that disagree. The match is an anchored exact filename, so a
  * consumer's own documents in docs/rule survive (AC-3).
  */
-async function pruneStaleRulesDocuments(rulesDir: string, keep: ReadonlySet<string>, output: InitProjectOutput, dryRun: boolean): Promise<void> {
+async function pruneStaleRulesDocuments(
+  rulesDir: string,
+  keep: ReadonlySet<string>,
+  output: InitProjectOutput,
+  transaction: FileTransaction,
+  dryRun: boolean
+): Promise<void> {
   const entries = await readdir(rulesDir, { withFileTypes: true }).catch(() => []);
   for (const entry of entries) {
     if (!entry.isFile() || keep.has(entry.name) || !RULES_DOCUMENT_FILENAME_PATTERN.test(entry.name)) continue;
     const stalePath = path.join(rulesDir, entry.name);
-    if (!dryRun) await rm(stalePath, { force: true });
+    if (!dryRun) await transaction.remove(stalePath);
     output.removed.push(stalePath);
   }
 }
@@ -397,7 +438,7 @@ async function pruneStaleRulesDocuments(rulesDir: string, keep: ReadonlySet<stri
  * Raises the stale rules pointers in the index to the bundled version (AC-5). The edit is surgical —
  * only the tool-written pointers are replaced — so authored index content survives (AC-4).
  */
-async function refreshIndexRulesPointer(indexPath: string, output: InitProjectOutput, dryRun: boolean): Promise<void> {
+async function refreshIndexRulesPointer(indexPath: string, output: InitProjectOutput, transaction: FileTransaction, dryRun: boolean): Promise<void> {
   let existing: string | undefined;
   try {
     existing = await readFile(indexPath, "utf8");
@@ -406,7 +447,7 @@ async function refreshIndexRulesPointer(indexPath: string, output: InitProjectOu
   }
   const refreshed = refreshRulesMetadataRow(existing);
   if (refreshed.changes.length === 0) return;
-  if (!dryRun) await writeFile(indexPath, refreshed.next, "utf8");
+  if (!dryRun) await transaction.write(indexPath, refreshed.next);
   // The scaffold step above reported the existing index as skipped; the pointer refresh supersedes
   // that verdict, so the report never claims the same file was both skipped and updated.
   const skippedAt = output.skipped.indexOf(indexPath);
@@ -414,7 +455,13 @@ async function refreshIndexRulesPointer(indexPath: string, output: InitProjectOu
   output.updated.push(indexPath);
 }
 
-export async function upsertAgentInstruction(root: string, agentFile: AgentFileMode, output: InitProjectOutput, dryRun = false): Promise<void> {
+export async function upsertAgentInstruction(
+  root: string,
+  agentFile: AgentFileMode,
+  output: InitProjectOutput,
+  transaction: FileTransaction,
+  dryRun = false
+): Promise<void> {
   const filePath = path.join(root, agentFile);
   const snippet = renderAgentInstructionSnippet();
   let fileExists = true;
@@ -437,7 +484,7 @@ export async function upsertAgentInstruction(root: string, agentFile: AgentFileM
   }
   const block = findAgentInstructionBlock(existing);
   const next = block ? replaceAgentInstructionBlock(existing, block, snippet) : appendAgentInstructionBlock(existing, snippet);
-  if (!dryRun) await writeFile(filePath, next, "utf8");
+  if (!dryRun) await transaction.write(filePath, next);
   (fileExists ? output.updated : output.created).push(filePath);
 }
 
@@ -592,17 +639,51 @@ async function listScopeDocuments(rootPath: string): Promise<ScopeTemplateInfo[]
   return scopes;
 }
 
-export async function initProject(root: ProjectRoot, input: InitProjectInput): Promise<MutationResult<InitProjectOutput>> {
+/**
+ * @param precedingWrites Writes a caller makes in the refresh's own file transaction, before the refresh:
+ * upgrade's author-owned repairs. A refresh that then fails puts them back with its own writes (FR-NODE-263).
+ */
+export async function initProject(
+  root: ProjectRoot,
+  input: InitProjectInput,
+  precedingWrites?: (transaction: FileTransaction) => Promise<void>
+): Promise<MutationResult<InitProjectOutput>> {
   // `dryRun` reaches the lock too, as upgrade's does: a plan that takes a real lock writes its bookkeeping (FR-NODE-223 AC-7).
   return withSrsMutationLock(root, { operation: "init_project", ignoreLock: input.ignoreLock, skipLock: input.skipLock, dryRun: input.dryRun }, () =>
-    initProjectUnlocked(root, input)
+    initProjectUnlocked(root, input, precedingWrites)
   );
 }
 
-async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): Promise<MutationResult<InitProjectOutput>> {
+async function initProjectUnlocked(
+  root: ProjectRoot,
+  input: InitProjectInput,
+  precedingWrites: ((transaction: FileTransaction) => Promise<void>) | undefined
+): Promise<MutationResult<InitProjectOutput>> {
   const dryRun = Boolean(input.dryRun);
   const warnings: string[] = [];
   const output: InitProjectOutput = { created: [], skipped: [], updated: [], removed: [], warnings };
+  // @req FR-NODE-263 — every project file the refresh writes, creates or removes goes through one file
+  // transaction, so a failure part-way puts all of them back; directories it created may stay, empty.
+  // The agent onboarding stays outside: its failures are warnings, and skill copies and an MCP
+  // registration are not project files this command restores.
+  await runFileTransaction(async (transaction) => {
+    await precedingWrites?.(transaction);
+    await refreshProjectFiles(root, input, output, warnings, transaction, dryRun);
+  });
+  if (input.registerMcp || input.installSkills) output.onboarding = await onboardAgents(root.root, input, output, warnings, dryRun);
+  output.written = !dryRun && output.created.length + output.updated.length + output.removed.length > 0;
+  return mutationOk(output);
+}
+
+/** The tool-owned project files: the SRS scaffolds, the rules documents and pointer, the agent files and the hooks. */
+async function refreshProjectFiles(
+  root: ProjectRoot,
+  input: InitProjectInput,
+  output: InitProjectOutput,
+  warnings: string[],
+  transaction: FileTransaction,
+  dryRun: boolean
+): Promise<void> {
   if (!dryRun) {
     await mkdir(path.join(root.root, "docs", "spec"), { recursive: true });
     await mkdir(path.join(root.root, "docs", "rule"), { recursive: true });
@@ -631,15 +712,17 @@ async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): 
     indexPath,
     renderIndexTemplate(scopeDocument ? { ...input, scopeDocument } : { ...input, scopes: existingScopeDocuments }),
     output,
+    transaction,
     input.force,
     dryRun
   );
-  await writeIfMissing(path.join(root.root, "docs", "spec", "90.appendix.md"), renderAppendixTemplate(), output, input.force, dryRun);
+  await writeIfMissing(path.join(root.root, "docs", "spec", "90.appendix.md"), renderAppendixTemplate(), output, transaction, input.force, dryRun);
   if (scopeDocument !== undefined) {
     await writeIfMissing(
       path.join(root.root, "docs", "spec", scopeDocument),
       renderEmptyScopeTemplate({ name: scope.name, prefix: scope.prefix }),
       output,
+      transaction,
       input.force,
       dryRun
     );
@@ -650,18 +733,15 @@ async function initProjectUnlocked(root: ProjectRoot, input: InitProjectInput): 
       `scope "${scope.name}": the project already has scope documents, so init added none — use \`speckiwi scaffold-scope ${scope.name}:${scope.prefix} --apply\` to add and register one.`
     );
   }
-  await writeIfMissing(path.join(root.root, "docs", "spec", "steps", "state.md"), renderStepStateTemplate(), output, input.force, dryRun);
+  await writeIfMissing(path.join(root.root, "docs", "spec", "steps", "state.md"), renderStepStateTemplate(), output, transaction, input.force, dryRun);
   // FR-NODE-085 — the rules documents are tool-owned, so they are refreshed and pruned on every init,
   // while the author-owned index/scope/appendix/step-state files above stay untouched once they exist.
-  await refreshRulesDocuments(root.root, output, dryRun);
-  await refreshIndexRulesPointer(indexPath, output, dryRun);
+  await refreshRulesDocuments(root.root, output, transaction, dryRun);
+  await refreshIndexRulesPointer(indexPath, output, transaction, dryRun);
   for (const agentFile of REQUIRED_AGENT_FILES) {
-    await upsertAgentInstruction(root.root, agentFile, output, dryRun);
+    await upsertAgentInstruction(root.root, agentFile, output, transaction, dryRun);
   }
-  await installHooks(root.root, output, warnings, Boolean(input.force), dryRun);
-  if (input.registerMcp || input.installSkills) output.onboarding = await onboardAgents(root.root, input, output, warnings, dryRun);
-  output.written = !dryRun && output.created.length + output.updated.length + output.removed.length > 0;
-  return mutationOk(output);
+  await installHooks(root.root, output, warnings, transaction, Boolean(input.force), dryRun);
 }
 
 const SELF_HOSTING_NOTE =

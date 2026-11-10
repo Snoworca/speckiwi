@@ -401,6 +401,54 @@ export function parameterScopes(tokens: readonly JsToken[]): ParameterScope[] {
   return scopes;
 }
 
+/**
+ * Where each `const|let|var|function|class` name the file declares is bound: from the innermost `{`
+ * enclosing the declaration through its `}`, or the whole file at the top level. @req FR-NODE-282
+ * AC-1, AC-2 — a name a file declares in one block is that binding there and nowhere else. A `let` or
+ * `const` in a `for (…)` or `for await (…)` head is bound in the loop's head and body only. A body
+ * that is one statement ends at its `;` or at the `}` closing the block around the loop; a body
+ * left to automatic semicolon insertion runs on to that `}` or the end of the file.
+ */
+export function declarationScopes(tokens: readonly JsToken[]): ParameterScope[] {
+  const scopes: ParameterScope[] = [];
+  const open: number[] = [];
+  const heads: number[] = [];
+  tokens.forEach((token, index) => {
+    if (token.value === "{" && token.match >= 0) open.push(index);
+    else if (token.value === "}") open.pop();
+    else if (token.value === "(" && token.match >= 0 && isForHead(tokens, index)) heads.push(index);
+    else if (token.value === ")" && heads.length > 0 && (tokens[heads[heads.length - 1] as number] as JsToken).match === index) heads.pop();
+    const keyword = tokens[index - 1]?.value ?? "";
+    if (token.type !== "identifier" || !["const", "let", "var", "function", "class"].includes(keyword)) return;
+    // A `let`/`const` in a `for (…)` head binds only inside the loop: its head and its body.
+    const head = heads[heads.length - 1];
+    const block = open[open.length - 1];
+    if (head !== undefined && keyword !== "var" && (block === undefined || block < head)) {
+      scopes.push({ name: token.value, start: head, end: loopBodyEnd(tokens, (tokens[head] as JsToken).match + 1) });
+      return;
+    }
+    scopes.push({ name: token.value, start: block ?? 0, end: block === undefined ? tokens.length - 1 : (tokens[block] as JsToken).match });
+  });
+  return scopes;
+}
+
+/** Whether the `(` at `open` begins the head of `for (…)` or `for await (…)`. */
+function isForHead(tokens: readonly JsToken[], open: number): boolean {
+  const before = tokens[open - 1]?.value;
+  return before === "for" || (before === "await" && tokens[open - 2]?.value === "for");
+}
+
+/** Last token of the loop body that starts at `body`: a block, or one statement up to its `;`. */
+function loopBodyEnd(tokens: readonly JsToken[], body: number): number {
+  if (tokens[body]?.value === "{") return (tokens[body] as JsToken).match;
+  let cursor = body;
+  while (cursor < tokens.length && tokens[cursor]?.value !== ";" && tokens[cursor]?.value !== "}") {
+    const match = (tokens[cursor] as JsToken).match;
+    cursor = match >= 0 ? match + 1 : cursor + 1;
+  }
+  return Math.min(cursor, tokens.length - 1);
+}
+
 /** Names the file declares as its own bindings: `const|let|var` names and every parameter name. */
 export function localBindings(tokens: readonly JsToken[]): Set<string> {
   const names = new Set(parameterScopes(tokens).map((scope) => scope.name));

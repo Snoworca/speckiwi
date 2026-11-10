@@ -14,7 +14,8 @@ import type {
   TextFile
 } from "../types.js";
 import { parseMarkdownTable, parseMarkdownTableResult, parseMetadataRows, splitTableRow } from "./table.js";
-import { classifyDocumentLines, type ClassifyOptions } from "./document-lines.js";
+import { classifyDocumentLines, maskInlineComments, type ClassifyOptions } from "./document-lines.js";
+import { findMarkdownLinks } from "./markdown-links.js";
 
 const STEP_STATUS_ENUM = new Set<string>(["active", "merging", "merged", "abandoned"]);
 const STEP_MODE_ENUM = new Set<string>(["sdd", "vibe", "wait", "tdd"]);
@@ -97,9 +98,13 @@ function scopeCell(row: Record<string, string>, field: ScopeRowField): string {
   return "";
 }
 
+/**
+ * @req FR-PARSE-050 AC-3 — the destination the shared link parser reads in the cell, past any inline
+ * comment and without a title; a cell that holds no inline link is read whole, as a bare path is.
+ */
 function extractLinkTarget(value: string): string {
-  const match = /\[[^\]]+]\(([^)]+)\)/.exec(value);
-  return match?.[1] ?? value;
+  const link = findMarkdownLinks(maskInlineComments(value)).find((candidate) => candidate.kind === "inline");
+  return link?.kind === "inline" ? link.destination.value : value;
 }
 
 export const TARGET_MAP_HEADING = /^##\s+\d+\.\s+Target Map$/;

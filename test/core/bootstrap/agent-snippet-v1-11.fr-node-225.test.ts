@@ -9,6 +9,7 @@ import {
   renderAgentInstructionSnippet
 } from "../../../src/core/bootstrap/templates.js";
 import { upsertAgentInstruction } from "../../../src/core/bootstrap/init-project.js";
+import { runFileTransaction } from "../../../src/core/patch/file-transaction.js";
 import { diagnoseHealth } from "../../../src/core/health/doctor.js";
 import { parseWorkspace } from "../../../src/core/parser/workspace-parser.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
@@ -163,7 +164,7 @@ ${newer()}
 `;
     await writeFile(path.join(root, "CLAUDE.md"), before, "utf8");
     const output = { created: [], skipped: [], updated: [], removed: [], warnings: [] as string[] };
-    await upsertAgentInstruction(root, "CLAUDE.md", output);
+    await runFileTransaction((transaction) => upsertAgentInstruction(root, "CLAUDE.md", output, transaction));
     expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toBe(before);
     expect(output.updated).toEqual([]);
     expect(output.warnings.some((w) => w.includes("999.0.0") && w.includes(packageVersion))).toBe(true);

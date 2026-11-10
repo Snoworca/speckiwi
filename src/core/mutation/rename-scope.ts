@@ -1,4 +1,4 @@
-import { access, readdir, rename } from "node:fs/promises";
+import { access, readdir } from "node:fs/promises";
 import path from "node:path";
 import { isScopeDocumentPath, nextScopeDocumentNumber, scopeDocumentName } from "../bootstrap/templates.js";
 import { readUtf8File } from "../fs/read-text.js";
@@ -205,14 +205,9 @@ async function renameScopeUnlocked(root: ProjectRoot, input: RenameScopeInput, d
       .filter(({ rewrites }) => rewrites.length > 0)
       .map(({ file, rewrites }) => createPatchPlan(file.path === absoluteFrom ? { ...file, path: absoluteTo } : file, replaceLines(rewrites)))
   ];
-  await rename(absoluteFrom, absoluteTo);
-  try {
-    // All or nothing across the files: the shared writer restores every file it wrote on a failure.
-    await applyPatchPlans(plans, { dryRun: false });
-  } catch (error) {
-    await rename(absoluteTo, absoluteFrom);
-    throw error;
-  }
+  // @req FR-NODE-283 — the move is a step of the same transaction: a failure after it puts every patched
+  // file back and then the document's old name, and a move-back that fails is reported naming it.
+  await applyPatchPlans(plans, { dryRun: false, moves: [{ from: absoluteFrom, to: absoluteTo }] });
   return mutationOk({ ...output, written: true });
 }
 

@@ -623,14 +623,15 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("retarget", undefined, "workspace", "retarget", [
+  // @req FR-MCP-073 — the same selection and refusals as the CLI, through one core function.
+  mutationSpec("retarget", mcp("retarget_requirements", "Moves requirements to a registered destination target (to) under a required reason, selected by explicit ids (ids), by a source target (from), or both, the selection narrowed by scope, status and type and an id list to exclude; every moved requirement gets its Target cell rewritten and a Change Notes row. A source target that is not registered or an id that names no requirement is refused with NOT_FOUND, an id outside the selection with MUTATION_DENIED, and naming neither from nor ids with USAGE; an unregistered destination moves nothing and marks each item target-not-registered. It previews by default and changes nothing on disk until `apply` is passed; `apply` with `dryRun` is refused. Writes the scope documents that hold the moved requirements."), "workspace", "retargetSelection", [
     opt("--from <target>", "from"),
     opt("--to <target>", "to"),
     opt("--reason <text>", "reason"),
     opt("--scope <scope>", "scope"),
     opt("--status <status>", "status"),
     opt("--type <type>", "type"),
-    opt("--id <id>", "id", { repeatable: true }),
+    opt("--id <id>", "ids", { repeatable: true }),
     opt("--exclude <id>", "exclude", { repeatable: true }),
     opt("--apply", "apply"),
     // IR-CLI-112 AC-4 — the preview flag and the lock bypass every comparable mutation exposes.

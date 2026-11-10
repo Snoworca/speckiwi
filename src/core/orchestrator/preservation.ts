@@ -123,7 +123,10 @@ function testRows(path: string, newPath: string | undefined, base: TestCaseSurfa
     if (headCase.assertions < baseCase.assertions) {
       rows.push({ ...at, case: baseCase.key, change: "assertion-removed", baseAssertions: baseCase.assertions, headAssertions: headCase.assertions });
     }
-    if (headCase.contextSkips > baseCase.contextSkips) rows.push({ ...at, case: baseCase.key, change: "skip-added", marker: "context.skip()" });
+    // @req FR-NODE-282 AC-3 — each count on its own: a hand-off swapped for a direct skip still raises one.
+    if (headCase.contextSkips > baseCase.contextSkips || headCase.handOffs > baseCase.handOffs) {
+      rows.push({ ...at, case: baseCase.key, change: "skip-added", marker: "context.skip()" });
+    }
     for (const marker of addedMarkers(baseCase.branches, headCase.branches)) rows.push({ ...at, case: baseCase.key, change: marker === ".only" ? "only-added" : "skip-added", marker });
   }
   return rows;

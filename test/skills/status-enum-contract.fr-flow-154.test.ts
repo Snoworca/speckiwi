@@ -3429,6 +3429,7 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
     expect([...AXIS_TOOLS], "the tools that carry a requirement lifecycle value").toEqual([
       "add_requirement",
       "list_requirements",
+      "retarget_requirements",
       "search_requirements",
       "update_stability",
       "update_status"
@@ -4585,8 +4586,11 @@ function ownArgumentShapes(tool: string, token: string): string[] {
  * merge, which is recorded rather than repaired for the reason stated beside `AXIS_CLI_ARGUMENTS`.
  */
 const EXCUSED_SIBLING_ARGUMENTS: readonly string[] = [
+  "apply — an argument or option of an axis CLI subcommand",
   "evidence — an argument or option of an axis CLI subcommand",
+  "exclude — an argument or option of an axis CLI subcommand",
   "fields — an argument or option of an axis CLI subcommand",
+  "from — an argument or option of an axis CLI subcommand",
   "id — an argument or option of an axis CLI subcommand",
   "limit — an argument or option of an axis CLI subcommand",
   "offset — an argument or option of an axis CLI subcommand",
@@ -4605,6 +4609,7 @@ const EXCUSED_SIBLING_ARGUMENTS: readonly string[] = [
   "tags — an argument or option of an axis CLI subcommand",
   "target — named in the tool-axis residue",
   "title — an argument or option of an axis CLI subcommand",
+  "to — an argument or option of an axis CLI subcommand",
   "trace — an argument or option of an axis CLI subcommand",
   "type — an argument or option of an axis CLI subcommand"
 ];
@@ -4845,9 +4850,15 @@ describe("FR-FLOW-175 — a lifecycle call's own argument is exempt at the schem
     expect(missed, "a misspelling of an argument name that the exemption swallowed").toEqual([]);
     expect(planted, "misspellings actually planted").toBeGreaterThanOrEqual(100);
     expect([...new Set(skipped)].sort(), "the mutants excluded, each with the reason it is excluded").toEqual([
+      "apply — the key itself, not a misspelling of it",
       "evidence — the key itself, not a misspelling of it",
+      "exclude — the key itself, not a misspelling of it",
       "fields — the key itself, not a misspelling of it",
+      "from — the key itself, not a misspelling of it",
+      "id — an argument name an axis tool declares",
       "id — the key itself, not a misspelling of it",
+      "ids — an argument name an axis tool declares",
+      "ids — the key itself, not a misspelling of it",
       "limit — the key itself, not a misspelling of it",
       // FR-CLI-001 AC-2 — `search_requirements` declares `match`; its lowercase form is the key itself.
       "match — the key itself, not a misspelling of it",
@@ -4872,6 +4883,7 @@ describe("FR-FLOW-175 — a lifecycle call's own argument is exempt at the schem
       "tags — the key itself, not a misspelling of it",
       "target — the key itself, not a misspelling of it",
       "title — the key itself, not a misspelling of it",
+      "to — the key itself, not a misspelling of it",
       "trace — the key itself, not a misspelling of it",
       "type — the key itself, not a misspelling of it"
     ]);
@@ -4890,6 +4902,7 @@ describe("FR-FLOW-175 — a lifecycle call's own argument is exempt at the schem
     expect(axisToolsFor(["status"]), "the status half of the axis alone").toEqual([
       "add_requirement",
       "list_requirements",
+      "retarget_requirements",
       "search_requirements",
       "update_status"
     ]);

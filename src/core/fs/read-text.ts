@@ -28,7 +28,10 @@ function withFilePath(filePath: string): (error: NodeJS.ErrnoException) => never
 }
 
 export async function readUtf8File(filePath: string, root?: string): Promise<TextFile> {
-  const [text, stats] = await Promise.all([readFile(filePath, "utf8"), stat(filePath)]).catch(withFilePath(filePath));
+  // @req FR-NODE-284 — the read first, then the stat: run together, whichever rejected first decided
+  // the error, so a missing file reported `stat` instead of `open` in about a third of the runs.
+  const text = await readFile(filePath, "utf8").catch(withFilePath(filePath));
+  const stats = await stat(filePath).catch(withFilePath(filePath));
   return {
     path: filePath,
     relativePath: root ? path.relative(root, filePath).replace(/\\/g, "/") : path.basename(filePath),

@@ -82,7 +82,7 @@ export function atxHeadingLevel(text: string): number | undefined {
 const THEMATIC_BREAK = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
 const SETEXT_UNDERLINE = /^ {0,3}(?:=+|-+)[ \t]*$/;
 const BLOCK_QUOTE_MARKER = /^ {0,3}>/;
-const LIST_MARKER = /^ {0,3}(?:[-+*]|\d{1,9}[.)])(?=[ \t])/;
+const LIST_MARKER = /^ {0,3}(?:[-+*]|(\d{1,9})[.)])(?=[ \t]|$)/;
 const HTML_COMMENT_START = /^ {0,3}<!--/;
 /**
  * CommonMark 0.31: `<!-->` and `<!--->` are complete comments, so the `-->` that ends one may begin as
@@ -164,7 +164,8 @@ export function maskInlineComments(line: string): string {
 }
 
 /** A block quote, or a list item whose content starts `offset` columns into its parent's content. */
-type Container = { kind: "quote" } | { kind: "item"; offset: number };
+/** `blank`: an item that started on a blank line and has held nothing since (CommonMark §5.2). */
+type Container = { kind: "quote" } | { kind: "item"; offset: number; blank: boolean };
 
 /** Past a block-quote marker and the one optional space after it, which may be part of a tab. */
 function afterQuoteMarker(cursor: Cursor): Cursor | undefined {
@@ -174,14 +175,21 @@ function afterQuoteMarker(cursor: Cursor): Cursor | undefined {
   return after.text.startsWith(" ") ? advance(after, 1) : after;
 }
 
-/** A list item opened at the cursor: its content offset and the cursor at its content. */
-function listItemAt(cursor: Cursor): { offset: number; content: Cursor } | undefined {
+/**
+ * A list item opened at the cursor: its content offset and the cursor at its content.
+ *
+ * @req FR-PARSE-050 AC-1, AC-2 — CommonMark §5.2: an item may start blank, its content then begins one
+ * column past the marker; but an item that would interrupt a paragraph must not start blank, and an
+ * ordered one must be numbered 1. A sibling item of an open list is not interrupting, so the
+ * lazy-continuation check calls this with `interruptsParagraph` false.
+ */
+function listItemAt(cursor: Cursor, interruptsParagraph = false): { offset: number; content: Cursor } | undefined {
   if (THEMATIC_BREAK.test(cursor.text)) return undefined;
   const marker = LIST_MARKER.exec(cursor.text);
   if (marker === null) return undefined;
   const after = advance(cursor, marker[0].length);
-  // An item that starts blank is not taken for one; this classifier never needed it to be.
-  if (isBlank(after.text)) return undefined;
+  if (isBlank(after.text)) return interruptsParagraph ? undefined : { offset: marker[0].length + 1, content: after };
+  if (interruptsParagraph && marker[1] !== undefined && Number(marker[1]) !== 1) return undefined;
   const gap = indentOf(after.text);
   const taken = gap >= LIST_CODE_GAP ? 1 : gap;
   return { offset: marker[0].length + taken, content: advance(after, taken) };
@@ -197,6 +205,8 @@ function continueContainers(line: string, stack: readonly Container[]): { matche
       if (after === undefined) break;
       cursor = after;
     } else if (isBlank(cursor.text)) {
+      // @req FR-PARSE-050 AC-1 — an item may begin with at most one blank line: a second ends it.
+      if (container.blank) break;
       cursor = { text: "", column: cursor.column };
     } else if (indentOf(cursor.text) >= container.offset) {
       cursor = advance(cursor, container.offset);
@@ -322,6 +332,9 @@ export function classifyDocumentLines(lines: readonly string[], options: Classif
     if (index <= hiddenThrough) return not(line, hiddenKind, hiddenUnclosed);
 
     const continued = continueContainers(line, stack);
+    if (!isBlank(continued.cursor.text)) {
+      for (const container of stack.slice(0, continued.matched)) if (container.kind === "item") container.blank = false;
+    }
     let cursor = continued.cursor;
     if (continued.matched < stack.length) {
       if (paragraphOpen && continuesParagraph(cursor.text)) return body(line, cursor, true);
@@ -339,12 +352,12 @@ export function classifyDocumentLines(lines: readonly string[], options: Classif
     if (indentOf(cursor.text) < CODE_INDENT) {
       for (;;) {
         const quoted = afterQuoteMarker(cursor);
-        const item = quoted === undefined ? listItemAt(cursor) : undefined;
+        const item = quoted === undefined ? listItemAt(cursor, paragraphOpen) : undefined;
         if (quoted !== undefined) {
           stack.push({ kind: "quote" });
           cursor = quoted;
         } else if (item !== undefined) {
-          stack.push({ kind: "item", offset: item.offset });
+          stack.push({ kind: "item", offset: item.offset, blank: isBlank(item.content.text) });
           cursor = item.content;
         } else {
           break;

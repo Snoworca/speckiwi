@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { findAgentInstructionBlock, upsertAgentInstruction } from "../../../src/core/bootstrap/init-project.js";
+import { runFileTransaction } from "../../../src/core/patch/file-transaction.js";
 import { AGENT_INSTRUCTION_END_MARKER, renderAgentInstructionSnippet } from "../../../src/core/bootstrap/templates.js";
 import { removeProject } from "../../../src/core/bootstrap/remove-project.js";
 import { diagnoseHealth } from "../../../src/core/health/doctor.js";
@@ -47,7 +48,7 @@ describe("FR-NODE-226 the managed block in a file that starts with a UTF-8 BOM",
     const filePath = path.join(root, "CLAUDE.md");
     await writeFile(filePath, `${BOM}${outdated()}\n\n# Project notes\n\nkeep me\n`, "utf8");
 
-    await upsertAgentInstruction(root, "CLAUDE.md", output());
+    await runFileTransaction((transaction) => upsertAgentInstruction(root, "CLAUDE.md", output(), transaction));
 
     const after = await readFile(filePath, "utf8");
     expect(after.startsWith(`${BOM}${renderAgentInstructionSnippet().split("\n")[0]}`)).toBe(true);
@@ -64,7 +65,7 @@ describe("FR-NODE-226 the managed block in a file that starts with a UTF-8 BOM",
     expect(report.checks.find((check) => check.topic === "agent workflow block version currency")?.state).toBe("ok");
 
     const result = output();
-    await upsertAgentInstruction(root, "CLAUDE.md", result);
+    await runFileTransaction((transaction) => upsertAgentInstruction(root, "CLAUDE.md", result, transaction));
     expect(await readFile(path.join(root, "CLAUDE.md"), "utf8")).toBe(current);
     expect(result.skipped).toEqual([path.join(root, "CLAUDE.md")]);
   });
@@ -85,7 +86,7 @@ describe("FR-NODE-226 the managed block in a file that starts with a UTF-8 BOM",
     await writeFile(filePath, `${BOM}# SpecKiwi SRS workflow\n\nold legacy body\n\n# Project notes\n\nkeep me\n`, "utf8");
     expect(findAgentInstructionBlock(await readFile(filePath, "utf8"))?.start).toBe(1);
 
-    await upsertAgentInstruction(root, "CLAUDE.md", output());
+    await runFileTransaction((transaction) => upsertAgentInstruction(root, "CLAUDE.md", output(), transaction));
 
     const after = await readFile(filePath, "utf8");
     expect(after.startsWith(`${BOM}${renderAgentInstructionSnippet().split("\n")[0]}`)).toBe(true);

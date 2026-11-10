@@ -4,9 +4,14 @@ import { applyPatchPlans } from "../patch/apply-patch-plans.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { findHeadingMatching, TARGET_MAP_HEADING } from "../parser/index-parser.js";
 import { parseMarkdownTable } from "../parser/table.js";
+import { parseWorkspace } from "../parser/workspace-parser.js";
+import { listRequirements } from "../query/lookup.js";
 import type {
   MutationResult,
   ProjectRoot,
+  RequirementFilter,
+  RequirementStatus,
+  RequirementType,
   RetargetInput,
   RetargetItemPlan,
   RetargetOutput,
@@ -137,4 +142,59 @@ async function retargetUnlocked(root: ProjectRoot, input: RetargetInput): Promis
 
   // `written` is what lets the lock wrapper refresh the status cache after a real write.
   return mutationOk({ dryRun, written, items });
+}
+
+/** A move named the way `speckiwi retarget` and MCP `retarget_requirements` name it. @req FR-MCP-073 */
+export interface RetargetRequest {
+  readonly from?: string;
+  readonly to: string;
+  readonly reason: string;
+  readonly scope?: string;
+  readonly status?: string;
+  readonly type?: string;
+  readonly ids?: readonly string[];
+  readonly exclude?: readonly string[];
+  readonly dryRun: boolean;
+  readonly ignoreLock?: boolean;
+}
+
+/**
+ * @req FR-MCP-073 AC-2, AC-3 — the one selection both surfaces use: `from` selects a set narrowed by
+ * scope, status and type, `ids` name requirements that must lie in that selection, and a named source
+ * or id that does not resolve refuses the whole move before anything is written.
+ * @req IR-CLI-112 AC-3 — an id the caller named is checked against the selection before any write: one
+ * that names no requirement, or one the selection excludes, refuses the whole move rather than being
+ * skipped while the rest is applied. An unregistered `from` selects nothing, which would otherwise report
+ * a successful empty move, so it is refused like an unregistered rename-target `from`.
+ */
+export async function retargetSelection(root: ProjectRoot, request: RetargetRequest): Promise<MutationResult<RetargetOutput>> {
+  const explicitIds = [...(request.ids ?? [])];
+  if (explicitIds.length === 0 && request.from === undefined) {
+    return mutationFail("USAGE", "retarget needs a source target (from) or at least one requirement id (ids)");
+  }
+  const workspace = await parseWorkspace(root);
+  const filter: RequirementFilter = {
+    ...(request.from === undefined ? {} : { target: request.from }),
+    ...(request.scope === undefined ? {} : { scope: request.scope }),
+    ...(request.status === undefined ? {} : { status: request.status as RequirementStatus }),
+    ...(request.type === undefined ? {} : { type: request.type as RequirementType })
+  };
+  const selected = listRequirements(workspace, filter).map((record) => record.id);
+  const excluded = new Set(request.exclude ?? []);
+  const named = explicitIds.filter((id) => !excluded.has(id));
+  const unknown = named.filter((id) => !workspace.records.some((record) => record.id === id));
+  const outside = named.filter((id) => !unknown.includes(id) && !selected.includes(id));
+  if (request.from !== undefined && !workspace.index.targets.some((entry) => entry.target === request.from)) {
+    return mutationFail("NOT_FOUND", `Target is not registered in the Target Map: ${request.from}; nothing was moved`);
+  }
+  if (unknown.length > 0) return mutationFail("NOT_FOUND", `no requirement holds ${unknown.join(", ")}; nothing was moved`);
+  if (outside.length > 0) return mutationFail("MUTATION_DENIED", `${outside.join(", ")} is outside the --from/--scope/--status/--type selection; nothing was moved`);
+  return retarget(root, {
+    ids: explicitIds.length > 0 ? explicitIds : selected,
+    toTarget: request.to,
+    reason: request.reason,
+    exclude: [...(request.exclude ?? [])],
+    dryRun: request.dryRun,
+    ...(request.ignoreLock === true ? { ignoreLock: true } : {})
+  });
 }

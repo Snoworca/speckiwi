@@ -1,4 +1,4 @@
-import { isBindingReference, localBindings, parameterScopes, type JsSource, type JsToken } from "./js-source-lexer.js";
+import { declarationScopes, isBindingReference, parameterScopes, type JsSource, type JsToken } from "./js-source-lexer.js";
 
 // @req FR-NODE-252 AC-4 — the test cases of a JavaScript or TypeScript test file, as the mechanical
 // half of kiwi-coder §0.20.3 reads them: each case by its title path, the skip and focus markers on
@@ -16,7 +16,9 @@ import { isBindingReference, localBindings, parameterScopes, type JsSource, type
 // - hooks (`beforeEach` …), `vi` and `expectTypeOf` used as a call or a member, and the `expect`
 //   helpers (`expect.any(…)`, `expect.objectContaining(…)` …);
 // - a case's context is the first parameter of its callback, the second for `.for(rows)`, and none for
-//   `.each(rows)`, whose parameters are the row (@req FR-NODE-265 AC-4).
+//   `.each(rows)`, whose parameters are the row (@req FR-NODE-265 AC-4);
+// - each occurrence of that context is a skip, a hand-off or a read by the closed list `contextUse`
+//   names, and an occurrence of any other form makes the surface `null` (@req FR-NODE-282 AC-3).
 // Every occurrence of a test API name — the globals, every value imported from `vitest` or
 // `@jest/globals`, every alias — must be consumed by one of those forms. A global other than a case
 // function or `expect` that the file declares as its own binding (`(suite) => suite.file`) is that
@@ -40,6 +42,8 @@ export interface TestCaseRecord {
   readonly assertions: number;
   /** Skip calls on its context parameter in its body (`ctx.skip()`, or `skip()` destructured). */
   readonly contextSkips: number;
+  /** Places its body passes the context on whole: a call argument, a return, an assignment. @req FR-NODE-282 AC-3 */
+  readonly handOffs: number;
 }
 
 export interface TestCaseSurface {
@@ -185,6 +189,8 @@ function expectUse(tokens: readonly JsToken[], index: number): "assertion" | "he
 interface CaseContext {
   readonly name: string;
   readonly via: "member" | "call";
+  /** The parameter's first token: the identifier, or the `{` of the destructuring pattern. */
+  readonly at: number;
 }
 
 /** The first token of each top-level item of the bracket group opening at `open`. */
@@ -221,14 +227,98 @@ function caseContext(tokens: readonly JsToken[], open: number, position: number 
   const parameter = callback?.[position];
   if (parameter === undefined) return null;
   const first = tokens[parameter] as JsToken;
-  if (first.type === "identifier") return { name: first.value, via: "member" };
+  if (first.type === "identifier") return { name: first.value, via: "member", at: parameter };
   if (first.value !== "{") return null;
   for (let key = parameter + 1; key < first.match; key += 1) {
     if (tokens[key]?.value !== "skip" || !["{", ","].includes(tokens[key - 1]?.value ?? "")) continue;
     const renamed = tokens[key + 1]?.value === ":" && tokens[key + 2]?.type === "identifier";
-    return { name: renamed ? (tokens[key + 2] as JsToken).value : "skip", via: "call" };
+    return { name: renamed ? (tokens[key + 2] as JsToken).value : "skip", via: "call", at: parameter };
   }
   return null;
+}
+
+/**
+ * @req FR-NODE-282 AC-3 — the closed list an occurrence of a case's context is judged by. `null` when the
+ * token is no occurrence (a member name, an object key, the parameter itself); `"unknown"` for any form
+ * the list does not name, which leaves the file unchecked rather than judged by a guess.
+ */
+type ContextUse = "skip" | "hand-off" | "read" | "unknown";
+
+/** Words before `(` that open a condition or a statement head rather than a call. */
+const NOT_CALLEES = new Set(["if", "while", "for", "switch", "return", "typeof", "await", "void", "delete", "in", "of", "case"]);
+
+/** The `(` or `[` or `{` that opens the bracket group holding `index`, or -1 at the top level. */
+function enclosingOpen(tokens: readonly JsToken[], index: number): number {
+  for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+    const match = (tokens[cursor] as JsToken).match;
+    if (match >= 0 && match > index) return cursor;
+  }
+  return -1;
+}
+
+/** An occurrence that is a whole item of a call's argument list: `"call"`, `"expect"`, `"condition"`, or null. */
+function argumentOf(tokens: readonly JsToken[], index: number): "call" | "expect" | "condition" | null {
+  const before = tokens[index - 1]?.value ?? "";
+  const after = tokens[index + 1]?.value ?? "";
+  if (!["(", ","].includes(before) || ![")", ","].includes(after)) return null;
+  const open = before === "(" ? index - 1 : enclosingOpen(tokens, index);
+  if (open < 0 || tokens[open]?.value !== "(") return null;
+  const callee = tokens[open - 1] as JsToken | undefined;
+  if (callee === undefined) return null;
+  const alone = before === "(" && after === ")";
+  const softExpect = callee.value === "soft" && tokens[open - 2]?.value === "." && tokens[open - 3]?.value === "expect";
+  if (callee.value === "expect" || softExpect) return alone ? "expect" : null;
+  if (callee.value === "if" || callee.value === "while") return alone ? "condition" : null;
+  if (callee.type === "identifier" && !NOT_CALLEES.has(callee.value)) return "call";
+  return [")", "]", ">", "?."].includes(callee.value) ? "call" : null;
+}
+
+/** Whether the token after `index` ends the expression it stands in: `;`, `}`, `,`, `)` or a line break. */
+function endsExpression(tokens: readonly JsToken[], index: number): boolean {
+  const next = tokens[index + 1];
+  return next === undefined || next.newlineBefore || [";", "}", ",", ")"].includes(next.value);
+}
+
+/** A destructuring pattern closing just before `=` at `equals`: whether it takes `skip`, or null when there is none. */
+function destructuringTakesSkip(tokens: readonly JsToken[], equals: number): boolean | null {
+  const close = equals - 1;
+  if (tokens[close]?.value !== "}") return null;
+  const open = tokens.findIndex((token, at) => at < close && token.match === close);
+  if (open < 0) return null;
+  return tokens.slice(open + 1, close).some((token, offset) => token.value === "skip" && ["{", ","].includes(tokens[open + offset]?.value ?? ""));
+}
+
+function contextUse(tokens: readonly JsToken[], index: number, context: CaseContext): ContextUse | null {
+  const token = tokens[index] as JsToken;
+  const before = tokens[index - 1]?.value ?? "";
+  const after = tokens[index + 1]?.value ?? "";
+  if (token.type !== "identifier" || token.value !== context.name || before === "." || before === "?.") return null;
+  if (index === context.at || (context.via === "call" && index > context.at && index < (tokens[context.at] as JsToken).match)) return null;
+  if (after === ":" && ["{", ","].includes(before)) return null;
+  if (context.via === "call") {
+    if (after === "(" || (after === "?." && tokens[index + 2]?.value === "(")) return "skip";
+  } else {
+    // A call of the context itself is no skip: Jest's and Mocha's `done` callback is the context
+    // parameter, and 5.3.7 read those files.
+    if (after === "(" || (after === "?." && tokens[index + 2]?.value === "(")) return "read";
+    const member = after === "!" && tokens[index + 2]?.value === "." ? index + 3 : [".", "?."].includes(after) ? index + 2 : -1;
+    if (member >= 0) {
+      if (tokens[member]?.type !== "identifier") return "unknown";
+      const called = tokens[member + 1]?.value === "(" || (tokens[member + 1]?.value === "?." && tokens[member + 2]?.value === "(");
+      if (tokens[member]?.value !== "skip") return "read";
+      if (called) return "skip";
+      return before === "typeof" ? "read" : "unknown";
+    }
+  }
+  const argument = argumentOf(tokens, index);
+  if (argument === "call") return "hand-off";
+  if (argument === "expect" || argument === "condition") return "read";
+  if (before === "return" && endsExpression(tokens, index)) return "hand-off";
+  if (before === "=" && endsExpression(tokens, index)) {
+    const pattern = destructuringTakesSkip(tokens, index - 1);
+    return pattern === false && context.via === "member" ? "read" : "hand-off";
+  }
+  return "unknown";
 }
 
 /** The callback parameter that is a case's context: none for `.each(rows)`, the second for `.for(rows)`. */
@@ -237,17 +327,11 @@ function contextPosition(members: readonly string[]): number | null {
   return members.includes("for") ? 1 : 0;
 }
 
-/** Whether the token at `index` is a skip call through `context`. */
-function isContextSkip(tokens: readonly JsToken[], index: number, context: CaseContext): boolean {
-  if (tokens[index]?.value !== context.name || tokens[index - 1]?.value === ".") return false;
-  return context.via === "call" ? tokens[index + 1]?.value === "(" : tokens[index + 1]?.value === "." && tokens[index + 2]?.value === "skip" && tokens[index + 3]?.value === "(";
-}
-
 interface OpenCase {
   readonly path: string;
   readonly end: number;
   readonly context: CaseContext | null;
-  readonly record: { key: string; title: string; branches: string[][]; assertions: number; contextSkips: number };
+  readonly record: { key: string; title: string; branches: string[][]; assertions: number; contextSkips: number; handOffs: number };
 }
 
 /** The cases of a lexed test file and the case titles its comments hold, or `null` (see above). */
@@ -262,10 +346,20 @@ export function testCaseSurface(source: JsSource): TestCaseSurface | null {
   const cases: OpenCase["record"][] = [];
   const occurrences = new Map<string, number>();
   const stack: OpenCase[] = [];
+  const declarations = declarationScopes(tokens);
+  // A binding of the context's name declared inside the case (a nested parameter, a const) is that binding there.
+  const shadows = [...scopes, ...declarations];
+  let unrecognizedContext = false;
   for (let index = 0; index < tokens.length; index += 1) {
     while (stack.length > 0 && (stack[stack.length - 1] as OpenCase).end < index) stack.pop();
-    const skipOwner = [...stack].reverse().find((open) => open.context !== null && isContextSkip(tokens, index, open.context));
-    if (skipOwner !== undefined) skipOwner.record.contextSkips += 1;
+    const owner = [...stack].reverse().find((open) => open.context !== null && open.context.name === tokens[index]?.value);
+    const context = owner?.context ?? null;
+    if (owner !== undefined && context !== null && !shadows.some((scope) => scope.name === context.name && scope.start > context.at && index >= scope.start && index <= scope.end)) {
+      const use = contextUse(tokens, index, context);
+      if (use === "skip") owner.record.contextSkips += 1;
+      else if (use === "hand-off") owner.record.handOffs += 1;
+      else if (use === "unknown") unrecognizedContext = true;
+    }
     if (consumed.has(index) || !isBindingReference(tokens, index)) continue;
     const name = (tokens[index] as JsToken).value;
     // A parameter (`(test) => test.status`) is that parameter, except where it is written as a case
@@ -296,15 +390,21 @@ export function testCaseSurface(source: JsSource): TestCaseSurface | null {
     const seen = (occurrences.get(path) ?? 0) + 1;
     occurrences.set(path, seen);
     const branches = definition.map((markers) => [...markers, ...chain.markers]);
-    const record = { key: seen === 1 ? path : `${path} (${seen})`, title, branches, assertions: 0, contextSkips: 0 };
+    const record = { key: seen === 1 ? path : `${path} (${seen})`, title, branches, assertions: 0, contextSkips: 0, handOffs: 0 };
     cases.push(record);
     stack.push({ path, end: (tokens[chain.end] as JsToken).match, context: caseContext(tokens, chain.end, contextPosition(chain.members)), record });
   }
-  const locals = localBindings(tokens);
-  const globals = [...GLOBAL_TEST_API].filter((name) => CASE_FUNCTIONS.has(name) || name === "expect" || !locals.has(name));
-  const api = new Set([...globals, ...imports.names, ...aliases.references.keys()]);
+  // @req FR-NODE-282 AC-3 — a context occurrence the closed list does not name leaves the file unchecked.
+  if (unrecognizedContext) return null;
+  // @req FR-NODE-282 AC-1, AC-2 — a declared name is that binding inside its own block only; `expect`
+  // stays the test API there, as it did when the file-wide set decided.
+  // A case-function alias is itself a `const`, so its own declaration never makes it a local value.
+  const isDeclaredAt = (name: string, index: number): boolean =>
+    name !== "expect" && !aliases.references.has(name) && declarations.some((scope) => scope.name === name && index >= scope.start && index <= scope.end);
+  const api = new Set([...GLOBAL_TEST_API, ...imports.names, ...aliases.references.keys()]);
   for (let index = 0; index < tokens.length; index += 1) {
-    if (!consumed.has(index) && api.has(tokens[index]?.value ?? "") && isBindingReference(tokens, index) && !isParameter(index)) return null;
+    const name = tokens[index]?.value ?? "";
+    if (!consumed.has(index) && api.has(name) && isBindingReference(tokens, index) && !isParameter(index) && !isDeclaredAt(name, index)) return null;
   }
   const commentedTitles = new Set<string>();
   for (const comment of source.comments) {

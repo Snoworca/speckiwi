@@ -25,6 +25,7 @@ import { syncIndexRollups } from "../../core/mutation/sync-index.js";
 import { scaffoldScope } from "../../core/mutation/scaffold-scope.js";
 import { registerScopes } from "../../core/mutation/register-scopes.js";
 import { renameScope } from "../../core/mutation/rename-scope.js";
+import { retargetSelection } from "../../core/mutation/retarget.js";
 import { expireAcceptanceCriterion } from "../../core/mutation/expire-ac.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
 import { applyWorkflowMutation, type WorkflowMutationInput, type WorkflowMutationKind } from "../../core/workflow/mutation.js";
@@ -192,6 +193,21 @@ export const RENAME_SCOPE_SCHEMA = {
   ignoreLock: z.boolean().optional()
 };
 
+/** @req FR-MCP-073 — the retarget selection, with `apply` as the CLI's `--apply`. */
+export const RETARGET_REQUIREMENTS_SCHEMA = {
+  from: z.string().describe("source target whose requirements are moved; required unless ids names them").optional(),
+  to: z.string().describe("destination target, registered in the Target Map"),
+  reason: z.string(),
+  scope: z.string().describe("limit the move set to a scope prefix").optional(),
+  status: z.string().describe("limit the move set to a status").optional(),
+  type: z.string().describe("limit the move set to a requirement type").optional(),
+  ids: z.array(z.string()).describe("requirement ids to move; each must lie in the from/scope/status/type selection").optional(),
+  exclude: z.array(z.string()).describe("requirement ids to leave where they are").optional(),
+  apply: z.boolean().optional(),
+  dryRun: z.boolean().optional(),
+  ignoreLock: z.boolean().optional()
+};
+
 /** @req FR-NODE-243 AC-6 — server.ts lists it, the handler checks it. */
 export const EXPIRE_ACCEPTANCE_CRITERION_SCHEMA = {
   id: z.string(),
@@ -284,6 +300,27 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
             from: String(input.from ?? ""),
             to: String(input.to ?? ""),
             apply: input.apply === true,
+            ...(input.ignoreLock === true ? { ignoreLock: true } : {})
+          })
+        )),
+    { kind: "workspace" }
+  );
+  // @req FR-MCP-073 — preview unless `apply`, as the CLI; the selection is the core function both call.
+  server.registerTool("retarget_requirements", async (input) =>
+    missingRequiredArguments("retarget_requirements", RETARGET_REQUIREMENTS_SCHEMA, input) ??
+    (input.apply === true && input.dryRun === true
+      ? mcpFailure("USAGE", "apply and dryRun contradict each other; pass one of them")
+      : resultToMcp(
+          await retargetSelection(await root(deps, input), {
+            ...(typeof input.from === "string" ? { from: input.from } : {}),
+            to: String(input.to ?? ""),
+            reason: String(input.reason ?? ""),
+            ...(typeof input.scope === "string" ? { scope: input.scope } : {}),
+            ...(typeof input.status === "string" ? { status: input.status } : {}),
+            ...(typeof input.type === "string" ? { type: input.type } : {}),
+            ids: Array.isArray(input.ids) ? input.ids.map(String) : [],
+            exclude: Array.isArray(input.exclude) ? input.exclude.map(String) : [],
+            dryRun: input.apply !== true,
             ...(input.ignoreLock === true ? { ignoreLock: true } : {})
           })
         )),

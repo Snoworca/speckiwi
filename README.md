@@ -451,7 +451,7 @@ The Kiwi skills use MCP tools for every read and every SRS change. The matching 
 | Orchestrator run surface | 31 `orchestrate_*` tools: the run lock and journal, routing probe and freeze, the wave schedule and wave status, verification rounds, wave close, resume and replay, and the `--auto` gate decision. |
 | Workflow & pipeline | 15 `workflow_*` tools: pipeline emit/status/tail, worklog, artifacts (SDS files included), session status, and repair and reclassification records. |
 
-**115 tools ship in total.** The table names every tool a skill calls directly. The last two rows are families, documented in the skills that drive them. After an upgrade, trust the count that `speckiwi doctor` reports, because that is what the server registered.
+**116 tools ship in total.** The table names every tool a skill calls directly. The last two rows are families, documented in the skills that drive them. After an upgrade, trust the count that `speckiwi doctor` reports, because that is what the server registered.
 
 **A write tool refuses an argument it does not declare.** It fails with `USAGE` naming the argument and writes nothing; a read tool still ignores one. For example, `add_requirement` takes its trace rows as `trace`, and a call that passes `traceLinks` (the field name `get_requirement` returns) is refused. Before 5.3.8 such an argument was dropped and the call succeeded without it. `add_requirement` also refuses a trace or evidence row with a key it does not know, or a cell that is an object, an array or `null`.
 
@@ -1450,7 +1450,7 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 | 오케스트레이터 실행 | `orchestrate_*` 31개: 실행 잠금과 저널, 경로 탐색과 경로 동결, wave 일정과 wave 상태, 검증 라운드, wave 종료, 재개와 재생, `--auto` 모드의 판정을 다룹니다. |
 | 워크플로와 파이프라인 | `workflow_*` 15개 — 파이프라인 emit/status/tail, 작업 기록(worklog), 산출물(SDS 파일 포함), 세션 상태, 복구와 재분류 기록을 다룹니다. |
 
-**총 115개 도구가 배포됩니다.** 표는 스킬이 직접 부르는 도구를 모두 나열합니다. 마지막 두 행은 도구군이며, 그 도구들을 쓰는 스킬의 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 그 개수가 서버가 실제로 등록한 도구 수입니다.
+**총 116개 도구가 배포됩니다.** 표는 스킬이 직접 부르는 도구를 모두 나열합니다. 마지막 두 행은 도구군이며, 그 도구들을 쓰는 스킬의 문서에 설명되어 있습니다. 업그레이드한 뒤에는 `speckiwi doctor`가 보고하는 개수를 믿으십시오. 그 개수가 서버가 실제로 등록한 도구 수입니다.
 
 **쓰기 도구는 선언하지 않은 인자를 거부합니다.** 그 인자를 밝힌 `USAGE` 오류로 끝나고 아무것도 쓰지 않습니다. 읽기 도구는 지금처럼 그런 인자를 무시합니다. 예를 들어 `add_requirement`는 trace 행을 `trace`로 받으므로, `traceLinks`(`get_requirement`가 돌려주는 필드 이름)를 넘긴 호출은 거부됩니다. 5.3.8 전에는 그런 인자가 버려지고 호출은 그 값 없이 성공했습니다. `add_requirement`는 모르는 키가 있는 trace·evidence 행이나, 객체·배열·`null`인 칸도 거부합니다.
 

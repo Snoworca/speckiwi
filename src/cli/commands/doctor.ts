@@ -4,6 +4,7 @@ import { runPackageDoctor } from "../../doctor/package-doctor.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
 import { diagnoseHealth } from "../../core/health/doctor.js";
 import { upsertAgentInstruction, type AgentFileMode, type InitProjectOutput } from "../../core/bootstrap/init-project.js";
+import { runFileTransaction } from "../../core/patch/file-transaction.js";
 import type { CliContext } from "../command.js";
 import { writeHuman, writeJson } from "../formatters.js";
 
@@ -18,9 +19,11 @@ const FIXABLE_AGENT_FILES: readonly AgentFileMode[] = ["CLAUDE.md", "AGENTS.md"]
 
 async function fixWorkflowBlocks(rootPath: string): Promise<void> {
   const output: InitProjectOutput = { created: [], skipped: [], updated: [], removed: [] };
-  for (const agentFile of FIXABLE_AGENT_FILES) {
-    await upsertAgentInstruction(rootPath, agentFile, output);
-  }
+  await runFileTransaction(async (transaction) => {
+    for (const agentFile of FIXABLE_AGENT_FILES) {
+      await upsertAgentInstruction(rootPath, agentFile, output, transaction);
+    }
+  });
 }
 
 export function registerDoctorCommand(command: Command, context: CliContext): void {
