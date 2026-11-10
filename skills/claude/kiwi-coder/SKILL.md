@@ -514,7 +514,9 @@ Phase 2 통과 조건: **kept finding 0 + green 확정**.
 
 ### 6.2 MCP mutation 4종 batch
 
-**시그니처 SSOT — speckiwi MCP 실제 schema 기준** (호출 인자는 flat 객체. 임의 필드 추가 금지 — 메타 정보는 summary 텍스트 또는 reportPaths 에 인코딩. 스키마에 **없는** 이름은 거부되지 않고 조용히 제거되므로, 거부에 기대어 오작성을 알아차릴 수 없다):
+**시그니처 SSOT — speckiwi MCP 실제 schema 기준** (호출 인자는 flat 객체. 임의 필드 추가 금지 — 메타 정보는 summary 텍스트 또는 reportPaths 에 인코딩. 스키마에 **없는** 이름은 `USAGE` 로 거부된다):
+
+네 mutation 의 표 셀 필드(`type` · `reference` · `relation` · `covers` · `notes` · `summary` · `target` · `scope` · `requirementIds`)에는 `|` 나 줄바꿈을 넣지 않는다 — SRS 표의 한 셀이 되는 값이라 도구가 거절한다.
 
 ```
 1. add_trace_link (Code anchor — 선택)
@@ -530,8 +532,8 @@ Phase 2 통과 조건: **kept finding 0 + green 확정**.
    args (각 PASS 한 테스트 인용별 1건):
    { id: "FR-X-001",                                # REQ id
      type: "test",
-     reference: "tests/x.test.ts#FR-X-001 AC-1 rejects invalid input",
-     [covers: "AC-1", notes: "..."] }               # 선택 — covers 는 AC id 명시 권장
+     reference: "tests/x.test.ts:12",             # 테스트 파일(경로 또는 경로:줄) — verified 전이가 파일 경로로 해석한다
+     [covers: "AC-1", notes: "FR-X-001 AC-1 rejects invalid input"] }   # 선택 — covers 는 AC id 명시 권장, 테스트 제목은 notes 에
 
 3. update_status
    args: { id: "FR-X-001", status: <전이값> }       # dryRun 인자 없음 (호출 시점 적용)
@@ -555,9 +557,8 @@ Phase 2 통과 조건: **kept finding 0 + green 확정**.
             dryRun: <--dry-run 플래그 전파>] }
 
    summary 인코딩 예:
-     "[req] FR-X-001,FR-X-002 — 할 일 저장소 구현. green=PASS (7/7).
-      files: src/service.ts, test/service.test.ts.
-      AC: FR-X-001 AC-1..3 PASS"   (--sds 면 머리가 [sds] <sds-id>, 끝 줄이 SDS-AC: …)
+     "[req] FR-X-001,FR-X-002 — 할 일 저장소 구현. green=PASS (7/7). files: src/service.ts, test/service.test.ts. AC: FR-X-001 AC-1..3 PASS"
+     (--sds 면 머리가 [sds] <sds-id>, 끝이 SDS-AC: …. summary 셀은 줄바꿈을 거절하므로 한 줄로 쓴다)
 
    ⚠️ speckiwi schema 에 sds_id / req_ids / files_changed / completed_at 같은
       임의 필드 직접 전달 불가. summary 텍스트에 인코딩하거나 reportPaths 로 detail md 첨부.
@@ -580,6 +581,8 @@ Phase 2 통과 조건: **kept finding 0 + green 확정**.
 **`--dry-run` 과 상호 배타다.** 둘을 함께 주면 거부하고 사유를 기록한다. dry-run 은 `dry_run: true` entry 만 남기는데 그 entry 를 host 에서 실제 호출로 재생할지가 정의돼 있지 않다 — 정의되지 않은 것을 조용히 한쪽으로 고르는 대신 거부한다.
 
 큐 경로는 **인자로 받는다 — 기본값을 만들지 않는다.** 레인마다 다른 파일이어야 하고, 기본값은 두 레인을 한 큐에 몰아넣는다.
+
+**큐를 다 쓴 워커는 자기 큐를 확인한다.** `speckiwi orchestrate replay plan --queue <path> --json` 을 돌려 `inputRefusals` 가 빈 목록인지 보고(스키마에 없는 인자 이름도 여기에 나온다), 항목이 있으면 그 call 의 인자를 고쳐 큐를 다시 쓴다. 호스트의 `replay apply` 는 남은 call 중 하나라도 입력 검사에 걸리면 아무것도 적용하지 않고 `srs-mutation-replay-failed` 로 멈추기 때문이다(IR-CLI-118).
 
 ### 6.3 .kiwi 상태 갱신
 

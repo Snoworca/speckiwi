@@ -86,7 +86,7 @@
 | `wave_issues` | object | `{ doc_path, digest, open, planned, resolved, deferred }` — wave 종료 시 정리한 이슈 문서 포인터. 산출물이 **wave 스코프**(`waves/wave-{n}/issues.md`) 이므로 이름도 wave 스코프다 (v1.4.0 신설) |
 | `convergence` | object | `{ registry_digest, recipes_applied[], validate_exit, sync_index_changed }` (v1.4.0 신설) |
 | `allocation` | object | `{ target, pre_snapshot_digest, requirement_ids[], design_item_map }` — `register-wave-srs` **result** 줄. `unallocated-req-id` 검사가 비교하는 3.b 할당 집합이며, `design_item_map` 은 `{req_id: string[]}` 로 lane 별 설계 항목의 생산자다 (v1.4.0 신설) |
-| `decision` | object | `{ question, options, decision, rule, committee_size, confidence, origin }` — 위원회가 결정한 intake 행마다 1건, lane 결정 재생마다 1건, `--drive` 가 자동으로 해소한 게이트마다 1건 (FR-FLOW-119). 심의 없이 내려진 결정이야말로 증거를 남기지 않는 결정이다 (v1.4.0 신설) |
+| `decision` | object | `{ question, options, decision, rule, committee_size, confidence, origin }` — 위원회가 결정한 intake 행마다 1건, lane 결정 재생마다 1건, `--drive` 가 자동으로 해소한 게이트마다 1건 (FR-FLOW-119). `origin: "intake"` 인 결정 줄은 그래프가 생기기 전의 run 전체 줄이라 `wave: "all"` 을 싣는다(`kiwi-orchestrator` §5.2). 심의 없이 내려진 결정이야말로 증거를 남기지 않는 결정이다 (v1.4.0 신설) |
 | `deadline_at` | string (ISO-8601 UTC) | `dispatch-lane` **intent** 줄의 lane 마감 시각 (v1.4.0 신설) |
 | `postmortem` | object | `{ doc_path, digest }` — 그 wave 의 포스트모템 기록 (v1.4.0 신설) |
 | `lane_disposition` | object | `{ kind, reason, at }` — lane 이 병합 없이 run 을 떠날 때의 **종국 처분**. `kind` 는 `quarantined` / `refuted` 의 **닫힌 2값 enum** 이다. 이 필드가 없으면 격리·반증된 lane 이 재개 시 병합 가능으로 읽혀 run 이 버린 작업을 다시 병합한다 (v1.4.0 신설, 2.0.0 에서 두 값으로) |

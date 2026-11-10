@@ -616,7 +616,9 @@ intake 기록은 `01.intake.md` 에 쓴다. **loop D** 의 열린 질문 **분�
 
 1. **Phase 0 고지** — run 헤더에 `--auto` 가 유효하며 설계 질문을 사용자가 아니라 위원회가 답한다고 적는다. 그리고 별도로 **Phase 1.c 줄**에 갭 열거가 산출한 **실제 질문 개수**를 적는다. 개수는 갭 열거 전에 존재하지 않으므로 **Phase 0 헤더에 개수를 넣지 않는다**;
 2. `00.run-contract.md` 의 **`intake_autonomy` 블록** — **Phase 1 끝** 수정에서 기록하며 세 가지를 담는다: `--auto` 가 설계 질문에 답했는지, **몇 개인지**, per-decision **감사 기록이 어디** 있는지;
-3. 위원회가 결정한 intake 행마다 `kiwi/waves.jsonl` 한 줄 — v1.4.0 `decision` 필드 위에 `question` · `options` · `decision` · `rule` · `committee_size` · `confidence` 와 `origin: "intake"` **일곱 키를 전부** 운반한다.
+3. 위원회가 결정한 intake 행마다 `kiwi/waves.jsonl` 한 줄 — v1.4.0 `decision` 필드 위에 `question` · `options` · `decision` · `rule` · `committee_size` · `confidence` 와 `origin: "intake"` **일곱 키를 전부** 운반한다. 이 줄은 run 전체 줄이라 `wave: "all"` · `order: 0` · `target: "all"` 을 싣는다 — intake 는 그래프가 생기기 전이라 어느 노드의 줄도 아니고, `orchestrate journal append` 는 `wave-<n>`(n≥1) 과 `"all"` 밖의 wave 값을 `journal-wave-invalid` 로 거절한다. 예전 run 이 `wave-0` 으로 쓴 intake 줄은 고치지 않고 그대로 둔다 — `orchestrate wave check` 가 `phase: "intake"` 줄을 노드 대조에서 뺀다.
+
+intake 질문은 게이트 어휘 밖이므로 `orchestrate auto-gate` 로 내지 않는다 — `--auto` 아래에서는 `auto-option.md` §3 의 산문 규칙으로 결정한다.
 
 이 라우팅은 **기록된 이탈**이지 **사용자가 수락한 저하가 아니다**. 어떤 사용자도 수락하지 않았고 설계가 선택했다. 세 기록은 이 이탈의 격상이 어떻게 판정되든 그대로 유지된다. `design-intake-insufficient` 는 loop D 의 **cap 소진**에 `needs-decision` 또는 `contradicts-existing` 행이 열려 있을 때 그대로 발화한다 — 기록은 기존 게이트를 대체하지 않고 보완한다.
 
@@ -778,6 +780,8 @@ $kiwi-pm --req-filter <요구 하나> --run-id {run_id}-wave-{n}[-r{m}]-<요구 
 
 `--sds` 면 그 요구를 `@req` 로 담은 SDS 조각을 `--sds` 로 함께 준다. 그 SDS 가 조각으로 나뉜 wave 도 워커 하나다(`parallel-waves.md §3` · PW-6). 앞 요구가 `TASK_DONE` 으로 끝나야 다음 요구로 가고, 요구 하나가 실패하면 노드를 멈춘다. 마지막 요구 뒤에 워커는 자기 창을 `--close-reqs` 없이 한 번 리뷰하고(`parallel-waves.md` PW-6 의 호출, `[--auto] [--max] [--mini|--loops N]` 을 싣는다), wave 범위의 테스트 충분성 확인을 돈다.
 
+노드의 `verification_cmd` 가 있으면 워커는 그 명령을 그 wave 안의 빠른 선행 검사로 먼저 돌릴 수 있다. 판정 · 재시도 · 착지는 여전히 run 이 pin 한 `verification_cmd` 로 한다(`parallel-waves.md`).
+
 ### 10.1 워커 실행자의 세 약속
 
 1. **`--commit-lane-work` 는 여전히 필수**다 — 없으면 `kiwi-pm` 이 **아무것도 커밋하지 않아** wave 의 산출물이 워커 워크트리의 커밋되지 않은 변경으로 남고 호스트가 병합할 것이 없다.
@@ -851,6 +855,8 @@ loop P 는 `verify-loop.md` 의 wave 종료 검증을 그대로 돈다 — 기�
 
 스케줄되었으나 **착지하지 않은 워커 하나가 통과를 금지한다**. 워커 자신의 **worklog `TASK_DONE` 은 착지의 증거로 인정하지 않는다** — 같은 주체가 쓴 것이므로 독립성을 더하지 않는다.
 
+loop P 의 단위 계층과 착지 판정이 세는 명령은 run 이 pin 한 `verification_cmd` 다 — 노드의 `verification_cmd` 는 wave 안의 빠른 선행 검사일 뿐 loop P 의 판정에 들지 않는다.
+
 **loop P 가 병합된 결과를 SRS · SDS · 기록된 결정과 다르다고 판정하면, 원래 워커가 아닌 독립 서브에이전트가 고치고 loop P 가 다시 검증한다** — 경로는 `verify-loop.md` §7 이다(`parallel-waves.md` PW-13).
 
 ### 12.2 진동
@@ -872,6 +878,8 @@ loop P 는 `verify-loop.md` 의 wave 종료 검증을 그대로 돈다 — 기�
 `wave-issue-triage` 는 **3.m 에서, loop P 뒤·`promote-requirements` 앞**에 실행되며 `waves/wave-{n}/issues.md` 와 생성된 `issues.lock.json` 을 쓴다. **모든 이슈는 정확히 하나의 분류를 받고 목록은 닫혀 있다.**
 
 합집합의 잔여는 MCP `orchestrate_issue_open` 에 `payload` 로 행 하나를 주어 원장에 열고, MCP 가 없으면 CLI `speckiwi orchestrate issue open --payload <payload> --ledger <path> --json` 이다. 이 호출은 아래 여섯 밖의 분류를 거절하고, 원장이 이미 들고 있는 `issueId` 도 함께 거절한다 — 같은 id 가 둘이면 중복 감사의 `issue:{id}` 해소가 어느 행을 가리키는지 정해지지 않으며, `orchestrate wave close` 의 분류 검사는 중복 id 를 보지 않는다. 그래서 원장에 행을 더하는 자리는 이 호출이고, 거절은 `wave-issues-open` 으로 온다.
+
+원장 행의 형태: `issueId` 는 비어 있지 않은 문자열이고, `wave` 는 양의 정수 또는 `wave-<n>` 이며 도구가 정수로 저장한다. 나머지 필드(`class` · `source` · `resolutionKind` · `resolutionRef` · `userDecisionRef` · `designLockDigest` · `deferralReason`)는 문자열 또는 null 이다. `issue open` 과 `orchestrate wave close` 에는 같은 `--ledger` 를 준다 — `wave close` 는 원장 파일이 없으면 오류로 거절하므로 run 은 첫 wave 를 dispatch 하기 전에 원장 파일을 내용 `[]` 로 만든다(잔여가 0건인 wave 도 닫을 원장이 있어야 한다). `--wave` 는 `1` 과 `wave-1` 을 둘 다 받으며, `wave` 를 정수로 읽을 수 없는 행이 있으면 거절한다. 경로가 갈리면 `wave close` 가 `issue open` 이 연 행을 보지 못한다.
 
 | class | 뜻 | 경로 |
 |---|---|---|
@@ -938,10 +946,12 @@ Skill({ skill: "kiwi-sds", args: "--close {run_id}-wave-{n} --no-pipeline-emit [
 
 **증거 두 행**:
 
-- `type="test"` — 참조는 `verification_cmd`, detail 은 워커의 `docs/analysis/kiwi-pm-…` 번들(3.g 에서 수확한 사본)이고, `test-sufficiency.md` §4 대로 AC 마다 한 행이다 — `covers` 는 그 AC, notes 는 1 이 그 AC 에 돌려준 인용;
+- `type="test"` — `test-sufficiency.md` §4 대로 AC 마다 한 행이다 — 참조는 1 이 그 AC 에 돌려준 인용의 테스트 파일(`경로` 또는 `경로:줄`), `covers` 는 그 AC, notes 는 `verification_cmd` 와 워커의 `docs/analysis/kiwi-pm-…` 번들(3.g 에서 수확한 사본)이다. **`verification_cmd` 는 참조에 넣지 않는다** — `verified` 전이는 test 증거의 참조를 파일 경로로 해석해, 파일로 풀리지 않는 명령을 거절한다;
 - `type="commit"` — 참조는 `frozen.integration_branch` 위 그 wave 의 `Orch-Wave` trailer 가 붙은 워커 커밋 sha 각각.
 
 **lane `audit.json` 이나 `integrate-lane` 병합 sha 를 증거 참조로 지명하지 않는다.** `intentionally_empty` 선언으로 landed 한 wave 는 워커가 커밋을 만들지 않았으므로 **`type="test"` 증거만 운반하고 commit 참조가 없다**.
+
+승급 증거의 `verification_cmd` 는 run 이 pin 한 명령이다 — 노드의 `verification_cmd` 는 wave 안의 빠른 선행 검사라 증거의 notes 에도 전이 조건에도 쓰지 않는다.
 
 **landed 하지 않은 wave 의 요구는 현재 status 에 그대로 두고** 그 wave 의 `issues.md` 에 `missing-task` 로 기록한다. 허용 가능한 `intentionally_empty` 선언을 운반하는 wave 는 **landed 이므로 `missing-task` 가 아니다**.
 

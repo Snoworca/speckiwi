@@ -77,7 +77,8 @@ describe("FR-NODE-017 unified mutation envelope", () => {
         result: await addVerificationEvidence(root, {
           id: "FR-ARCH-001",
           type: "test",
-          reference: "test/core/mutation/mutation-envelope.test.ts",
+          // A file the fixture holds: a reference that resolves carries no SRS-W082 warning (FR-NODE-287).
+          reference: "docs/spec/10.product-architecture.srs.md",
           covers: "AC-1",
           notes: "FR-NODE-017 dry-run",
           dryRun: true

@@ -9,6 +9,7 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { planSectionRowsInsert } from "./internal.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
 import { withSrsMutationLock } from "./srs-lock.js";
+import { collectEvidenceReferenceIssuesForRecord, describeEvidenceIssues } from "../workflow/release-readiness.js";
 
 export interface AddEvidenceInput {
   id: string;
@@ -49,7 +50,11 @@ export async function addVerificationEvidence(root: ProjectRoot, input: AddEvide
   return withSrsMutationLock(root, { operation: "add_verification_evidence", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addVerificationEvidenceUnlocked(root, input));
 }
 
-async function addVerificationEvidenceUnlocked(root: ProjectRoot, input: AddEvidenceInput): Promise<MutationResult> {
+/**
+ * @req IR-CLI-118 AC-4 — the refusals that read no SRS, in one place: the mutation calls it, and
+ * `orchestrate replay` calls it on every deferred call before it applies the first.
+ */
+export function evidenceInputRefusal(input: Pick<AddEvidenceInput, "type" | "reference" | "covers" | "notes">): MutationResult | undefined {
   if (!input.reference.trim()) return mutationFail("USAGE", "Evidence reference is required");
   const covers = input.covers ?? "all";
   // @req FR-NODE-248 AC-1 — a range reads as two criteria to every coverage reader.
@@ -57,17 +62,34 @@ async function addVerificationEvidenceUnlocked(root: ProjectRoot, input: AddEvid
   if (range !== null) {
     return mutationFail("USAGE", `Verification Evidence covers holds the range ${range}; name ${COVERS_ACCEPTED_FORMS}, one criterion at a time`);
   }
-  const notes = input.notes ?? "-";
-  const unsafeCell = assertSafeMarkdownTableCells({
+  return assertSafeMarkdownTableCells({
     "Verification Evidence type": input.type,
     "Verification Evidence reference": input.reference,
     "Verification Evidence covers": covers,
-    "Verification Evidence notes": notes
+    "Verification Evidence notes": input.notes ?? "-"
   });
-  if (unsafeCell) return unsafeCell;
+}
+
+async function addVerificationEvidenceUnlocked(root: ProjectRoot, input: AddEvidenceInput): Promise<MutationResult> {
+  const refused = evidenceInputRefusal(input);
+  if (refused) return refused;
+  const covers = input.covers ?? "all";
+  const notes = input.notes ?? "-";
   const loaded = await loadFreshRecord(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
   const next = generateNextEvidenceId(loaded.record);
+  // @req FR-NODE-287 AC-3, AC-4 — the rule the `verified` transition applies, judged on the new row alone:
+  // a verified requirement may not gain a row it could not have been promoted with, while a requirement
+  // still in work may record evidence for a file the same change is about to add.
+  const row = { id: next, type: input.type, reference: input.reference, covers, notes };
+  const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, { ...loaded.record, verificationEvidence: [row] });
+  if (unresolved.length > 0 && loaded.record.status === "verified") {
+    return mutationFail("MUTATION_DENIED", `${input.id} is verified, so its evidence must resolve: ${describeEvidenceIssues(unresolved)}`);
+  }
+  const warnings =
+    unresolved.length === 0
+      ? []
+      : [diagnostic("SRS-W082", "warning", `${input.id} Verification Evidence ${next} does not resolve yet: ${describeEvidenceIssues(unresolved)}`, { filePath: loaded.record.filePath, requirementId: input.id })];
   // @req FR-NODE-259 AC-2 @req FR-NODE-278 AC-3 — under the table's own header, the table made when missing.
   const insert = planSectionRowsInsert(loaded.file, loaded.record, "Verification Evidence", [
     { "Evidence ID": next, Type: input.type, Reference: input.reference, Covers: covers, Notes: notes }
@@ -78,7 +100,7 @@ async function addVerificationEvidenceUnlocked(root: ProjectRoot, input: AddEvid
     const plan = createPatchPlan(loaded.file, [insert.operation]);
     const applied = await applyPatchPlan(plan, { dryRun });
     return withMutationEnvelope(
-      mutationOk({ id: input.id, evidenceId: next, written: applied.written }),
+      mutationOk({ id: input.id, evidenceId: next, written: applied.written }, warnings),
       mutationEnvelopeFromPlan("add_verification_evidence", plan, dryRun, applied.written)
     );
   } catch (error) {

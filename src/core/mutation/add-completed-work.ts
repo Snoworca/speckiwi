@@ -284,15 +284,26 @@ export async function addCompletedWork(root: ProjectRoot, input: AddCompletedWor
   return withSrsMutationLock(root, { operation: "add_completed_work", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addCompletedWorkUnlocked(root, input));
 }
 
-async function addCompletedWorkUnlocked(root: ProjectRoot, input: AddCompletedWorkInput): Promise<MutationResult> {
-  const date = input.date.trim();
-  const summary = input.summary.trim();
-  const target = input.target?.trim() ?? "";
-  const scope = input.scope?.trim() ?? "";
-  const requirementIds = (input.requirementIds ?? []).map((id) => id.trim()).filter(Boolean);
-  const reportPathParse = normalizeReportPathsInput(input.reportPaths);
-  const reportPaths = reportPathParse.paths;
+/** The row's values as written: trimmed, with blank requirement ids dropped and report paths parsed. */
+function completedWorkCells(input: CompletedWorkCellInput) {
+  return {
+    date: input.date.trim(),
+    summary: input.summary.trim(),
+    target: input.target?.trim() ?? "",
+    scope: input.scope?.trim() ?? "",
+    requirementIds: (input.requirementIds ?? []).map((id) => id.trim()).filter(Boolean),
+    reportPathParse: normalizeReportPathsInput(input.reportPaths)
+  };
+}
 
+type CompletedWorkCellInput = Pick<AddCompletedWorkInput, "date" | "summary" | "target" | "scope" | "requirementIds" | "reportPaths">;
+
+/**
+ * @req IR-CLI-118 AC-4 — the refusals that read no SRS, in one place: the mutation calls it, and
+ * `orchestrate replay` calls it on every deferred call before it applies the first.
+ */
+export function completedWorkInputRefusal(input: CompletedWorkCellInput): MutationResult | undefined {
+  const { date, summary, target, scope, requirementIds, reportPathParse } = completedWorkCells(input);
   if (!date) return mutationFail("USAGE", "date is required");
   if (!summary) return mutationFail("USAGE", "summary is required");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return mutationFail("USAGE", "date must use YYYY-MM-DD");
@@ -300,15 +311,21 @@ async function addCompletedWorkUnlocked(root: ProjectRoot, input: AddCompletedWo
     const issue = reportPathParse.issues[0]!;
     return mutationFail("MUTATION_DENIED", `Completed Work Log report path is malformed: ${issue.token || issue.reason}`);
   }
-  const unsafeCell = assertSafeMarkdownTableCells({
+  return assertSafeMarkdownTableCells({
     "Completed Work Log date": date,
     "Completed Work Log target": target,
     "Completed Work Log scope": scope,
     "Completed Work Log summary": summary,
     ...Object.fromEntries(requirementIds.map((id, index) => [`Completed Work Log requirementIds[${index}]`, id])),
-    ...Object.fromEntries(reportPaths.map((reportPath, index) => [`Completed Work Log reportPaths[${index}]`, reportPath]))
+    ...Object.fromEntries(reportPathParse.paths.map((reportPath, index) => [`Completed Work Log reportPaths[${index}]`, reportPath]))
   });
-  if (unsafeCell) return unsafeCell;
+}
+
+async function addCompletedWorkUnlocked(root: ProjectRoot, input: AddCompletedWorkInput): Promise<MutationResult> {
+  const refused = completedWorkInputRefusal(input);
+  if (refused) return refused;
+  const { date, summary, target, scope, requirementIds, reportPathParse } = completedWorkCells(input);
+  const reportPaths = reportPathParse.paths;
 
   const workspace = await parseWorkspace(root);
   const referenceDiagnostics = validateCompletedWorkInput(workspace, { ...input, target, scope, requirementIds });

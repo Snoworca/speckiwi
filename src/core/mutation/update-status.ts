@@ -114,18 +114,25 @@ function citingMarkers(records: readonly RequirementRecord[], id: string): strin
   return records.flatMap((record) => (record.expiredAcceptanceCriteria ?? []).filter((criterion) => criterion.successor === id).map((criterion) => `${record.id} ${criterion.id}`));
 }
 
-async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput, successorId?: string): Promise<MutationResult> {
+/**
+ * @req IR-CLI-118 AC-4 — the refusals that read no SRS, in one place: the mutation calls it, and
+ * `orchestrate replay` calls it on every deferred call before it applies the first.
+ */
+export function statusInputRefusal(input: Pick<UpdateStatusInput, "status" | "reason">): MutationResult | undefined {
   if (!isRequirementStatus(input.status)) return mutationFail("USAGE", `Invalid status: ${input.status}`);
-  if (input.reason !== undefined) {
-    if (input.reason.length > MAX_REASON_LENGTH) {
-      return mutationFail("USAGE", `reason exceeds ${MAX_REASON_LENGTH} UTF-16 code units`);
-    }
-    if (CONTROL_CHAR_RE.test(input.reason)) {
-      return mutationFail("USAGE", "reason contains forbidden control characters (only TAB/LF/CR allowed)");
-    }
-    const unsafeReason = assertOpensNoBlockBoundary("reason", input.reason);
-    if (unsafeReason) return unsafeReason;
+  if (input.reason === undefined) return undefined;
+  if (input.reason.length > MAX_REASON_LENGTH) {
+    return mutationFail("USAGE", `reason exceeds ${MAX_REASON_LENGTH} UTF-16 code units`);
   }
+  if (CONTROL_CHAR_RE.test(input.reason)) {
+    return mutationFail("USAGE", "reason contains forbidden control characters (only TAB/LF/CR allowed)");
+  }
+  return assertOpensNoBlockBoundary("reason", input.reason);
+}
+
+async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput, successorId?: string): Promise<MutationResult> {
+  const refused = statusInputRefusal(input);
+  if (refused) return refused;
   const loaded = await loadRecordWithWorkspace(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
   // FR-NODE-035 — verified-regression EXIT guard: discarding a protected requirement

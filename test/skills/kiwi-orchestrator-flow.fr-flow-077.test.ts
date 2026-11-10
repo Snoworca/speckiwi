@@ -764,7 +764,8 @@ describe("FR-FLOW-087 — requirement promotion at 3.n", () => {
   it("FR-FLOW-087 AC-7 AC-8 AC-9 AC-10 — the two evidence rows, the forbidden references, and the missing-task rule", () => {
     for (const variant of VARIANTS) {
       const body = section(variant.body, /^##\s*14\.\s/m);
-      expect(tiedTogether(body, /`type="test"` — 참조는/, [/`verification_cmd`/, /워커의 `docs\/analysis\/kiwi-pm-…` 번들/], 300)).toBe(true);
+      // FR-FLOW-087 AC-7 (5.4.0): the reference is the cited test file; the command and the bundle ride in notes.
+      expect(tiedTogether(body, /`type="test"` — /, [/참조는 1 이 그 AC 에 돌려준 인용의 테스트 파일/, /`verification_cmd` 와 워커의 `docs\/analysis\/kiwi-pm-…` 번들/], 400)).toBe(true);
       expect(
         tiedTogether(body, /`type="commit"` — 참조는/, [/`frozen\.integration_branch` 위 그 wave 의 `Orch-Wave` trailer 가 붙은 워커 커밋 sha 각각/], 300)
       ).toBe(true);

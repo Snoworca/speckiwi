@@ -878,6 +878,16 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
       "Point the row at the requirement that supersedes the target, which the message names, or remove the row with edit_requirement_table_rows. A row whose relation is supersedes or superseded_by records the supersede and is not reported, nor is a checked_compatible row."
   },
   {
+    code: "SRS-W082",
+    severity: "warning",
+    title: "Verification Evidence reference does not resolve yet",
+    messageTemplate: "{requirementId} Verification Evidence {evidenceId} does not resolve yet: {reference} [{issue}]",
+    sourceRule: "FR-NODE-287",
+    since: "v5.4.0",
+    remediation:
+      "Create the file the reference names before promoting the requirement to verified, or correct the reference: a test row names the test file, as a path or as path:line with the test title after #, and a command belongs in notes. The verified transition refuses the same reference."
+  },
+  {
     code: "SRS-E077",
     severity: "error",
     title: "MCP server unbound",

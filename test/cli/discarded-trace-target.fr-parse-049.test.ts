@@ -203,7 +203,17 @@ describe("FR-PARSE-049 AC-6 — a registered warning that fails only under --fai
   it("registers the code as a warning, numbered next in the registry's SRS-W sequence", () => {
     const definition = getDiagnosticDefinition(CODE);
     expect(definition).toMatchObject({ severity: "warning", sourceRule: "FR-PARSE-049" });
-    const others = DIAGNOSTIC_DEFINITIONS.map((entry) => entry.code)
+    // Codes registered in a later release (SRS-W082, v5.4.0) come after it and are not its predecessors.
+    const release = (since: string | undefined): number[] => (since ?? "v0").replace(/^v/, "").split(".").map(Number);
+    const notLater = (since: string | undefined): boolean => {
+      const [a, b] = [release(since), release(definition?.since)];
+      for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+        if ((a[index] ?? 0) !== (b[index] ?? 0)) return (a[index] ?? 0) < (b[index] ?? 0);
+      }
+      return true;
+    };
+    const others = DIAGNOSTIC_DEFINITIONS.filter((entry) => notLater(entry.since))
+      .map((entry) => entry.code)
       .filter((code) => code.startsWith("SRS-W") && code !== CODE)
       .map((code) => Number(code.slice("SRS-W".length)));
     expect(Number(CODE.slice("SRS-W".length))).toBe(Math.max(...others) + 1);

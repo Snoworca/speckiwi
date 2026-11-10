@@ -22,6 +22,8 @@
 
 **wave 의 `verification_cmd`** 는 호출자가 run 시작에 pin 한 회귀 명령(`kiwi-orchestrator` Preflight P.4, `kiwi-wave-master` §2.1)이다 — 전체 회귀 스위트이므로 그 wave 의 테스트도 거기 든다. 통과는 `failing_tests ⊆ baseline_failing_tests`(기준선 캡처에 실패했으면 exit 0)다. 호출자는 이 값을 dispatch 카드와 저널에 그대로 싣고, 판정·재시도·착지·승급 증거가 모두 같은 명령을 쓴다 — wave 마다 다른 명령을 고르지 않는다. wave 의 **단위 id** 는 두 호출자 모두 `{run_id}-wave-{n}` 이다 — 저널의 `sds_id`, 워커 `kiwi-pm` 의 `--run-id`, lock 의 wave id 가 이 값이고, `--sds` 면 SDS 경로 `docs/sds/{run_id}-wave-{n}.sds.md` 의 이름이기도 하다. wave 선언 파일은 `{artifact_root}waves/waves.json` 이다(`wave-decomposition.md`). 단위 id 안의 `{run_id}` 는 run_id 를 소문자로 바꾸고 `[a-z0-9.-]` 밖의 문자를 모두 `-` 로 바꾼 값이다 — 단위 id 는 워커 `kiwi-pm` 의 세션 id 이기도 해서 `kiwi-pm` §0.14 의 `[a-z0-9.-]{4,128}` 을 지켜야 한다. 기본 run_id 에 가장 긴 접미사(`-wave-12-r2-3`)를 붙여도 이 상한 안에 든다. 워커의 요구별 실행 id(`-wave-12-r2-fr-node-1234`)도 그 안에 든다.
 
+**노드의 `verification_cmd`** 는 2.0.0 작업 그래프 노드가 가질 수 있는 선택 필드(한 줄, 1~500자)이고 `orchestrate wave show` 가 보고한다(없으면 null). 워커가 그 wave 안에서 먼저 돌리는 빠른 선행 검사일 뿐 착지를 판정하지 않는다 — 판정 · 재시도 · 착지 · 승급 증거는 위의 run 명령이 정한다. 노드에 없으면 run 의 명령만 돈다.
+
 ---
 
 ## 1. 역할 — 누가 무엇을 쓰는가
@@ -188,7 +190,7 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--base <마지막 병합 커밋> -
 
 **PW-15 · SDS close-out, 옮김 — 호스트, SDS 파일이 있는 wave 만(`--sds`).** `Skill({ skill: "kiwi-sds", args: "--close {run_id}-wave-{n} --no-pipeline-emit [--auto]" })` — 그 wave 의 sds-id 마다(재진입 id 포함). SDS-AC 의 해석 결정을 SRS AC 의 명확화로 옮기고 durable 로 표시된 규칙만 제약 요구로 올린다.
 
-**PW-16 · 승급 — 호스트, wave 하나씩.** 설계 적합 검증이 `pass` 인 wave 만 승급한다. 승급 집합은 착지한 요구뿐이다 — 매니페스트의 `requirements.landed` 가운데 구현 커밋이 통합 브랜치에 있는 요구이고, `failed` · `held` 요구는 들지 않는다. 착지는 그 요구의 구현 커밋(`REQ` · `Commit-Kind: implementation` 과 그 wave 의 `Orch-Wave` · `Orch-Lane` trailer)이 통합 브랜치에 있고 `verification_cmd` 가 통과한 것, 또는 그 wave 의 허용 가능한 `intentionally_empty` 선언이다(그때는 노드의 요구 집합 전부다). 전이는 두 단계다 — 착지하면 `planned`/`in_progress` → `implemented`, 검증이 `pass` 이고 그 요구를 지명한 잔여가 없으면 `implemented` → `verified`. 증거는 `type="test"` 와 `type="commit"` 이다. `type="test"` 는 `test-sufficiency.md` §4 대로 AC 마다 한 행 — 참조는 `verification_cmd`, `covers` 는 그 AC, notes 는 PW-14 가 그 AC 에 돌려준 인용과 수확한 워커 `docs/analysis/kiwi-pm-…` 번들 경로다. `type="commit"` 은 그 wave 의 trailer 커밋 sha 각각이고, `intentionally_empty` 로 착지한 wave 는 test 증거만 싣는다. 착지하지 않은 요구는 현재 status 에 둔다. `add_completed_work` 도 호스트만 한다. `kiwi-orchestrator` 는 같은 규칙을 자기 §14 에 적는다.
+**PW-16 · 승급 — 호스트, wave 하나씩.** 설계 적합 검증이 `pass` 인 wave 만 승급한다. 승급 집합은 착지한 요구뿐이다 — 매니페스트의 `requirements.landed` 가운데 구현 커밋이 통합 브랜치에 있는 요구이고, `failed` · `held` 요구는 들지 않는다. 착지는 그 요구의 구현 커밋(`REQ` · `Commit-Kind: implementation` 과 그 wave 의 `Orch-Wave` · `Orch-Lane` trailer)이 통합 브랜치에 있고 `verification_cmd` 가 통과한 것, 또는 그 wave 의 허용 가능한 `intentionally_empty` 선언이다(그때는 노드의 요구 집합 전부다). 전이는 두 단계다 — 착지하면 `planned`/`in_progress` → `implemented`, 검증이 `pass` 이고 그 요구를 지명한 잔여가 없으면 `implemented` → `verified`. 증거는 `type="test"` 와 `type="commit"` 이다. `type="test"` 는 `test-sufficiency.md` §4 대로 AC 마다 한 행 — 참조는 PW-14 가 그 AC 에 돌려준 인용의 테스트 파일(`경로` 또는 `경로:줄`), `covers` 는 그 AC, notes 는 `verification_cmd` 와 수확한 워커 `docs/analysis/kiwi-pm-…` 번들 경로다. 명령은 참조에 넣지 않는다. `type="commit"` 은 그 wave 의 trailer 커밋 sha 각각이고, `intentionally_empty` 로 착지한 wave 는 test 증거만 싣는다. 착지하지 않은 요구는 현재 status 에 둔다. `add_completed_work` 도 호스트만 한다. `kiwi-orchestrator` 는 같은 규칙을 자기 §14 에 적는다.
 
 **PW-17 · SDS close-out, 삭제 — 호스트, SDS 파일이 있는 wave 만(`--sds`).** 같은 `kiwi-sds --close` 를 한 번 더 부른다. `@req` 요구가 모두 `verified` 또는 `discarded` 이면 SDS 파일이 지워지고, 그 삭제를 close-out 커밋이 싣는다. git 기록이 파일을 남긴다. 닫힌 SDS 를 현재 설계로 읽지 않는다 — 현재 설계는 코드다.
 

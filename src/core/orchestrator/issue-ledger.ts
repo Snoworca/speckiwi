@@ -7,6 +7,8 @@
 // evidence pointer" degrades to a shape check that any forty-hex string satisfies, which would void
 // the duplication audit's `issue:{id}` discharge.
 
+import { issueRowWave } from "./issue-row.js";
+
 /** §8's closed classification list. Every issue receives exactly one. */
 export const ISSUE_CLASSES = ["local-defect", "missing-task", "design-gap", "new-wave-required", "design-contradiction", "out-of-run"] as const;
 
@@ -40,7 +42,7 @@ export interface IssueRow {
   issueId: string;
   wave: number;
   class: string | null;
-  source: string;
+  source: string | null;
   resolutionKind: string | null;
   resolutionRef: string | null;
   /** §8's recorded user decision, required by `out-of-run` and `new-wave-required`. */
@@ -163,7 +165,15 @@ export function deferIssue(ledger: IssueRow[], id: string, reason: string): Ledg
 export function closeWave(ledger: IssueRow[], wave: number, resolution: ResolutionSet): LedgerResult {
   const violations: LedgerViolation[] = [];
 
-  for (const row of ledger.filter((entry) => entry.wave === wave)) {
+  for (const row of ledger) {
+    // @req FR-NODE-285 AC-3, AC-5 — a row written as `wave-<n>` is judged as n, and a row whose wave
+    // reads as no wave fails every close: left unjudged, it would pass the gate it exists to hold.
+    const rowWave = issueRowWave(row.wave);
+    if (rowWave === null) {
+      violations.push({ code: WAVE_ISSUES_CLOSED, issueId: row.issueId, detail: `the row's wave ${JSON.stringify(row.wave) ?? "(missing)"} reads as no wave, so no close can judge it` });
+      continue;
+    }
+    if (rowWave !== wave) continue;
     if (!isIssueClass(row.class)) {
       violations.push({ code: WAVE_ISSUES_CLOSED, issueId: row.issueId, detail: "issue carries no terminal classification" });
       continue;

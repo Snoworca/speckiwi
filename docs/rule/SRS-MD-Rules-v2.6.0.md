@@ -1746,6 +1746,7 @@ Validation items:
 | `SRS-W079` | warning | PRD reference names a missing file or item |
 | `SRS-W080` | warning | depends_on Trace Link row names no requirement |
 | `SRS-W081` | warning | Trace Link row points at a discarded requirement |
+| `SRS-W082` | warning | Verification Evidence reference does not resolve yet |
 
 This table lists every code `validate-spec` can emit, and only those. A code the runtime cannot produce is not listed, because a listed code reads as an enforced check.
 

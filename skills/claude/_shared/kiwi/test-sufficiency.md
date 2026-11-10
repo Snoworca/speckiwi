@@ -59,7 +59,7 @@
 
 ## 4. `verified` 를 쓰는 호출자 — 인용이 곧 테스트 식별자다
 
-`verified` 를 쓰는 호출자는 이 확인을 증거 등록보다 **먼저** 돌린다. 그리고 도구가 AC 마다 돌려준 인용(테스트 파일 경로와 줄)을 그 AC 를 통과시킨 테스트 식별자로 쓴다 — `add_verification_evidence` 는 AC 마다 한 행이고 `covers` 는 그 AC, notes 에는 그 인용(파일과 줄)을 싣는다. `reference` 는 그 AC 를 통과시킨 실행이다: run 전체를 한 명령으로 pin 한 호출자(`parallel-waves.md` 의 `verification_cmd` — `kiwi-orchestrator` · `kiwi-wave-master`)는 그 `verification_cmd` 이고(FR-FLOW-087 AC-7, 수확한 증거 번들 경로는 detail 로서 notes 에 더한다), 그런 명령이 없는 호출자는 인용한 테스트 파일이다. 에이전트가 AC 마다 테스트를 지목하지 않는다. 인용이 없는 AC 는 체크하지 않는다. 3번에서 실패한 새 테스트의 인용은 쓰지 않는다. 한 AC 에 인용이 여럿이면 실행되는 테스트의 제목 줄을 고른다.
+`verified` 를 쓰는 호출자는 이 확인을 증거 등록보다 **먼저** 돌린다. 그리고 도구가 AC 마다 돌려준 인용(테스트 파일 경로와 줄)을 그 AC 를 통과시킨 테스트 식별자로 쓴다 — `add_verification_evidence` 는 AC 마다 한 행이고 `covers` 는 그 AC, notes 에는 그 인용(파일과 줄)을 싣는다. `reference` 는 그 AC 의 인용이 가리키는 테스트 파일이다(`경로` 또는 `경로:줄` — 테스트 제목을 싣는다면 notes 에 둔다). run 전체를 한 명령으로 pin 한 호출자(`parallel-waves.md` 의 `verification_cmd` — `kiwi-orchestrator` · `kiwi-wave-master`)는 그 `verification_cmd` 와 수확한 증거 번들 경로를 notes 에 더한다(FR-FLOW-087 AC-7). 명령은 참조에 넣지 않는다 — `verified` 전이는 test 증거의 참조를 파일 경로로 해석해, 파일로 풀리지 않는 명령을 거절한다. 에이전트가 AC 마다 테스트를 지목하지 않는다. 인용이 없는 AC 는 체크하지 않는다. 3번에서 실패한 새 테스트의 인용은 쓰지 않는다. 한 AC 에 인용이 여럿이면 실행되는 테스트의 제목 줄을 고른다.
 
 **인용은 통과한 테스트여야 한다** — 도구는 인용을 읽을 뿐 테스트를 실행하지 않는다. 그래서 `verified` 를 쓰는 호출자는 증거로 쓸 인용의 테스트 파일을 증거 등록 전에 실행하고, 그 실행에서 통과한 테스트의 인용만 증거로 쓴다. 실패했거나 skip 되었거나 실행되지 않은 테스트의 인용은 그 AC 를 gap 으로 남기고, gap 이 남으면 §3 의 5번처럼 `test-sufficiency-gap` 을 올린다.
 

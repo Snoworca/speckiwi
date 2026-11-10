@@ -22,6 +22,10 @@ import { replayDeferredMutations } from "../../src/core/orchestrator/replay.js";
 const TRACE = "add_trace_link";
 const STATUS = "update_status";
 const COMPLETED = "add_completed_work";
+// Each passes its mutation's input check (IR-CLI-118), which apply now runs before the first dispatch.
+const TRACE_ARGS = { id: "A", type: "Code", reference: "src/a.ts", relation: "related_to" };
+const STATUS_ARGS = { id: "A", status: "implemented" };
+const COMPLETED_ARGS = { date: "2026-11-10", summary: "B" };
 
 function plan(...entries: Array<{ tool: string; args: unknown }>) {
   return replayDeferredMutations(entries, {});
@@ -48,7 +52,7 @@ describe("IR-CLI-092 — the replay applier", () => {
   it("AC-2: applies each admitted call once and skips one the record shows applied", async () => {
     const root = await scratch();
     const applied = path.join(root, "applied.jsonl");
-    const p = plan({ tool: TRACE, args: { id: "A" } }, { tool: STATUS, args: { id: "A" } });
+    const p = plan({ tool: TRACE, args: TRACE_ARGS }, { tool: STATUS, args: STATUS_ARGS });
     await writeFile(
       applied,
       `${JSON.stringify({ tool: TRACE, argsHash: p.calls[0]!.argsHash, outcome: "applied" })}\n`,
@@ -66,7 +70,7 @@ describe("IR-CLI-092 — the replay applier", () => {
   it("AC-3: appends one line per attempt, naming tool, argsHash and outcome", async () => {
     const root = await scratch();
     const applied = path.join(root, "applied.jsonl");
-    const p = plan({ tool: TRACE, args: { id: "A" } }, { tool: COMPLETED, args: { id: "B" } });
+    const p = plan({ tool: TRACE, args: TRACE_ARGS }, { tool: COMPLETED, args: COMPLETED_ARGS });
     const rec = recorder();
 
     await applyReplayPlan(p, { appliedPath: applied, frozenTarget: null, dispatch: rec.dispatch });
@@ -80,7 +84,7 @@ describe("IR-CLI-092 — the replay applier", () => {
 
   it("AC-4: a tool outside the admitted four is not dispatched and is reported", async () => {
     const root = await scratch();
-    const p = plan({ tool: "set_active_target", args: { target: "x" } }, { tool: STATUS, args: { id: "A" } });
+    const p = plan({ tool: "set_active_target", args: { target: "x" } }, { tool: STATUS, args: STATUS_ARGS });
     const rec = recorder();
 
     const result = await applyReplayPlan(p, {
@@ -97,9 +101,9 @@ describe("IR-CLI-092 — the replay applier", () => {
     const root = await scratch();
     const applied = path.join(root, "applied.jsonl");
     const p = plan(
-      { tool: TRACE, args: { id: "A" } },
-      { tool: STATUS, args: { id: "A" } },
-      { tool: COMPLETED, args: { id: "B" } }
+      { tool: TRACE, args: TRACE_ARGS },
+      { tool: STATUS, args: STATUS_ARGS },
+      { tool: COMPLETED, args: COMPLETED_ARGS }
     );
     const rec = recorder(STATUS);
 
@@ -116,7 +120,7 @@ describe("IR-CLI-092 — the replay applier", () => {
   it("AC-6: re-running against the same plan and record applies nothing and succeeds", async () => {
     const root = await scratch();
     const applied = path.join(root, "applied.jsonl");
-    const p = plan({ tool: TRACE, args: { id: "A" } }, { tool: STATUS, args: { id: "A" } });
+    const p = plan({ tool: TRACE, args: TRACE_ARGS }, { tool: STATUS, args: STATUS_ARGS });
 
     const first = recorder();
     await applyReplayPlan(p, { appliedPath: applied, frozenTarget: null, dispatch: first.dispatch });
@@ -131,7 +135,7 @@ describe("IR-CLI-092 — the replay applier", () => {
   it("AC-7: dry-run dispatches nothing and writes no record", async () => {
     const root = await scratch();
     const applied = path.join(root, "applied.jsonl");
-    const p = plan({ tool: TRACE, args: { id: "A" } });
+    const p = plan({ tool: TRACE, args: TRACE_ARGS });
     const rec = recorder();
 
     const result = await applyReplayPlan(p, {

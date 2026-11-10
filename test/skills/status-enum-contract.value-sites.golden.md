@@ -565,6 +565,7 @@ verified	-	_shared/kiwi/parallel-waves.md	구를 지명한 잔여가 없으면 i
 verified	-	_shared/kiwi/test-sufficiency.md	## 4. verified 를 쓰는 호출자 — 인용이 곧 테스트 식별자다
 verified	-	_shared/kiwi/test-sufficiency.md	--auto 도 풀지 못한다. gap 이 남은 요구는 verified 로 쓰지 않는다.
 verified	-	_shared/kiwi/test-sufficiency.md	4번을 하지 않고 1번 결과를 그대로 보고한다 — 막을 verified 쓰기가 없으므로 게이트도 올리지 않는다.
+verified	-	_shared/kiwi/test-sufficiency.md	OW-087 AC-7). 명령은 참조에 넣지 않는다 — verified 전이는 test 증거의 참조를 파일 경로로 해석해, 파
 verified	-	_shared/kiwi/test-sufficiency.md	verified 를 쓰는 호출자는 이 확인을 증거 등록보다 먼저
 verified	-	_shared/kiwi/test-sufficiency.md	| kiwi-srs-sync | verified 를 쓰기 직전 | 이번 실행이 verified 로
 verified	-	_shared/kiwi/test-sufficiency.md	| verified 를 쓰기 직전 | 이번 실행이 verified 로 쓰려는 요구 |
@@ -573,6 +574,7 @@ verified	-	_shared/kiwi/test-sufficiency.md	구는 인용을 읽을 뿐 테스�
 verified	-	_shared/kiwi/test-sufficiency.md	맡고, 테스트가 실제로 실행·통과했는지는 §4 의 실행(verified 를 쓰는 호출자가 증거로 쓸 인용의 테스트 파일)과 §
 verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 끝난 wave 의 verified 요구 | 그 요구를 고치지 않는다. 뒤 wave 에 후
 verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 현재 wave 의 verified 아닌 요구 | 그 AC 를 고치고 그 wave 를 재진
+verified	-	kiwi-coder/SKILL.md	# 테스트 파일(경로 또는 경로:줄) — verified 전이가 파일 경로로 해석한다
 verified	-	kiwi-coder/SKILL.md	- (3) skip — verified 닫지 않음
 verified	-	kiwi-coder/SKILL.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
 verified	-	kiwi-coder/SKILL.md	der 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를
@@ -586,6 +588,7 @@ verified	-	kiwi-coder/SKILL.md	을 자동 채택해 --close-reqs 로 요구를 v
 verified	-	kiwi-coder/SKILL.md	중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 verified 를 쓰지 않는다 — 그 쓰기는 kiwi-review-
 verified	-	kiwi-hot-fix/SKILL.md	고 위임은 진행한다 — kiwi-srs-sync 가 verified 를 쓰기 직전에 같은 확인을 다시 돈다. 위임하지 않는
 verified	-	kiwi-orchestrator/SKILL.md	-id 마다 한 번 더 한다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
+verified	-	kiwi-orchestrator/SKILL.md	fication_cmd 는 참조에 넣지 않는다 — verified 전이는 test 증거의 참조를 파일 경로로 해석해, 파
 verified	-	kiwi-orchestrator/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
@@ -1228,6 +1231,7 @@ verified	-	_shared/kiwi/test-sufficiency.md	r a caller that does not write verif
 verified	-	_shared/kiwi/test-sufficiency.md	step 1 as it is — there is no verified write to stop, so no gate is r
 verified	-	_shared/kiwi/test-sufficiency.md	test. So a caller that writes verified runs the test files of the cit
 verified	-	_shared/kiwi/test-sufficiency.md	this run is about to write as verified |
+verified	-	_shared/kiwi/test-sufficiency.md	ver goes in the reference: the verified transition resolves a test ref
 verified	-	_shared/kiwi/test-sufficiency.md	| immediately before writing verified | the requirements this run is
 verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 끝난 wave 의 verified 요구 | 그 요구를 고치지 않는다. 뒤 wave 에 후
 verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 현재 wave 의 verified 아닌 요구 | 그 AC 를 고치고 그 wave 를 재진
@@ -1235,6 +1239,7 @@ verified	-	kiwi-coder/SKILL.md	state.failed 이거나 회귀 fail 잔존 — ver
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
 verified	-	kiwi-coder/SKILL.md	을 자동 채택해 --close-reqs 로 요구를 verified 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에
 verified	-	kiwi-coder/SKILL.md	중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 verified 를 쓰지 않는다 — 그 쓰기는 kiwi-review-
+verified	-	kiwi-coder/references/extended-workflow.md	# 테스트 파일(경로 또는 경로:줄) — verified 전이가 파일 경로로 해석한다
 verified	-	kiwi-coder/references/extended-workflow.md	--close-reqs 의 verified 전이는 전적으로 $kiwi-review-fix-loop
 verified	-	kiwi-coder/references/extended-workflow.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
 verified	-	kiwi-coder/references/extended-workflow.md	der 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를
@@ -1242,6 +1247,7 @@ verified	-	kiwi-coder/references/extended-workflow.md	kiwi-coder 는 verified �
 verified	-	kiwi-coder/references/extended-workflow.md	verified 전이는 $kiwi-review-fix-loop --c
 verified	-	kiwi-hot-fix/references/extended-workflow.md	before it writes verified. A run that does not delegate
 verified	-	kiwi-orchestrator/SKILL.md	-id 마다 한 번 더 한다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
+verified	-	kiwi-orchestrator/SKILL.md	fication_cmd 는 참조에 넣지 않는다 — verified 전이는 test 증거의 참조를 파일 경로로 해석해, 파
 verified	-	kiwi-orchestrator/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
@@ -1855,12 +1861,14 @@ verified	-	_shared/kiwi/test-sufficiency.md	r a caller that does not write verif
 verified	-	_shared/kiwi/test-sufficiency.md	step 1 as it is — there is no verified write to stop, so no gate is r
 verified	-	_shared/kiwi/test-sufficiency.md	test. So a caller that writes verified runs the test files of the cit
 verified	-	_shared/kiwi/test-sufficiency.md	this run is about to write as verified |
+verified	-	_shared/kiwi/test-sufficiency.md	ver goes in the reference: the verified transition resolves a test ref
 verified	-	_shared/kiwi/test-sufficiency.md	| immediately before writing verified | the requirements this run is
 verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 끝난 wave 의 verified 요구 | 그 요구를 고치지 않는다. 뒤 wave 에 후
 verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 현재 wave 의 verified 아닌 요구 | 그 AC 를 고치고 그 wave 를 재진
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
 verified	-	kiwi-coder/SKILL.md	을 자동 채택해 --close-reqs 로 요구를 verified 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에
 verified	-	kiwi-coder/SKILL.md	중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 verified 를 쓰지 않는다 — 그 쓰기는 kiwi-review-
+verified	-	kiwi-coder/references/extended-workflow.md	# 테스트 파일(경로 또는 경로:줄) — verified 전이가 파일 경로로 해석한다
 verified	-	kiwi-coder/references/extended-workflow.md	--close-reqs 의 verified 전이는 전적으로 $kiwi-review-fix-loop
 verified	-	kiwi-coder/references/extended-workflow.md	-fix-loop 책임이다. kiwi-coder 는 verified 전이, bulk finalize, bulk archive
 verified	-	kiwi-coder/references/extended-workflow.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
@@ -1869,6 +1877,7 @@ verified	-	kiwi-coder/references/extended-workflow.md	verified 전이는 $kiwi-r
 verified	-	kiwi-coder/references/extended-workflow.md	지금 자동 시작, (2) 나중에 수동, (3) skip(verified 로 닫지 않음). (1) 의 순서는 kiwi-pm §
 verified	-	kiwi-hot-fix/references/extended-workflow.md	before it writes verified. A run that does not delegate
 verified	-	kiwi-orchestrator/SKILL.md	-id 마다 한 번 더 한다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
+verified	-	kiwi-orchestrator/SKILL.md	fication_cmd 는 참조에 넣지 않는다 — verified 전이는 test 증거의 참조를 파일 경로로 해석해, 파
 verified	-	kiwi-orchestrator/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
@@ -2488,6 +2497,7 @@ verified	-	_shared/kiwi/test-sufficiency.md	r a caller that does not write verif
 verified	-	_shared/kiwi/test-sufficiency.md	step 1 as it is — there is no verified write to stop, so no gate is r
 verified	-	_shared/kiwi/test-sufficiency.md	test. So a caller that writes verified runs the test files of the cit
 verified	-	_shared/kiwi/test-sufficiency.md	this run is about to write as verified |
+verified	-	_shared/kiwi/test-sufficiency.md	ver goes in the reference: the verified transition resolves a test ref
 verified	-	_shared/kiwi/test-sufficiency.md	| immediately before writing verified | the requirements this run is
 verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 끝난 wave 의 verified 요구 | 그 요구를 고치지 않는다. 뒤 wave 에 후
 verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 현재 wave 의 verified 아닌 요구 | 그 AC 를 고치고 그 wave 를 재진
@@ -2495,6 +2505,7 @@ verified	-	kiwi-coder/SKILL.md	state.failed 이거나 회귀 fail 잔존 — ver
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
 verified	-	kiwi-coder/SKILL.md	을 자동 채택해 --close-reqs 로 요구를 verified 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에
 verified	-	kiwi-coder/SKILL.md	중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 verified 를 쓰지 않는다 — 그 쓰기는 kiwi-review-
+verified	-	kiwi-coder/references/extended-workflow.md	# 테스트 파일(경로 또는 경로:줄) — verified 전이가 파일 경로로 해석한다
 verified	-	kiwi-coder/references/extended-workflow.md	--close-reqs 의 verified 전이는 전적으로 $kiwi-review-fix-loop
 verified	-	kiwi-coder/references/extended-workflow.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
 verified	-	kiwi-coder/references/extended-workflow.md	der 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를
@@ -2502,6 +2513,7 @@ verified	-	kiwi-coder/references/extended-workflow.md	kiwi-coder 는 verified �
 verified	-	kiwi-coder/references/extended-workflow.md	verified 전이는 $kiwi-review-fix-loop --c
 verified	-	kiwi-hot-fix/references/extended-workflow.md	before it writes verified. A run that does not delegate
 verified	-	kiwi-orchestrator/SKILL.md	-id 마다 한 번 더 한다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
+verified	-	kiwi-orchestrator/SKILL.md	fication_cmd 는 참조에 넣지 않는다 — verified 전이는 test 증거의 참조를 파일 경로로 해석해, 파
 verified	-	kiwi-orchestrator/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.

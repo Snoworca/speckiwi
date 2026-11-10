@@ -90,6 +90,13 @@ const WORKSPACE_ROOT_SCHEMA = z
 /** @req FR-MCP-070 AC-3 — the explicit path to every diagnostic entry of a bounded read. */
 const INCLUDE_ALL_DIAGNOSTICS_SCHEMA = z.boolean().describe(`return every diagnostic entry instead of the first ${MCP_READ_DIAGNOSTICS_LIMIT}`).optional();
 
+/** @req IR-CLI-118 AC-5 — a value written into one Markdown table cell, which a pipe or a line break would split. */
+const TABLE_CELL_RULE = "written into one Markdown table cell, so it may not contain a pipe (|) or a line break";
+
+function tableCell(detail?: string): z.ZodString {
+  return z.string().describe(detail === undefined ? TABLE_CELL_RULE : `${detail}; ${TABLE_CELL_RULE}`);
+}
+
 const reportPathSchema = z
   .string()
   .trim()
@@ -335,8 +342,16 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     ignoreLock: z.boolean().optional()
   },
   check_acceptance_criteria: { id: z.string(), acIds: z.array(z.string()), checked: z.boolean(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
-  add_verification_evidence: { id: z.string(), type: z.string(), reference: z.string(), covers: z.string().optional(), notes: z.string().optional(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
-  add_trace_link: { id: z.string(), type: z.string(), reference: z.string(), relation: z.string(), notes: z.string().optional(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
+  add_verification_evidence: {
+    id: z.string(),
+    type: tableCell(),
+    reference: tableCell("a test row names the test file, as path or path:line, with the test title after #"),
+    covers: tableCell("one criterion such as AC-2, a comma list, or all; no range").optional(),
+    notes: tableCell().optional(),
+    dryRun: z.boolean().optional(),
+    ignoreLock: z.boolean().optional()
+  },
+  add_trace_link: { id: z.string(), type: tableCell(), reference: tableCell(), relation: tableCell(), notes: tableCell().optional(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   set_active_target: {
     target: z.string(),
     create: z.boolean().optional(),
@@ -350,10 +365,10 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   set_target_description: { target: z.string(), description: z.string(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   add_completed_work: {
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    summary: z.string(),
-    target: z.string().optional(),
-    scope: z.string().optional(),
-    requirementIds: z.array(z.string()).optional(),
+    summary: tableCell("one line"),
+    target: tableCell().optional(),
+    scope: tableCell().optional(),
+    requirementIds: z.array(z.string()).describe(TABLE_CELL_RULE).optional(),
     reportPaths: z.array(reportPathSchema).optional(),
     allowIncomplete: z.boolean().optional(),
     dryRun: z.boolean().optional(),

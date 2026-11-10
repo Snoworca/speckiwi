@@ -67,13 +67,27 @@ function fullMarkdownLinkTarget(value: string): string {
   return match?.[1] ?? value.trim();
 }
 
+/** A part shaped like a path: the text before its own `#` has no whitespace and holds a separator or an extension. */
+function isPathShaped(part: string): boolean {
+  const head = part.trim().split("#")[0] ?? "";
+  return head !== "" && !/\s/.test(head) && (/[\\/]/.test(head) || /\.[A-Za-z0-9]{1,8}(?::\d+(?::\d+)?)?$/.test(head));
+}
+
+/**
+ * The references one cell holds: `;` separates files, but a `;` after a `#` anchor belongs to the
+ * anchor unless what follows is shaped like a path. @req FR-NODE-287 AC-1, AC-2 — kiwi-coder writes
+ * a test title as the anchor, and a title holding `;` was split before the anchor was removed.
+ */
 function splitEvidenceReferences(row: EvidenceRow): string[] {
   const reference = row.reference.trim();
   if (reference === "") return [];
-  return reference
-    .split(";")
-    .map((part) => part.trim())
-    .filter(Boolean);
+  const parts: string[] = [];
+  for (const piece of reference.split(";")) {
+    const previous = parts.length - 1;
+    if (previous >= 0 && (parts[previous] as string).includes("#") && !isPathShaped(piece)) parts[previous] += `;${piece}`;
+    else parts.push(piece);
+  }
+  return parts.map((part) => part.trim()).filter(Boolean);
 }
 
 function evidenceType(row: EvidenceRow): string {
@@ -209,13 +223,19 @@ const EVIDENCE_ISSUE_CAUSE: Record<string, string> = {
   "invalid-url": "is a malformed URL"
 };
 
+/** Each unresolved reference with its cause, one clause apiece. */
+export function describeEvidenceIssues(issues: readonly EvidenceReferenceIssue[]): string {
+  return issues
+    .map((issue) => {
+      const label = issue.reference.trim() === "" ? "(empty cell)" : issue.reference;
+      const kind = issue.issue ?? "unclassified";
+      return `${label} [${kind}] ${EVIDENCE_ISSUE_CAUSE[kind] ?? `fails the ${kind} check`}`;
+    })
+    .join("; ");
+}
+
 export function describeEvidenceRefusal(issues: readonly EvidenceReferenceIssue[]): string {
-  const clauses = issues.map((issue) => {
-    const label = issue.reference.trim() === "" ? "(empty cell)" : issue.reference;
-    const kind = issue.issue ?? "unclassified";
-    return `${label} [${kind}] ${EVIDENCE_ISSUE_CAUSE[kind] ?? `fails the ${kind} check`}`;
-  });
-  return `Cannot mark verified: ${clauses.join("; ")}`;
+  return `Cannot mark verified: ${describeEvidenceIssues(issues)}`;
 }
 
 function commandPolicyViolation(record: RequirementRecord, row: EvidenceRow, reference: string, policy: string): CommandEvidencePolicyViolation {

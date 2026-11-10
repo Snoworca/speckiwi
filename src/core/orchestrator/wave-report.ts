@@ -250,6 +250,8 @@ export function waveShowNode(input: WaveShowInput, wave: string): Record<string,
     cautions: node.cautions ?? [],
     files: node.files,
     sds: node.sds ?? [],
+    // @req FR-NODE-289 AC-3 — null means the run's pinned command is the only one the wave runs.
+    verification_cmd: node.verificationCmd ?? null,
     requirements: node.requirements,
     prd_items: input.prdItems(node.requirements),
     acs: derived.acs.map((ac) => {

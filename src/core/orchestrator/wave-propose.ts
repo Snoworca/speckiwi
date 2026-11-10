@@ -95,8 +95,16 @@ export interface RequirementWithoutLiveAc {
   readonly requirement: string;
 }
 
+/** A citation with no `depends_on` row whose two requirements the draft put in different nodes. @req FR-NODE-288 */
+export interface CrossNodeCitation {
+  readonly requirement: string;
+  readonly cites: string;
+  readonly node: string;
+  readonly citedNode: string;
+}
+
 export type WaveProposal =
-  | { readonly ok: true; readonly graph: DraftWorkGraph; readonly hubs: readonly string[] }
+  | { readonly ok: true; readonly graph: DraftWorkGraph; readonly hubs: readonly string[]; readonly crossNodeCitations: readonly CrossNodeCitation[] }
   | { readonly ok: false; readonly code: "files-not-grounded"; readonly violations: readonly UngroundedPath[] }
   | { readonly ok: false; readonly code: "requirement-cycle-over-cap"; readonly violations: readonly CycleOverCap[] }
   | { readonly ok: false; readonly code: "requirement-without-live-ac"; readonly violations: readonly RequirementWithoutLiveAc[] };
@@ -493,6 +501,22 @@ function draftEdges(units: readonly Unit[], waveOf: ReadonlyMap<string, number>,
     .map((entry) => ({ from: `wave-${entry.from}`, to: `wave-${entry.to}`, reason: entry.reasons.join("; ") }));
 }
 
+/**
+ * @req FR-NODE-288 AC-1, AC-2 — every soft citation the draft split across two nodes. It draws no
+ * edge (edges come from `depends_on` rows only, FR-NODE-247 AC-8), so the author is told where an
+ * edge may be missing; a citation a `depends_on` row backs is not in `cites` at all.
+ */
+function crossNodeCitations(units: readonly Unit[], waveOf: ReadonlyMap<string, number>, byId: ReadonlyMap<string, Member>): CrossNodeCitation[] {
+  const nodeOf = new Map(units.flatMap((unit) => unit.ids.map((id) => [id, `wave-${waveOf.get(unit.key) as number}`] as const)));
+  return [...byId.values()]
+    .flatMap((member) =>
+      [...member.cites]
+        .filter((cited) => nodeOf.get(cited) !== nodeOf.get(member.id))
+        .map((cited) => ({ requirement: member.id, cites: cited, node: nodeOf.get(member.id) as string, citedNode: nodeOf.get(cited) as string }))
+    )
+    .sort((left, right) => compareStrings(left.requirement, right.requirement) || compareStrings(left.cites, right.cites));
+}
+
 function canonicalScope(scope: ProposalScope): ProposalScope {
   return "target" in scope ? { target: scope.target } : { requirements: sortedDistinct(scope.requirements) };
 }
@@ -540,6 +564,7 @@ export function proposeWaves(input: WaveProposalInput): WaveProposal {
       nodes: ordered.map((unit, index) => draftNode(`wave-${index + 1}`, requirementOrder(unit, components, byId), unit, byId)),
       edges: draftEdges(ordered, waveOf, byId)
     },
-    hubs: sortedDistinct(hubs)
+    hubs: sortedDistinct(hubs),
+    crossNodeCitations: crossNodeCitations(ordered, waveOf, byId)
   };
 }

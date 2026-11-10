@@ -239,9 +239,17 @@ function actionDiagnostics(graph: WorkGraph): Diagnostic[] {
   return found;
 }
 
-/** WG-08: a wave the run's journal names that is not a node. @req FR-NODE-246 AC-9 */
+/**
+ * WG-08: a wave the run's journal names that is not a node. @req FR-NODE-246 AC-9
+ *
+ * @req FR-NODE-286 AC-3 — an intake line is left out: intake runs before the graph exists, and 5.3.7
+ * let a run journal its intake decisions under `wave-0`, which no node can carry. Counting those
+ * lines would block such a run's dispatch for good, since the journal is append-only.
+ */
 function journalDiagnostics(graph: WorkGraph, journal: readonly WavesEvent[]): Diagnostic[] {
-  const named = [...new Set(journal.flatMap((event) => (typeof event.wave === "string" && waveNumber(event.wave) !== null ? [event.wave] : [])))];
+  const named = [
+    ...new Set(journal.flatMap((event) => (event.phase !== "intake" && typeof event.wave === "string" && waveNumber(event.wave) !== null ? [event.wave] : [])))
+  ];
   return named
     .filter((wave) => !graph.nodes.some((node) => sameWave(node.wave, wave)))
     .map((wave) => finding("journal-wave-missing", "error", `the run's journal names ${wave}, which is not a node of the graph`, { wave }));

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import path from "node:path";
 import { Command, InvalidArgumentError } from "commander";
@@ -10,13 +10,14 @@ import type { ParsedWorkspace, ProjectRoot, RequirementRecord } from "../../core
 import { decideAutoGate, GATE_IDS, type AutoGateInput, type GateId } from "../../core/orchestrator/auto-gate.js";
 import { planDuplicationAudit } from "../../core/orchestrator/duplication-audit.js";
 import { replayDeferredMutations, type DeferredMutation, type ReplayIndex, type ReplayPlan } from "../../core/orchestrator/replay.js";
-import { applyReplayPlan, type ReplayDispatch } from "../../core/orchestrator/replay-apply.js";
+import { applyReplayPlan, replayInputRefusals, type ReplayDispatch } from "../../core/orchestrator/replay-apply.js";
 import { addTraceLink } from "../../core/mutation/add-trace.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { updateStatus } from "../../core/mutation/update-status.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { groundFiles, isGroundingRefusal } from "../../core/orchestrator/grounding.js";
 import { closeWave, deferIssue, openIssue, planIssue, resolveIssue, type IssueRow, type ResolutionSet } from "../../core/orchestrator/issue-ledger.js";
+import { readIssueRow, waveOption } from "../../core/orchestrator/issue-row.js";
 import { computeLanePlan, DEFAULT_LANE_CAP, LanePlanError } from "../../core/orchestrator/lane-plan.js";
 import type { WaveDependencies, WaveInput } from "../../core/orchestrator/conflict.js";
 import { buildLanesLockBody, freezeLock, serializeLock, type WaveSdsDigest } from "../../core/orchestrator/freeze.js";
@@ -57,6 +58,7 @@ import { engineOf, latestGraphReference, listJournalRunIds, parseWavesJournal, W
 import { computeRunProgress, isRunAborted, validateWavesJournal } from "../../core/orchestrator/waves-validate.js";
 import {
   declarationEntryDigest,
+  isWaveName,
   parseWaveDeclaration,
   parseWorkGraph,
   waveReadiness,
@@ -354,7 +356,7 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   // @req IR-CLI-113 — the same binding gains withTests; a 2.0.0 work graph widens the answer.
   { tool: "orchestrate_wave_status", description: "Reports, for every wave of one run, its latest status, phase, sds_id, stage, lane and time by the same predicate resume uses — a round record or a statusless verb line never changes a wave's status — and whether the run is complete, needs its final verification, or was aborted. With a wave declaration file it also lists the waves schedule waves would plan now. With a 2.0.0 work graph — the waves file, or the graph the run's latest graph reference names — it lists every node of the graph with its derived state, depth, AC progress, action counts, times, whether it was dispatched and the base_sha of its latest dispatch, plus a summary (node counts per state, AC totals, action counts, the ready, running and attention nodes), the graph's path and digest, the journal line count and a graph-digest-mismatch warning when the file changed with no journal line recording it; withTests also scans the tests for AC citations. Without run_id it reads the most recent run under the engine that is neither complete nor aborted. Read-only.", path: ["wave", "status"], kind: "read", options: [RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION, o("--waves", "waves"), o("--with-tests", "withTests", "boolean")] },
   // @req IR-CLI-114 — read-only; exactly one of wave, ac and req.
-  { tool: "orchestrate_wave_show", description: "Reports one work-graph node in full, chosen by exactly one of wave (the node), ac (\"<REQ-ID> AC-<n>\": every node holding that criterion) or req (every node holding a criterion of that requirement): its title, purpose, description, GitHub issues, cautions, files and SDS, its computed requirement set and the PRD items their Rationales cite, one row per acceptance criterion (checked, covered by evidence, how many test lines cite it and the first, expired, done), its done_when items with whether the latest complete line confirmed each, its completion actions in their state, its state and times, its predecessor and successor nodes with each edge's reason, and the node's latest 20 journal lines with {total, returned, limit} when cut. full returns every citation and every journal line. The tests are always scanned for citations. Without waves it reads the graph the run's latest graph reference names. Read-only.", path: ["wave", "show"], kind: "read", options: [o("--wave", "wave"), o("--ac", "ac"), o("--req", "req"), o("--waves", "waves"), RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION, o("--full", "full", "boolean")] },
+  { tool: "orchestrate_wave_show", description: "Reports one work-graph node in full, chosen by exactly one of wave (the node), ac (\"<REQ-ID> AC-<n>\": every node holding that criterion) or req (every node holding a criterion of that requirement): its title, purpose, description, GitHub issues, cautions, files, SDS and own verification_cmd (null when it has none), its computed requirement set and the PRD items their Rationales cite, one row per acceptance criterion (checked, covered by evidence, how many test lines cite it and the first, expired, done), its done_when items with whether the latest complete line confirmed each, its completion actions in their state, its state and times, its predecessor and successor nodes with each edge's reason, and the node's latest 20 journal lines with {total, returned, limit} when cut. full returns every citation and every journal line. The tests are always scanned for citations. Without waves it reads the graph the run's latest graph reference names. Read-only.", path: ["wave", "show"], kind: "read", options: [o("--wave", "wave"), o("--ac", "ac"), o("--req", "req"), o("--waves", "waves"), RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION, o("--full", "full", "boolean")] },
   // @req FR-NODE-251 AC-1 — read-only, and no option skips the citation scan.
   { tool: "orchestrate_wave_actions", description: "Computes which completion actions of a run's finished work-graph nodes are due, after always scanning the tests for acceptance-criterion citations, so a node whose criteria no test cites holds its actions as held-unverified rather than announcing itself. Each action is reported in its journal state (sent, waived, failed, interrupted) or as due or held-unverified; a due action carries its idempotency key run_id:wave:action_id:L<line of the node's latest complete line>, its channel alias or instruction text, blocking, the rendered message, and the intent and result lines to append around carrying it out. An interrupted or failed action is never due again. It sends nothing, resolves no channel alias to an address and opens no connection. Without waves it reads the graph the run's latest graph reference names; a missing journal or a run with no line is an error, never an empty answer. Read-only.", path: ["wave", "actions"], kind: "read", options: [o("--waves", "waves"), RUN_ID_OPTION, ENGINE_OPTION, JOURNAL_OPTION] },
   // @req FR-NODE-246 AC-1 — read-only; the journal is read only with run_id.
@@ -2100,6 +2102,13 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
             { code: "journal-required-field-missing", scope, fields: missing, message: `${scope === "intent" ? "an" : "a"} ${scope} line needs ${missing.join(", ")}` }
           ]);
         }
+        // @req FR-NODE-286 AC-1 — a wave no graph node could carry is refused before any byte is
+        // written. Only the spelling is checked: intake is journalled before the graph exists.
+        if (payload.wave !== undefined && payload.wave !== null && payload.wave !== "all" && !isWaveName(payload.wave)) {
+          return refuse("run-invariant-drift", [
+            { code: "journal-wave-invalid", wave: payload.wave, message: `wave must be wave-<n> (n from 1, no leading zero) or all, not ${JSON.stringify(payload.wave)}` }
+          ]);
+        }
         // @req FR-NODE-218 AC-3 — the tool's clock fills `ts`; a supplied one is kept.
         const line = payload.ts === undefined ? { ...payload, ts: new Date().toISOString() } : payload;
         const outcome = await appendWavesLine(root, options.journal as string, runId, line, options.dryRun === true);
@@ -2360,7 +2369,10 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
     .action(async (options) => {
       await mutate(options, async () => {
         const rows = await readLedger(options.ledger as string);
-        const row = parseInlineJson(options.payload, "--payload") as unknown as IssueRow;
+        // @req FR-NODE-285 AC-1, AC-2 — a usage error before anything is judged or written.
+        const reading = readIssueRow(parseInlineJson(options.payload, "--payload"));
+        if (!reading.ok) throw new OperationalError(`--payload: ${reading.problems.join("; ")}`);
+        const row = reading.row;
         const result = openIssue(rows, row);
         if (!result.ok) return refuse("wave-issues-open", result.violations);
         if (options.dryRun !== true) await writeLedger(options.ledger as string, [...rows, row]);
@@ -2628,7 +2640,7 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         if (trackedPaths === null) throw new OperationalError("cannot read the paths tracked at HEAD here, which grounding the expected paths needs");
         const proposal = proposeWaves({ runId: options.runId as string, scope, requirements: selection.requirements, expectedFiles: expected.files, trackedPaths, caps });
         if (!proposal.ok) return refuse(proposal.code, proposal.violations);
-        return { graph: proposal.graph, hubs: proposal.hubs };
+        return { graph: proposal.graph, hubs: proposal.hubs, crossNodeCitations: proposal.crossNodeCitations };
       });
     });
 
@@ -2638,11 +2650,22 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
     .requiredOption("--resolution <path>", "the collected resolution set, as JSON")
     .action(async (options) => {
       await read(orchestrate, options, async () => {
-        const rows = await readLedger(options.ledger as string);
+        // @req FR-NODE-285 AC-4 — a wave that reads as no number judges no rows, so it is refused.
+        const waveNumber = waveOption(options.wave);
+        if (waveNumber === null) throw new OperationalError(`--wave must be n or wave-<n> with n a positive integer, not ${JSON.stringify(options.wave)}`);
+        // @req FR-NODE-285 AC-6 — a run opens its ledger before its first wave closes, so a missing
+        // file is a wrong path (often a different --ledger than issue open used), never a clean wave.
+        const ledgerPath = path.resolve(runRoot(command), options.ledger as string);
+        if (!(await access(ledgerPath).then(() => true, () => false))) {
+          throw new OperationalError(
+            `--ledger ${options.ledger as string} does not exist: a run creates its ledger as [] before its first wave is dispatched, and issue open must name the same --ledger (kiwi-orchestrator §13.2)`
+          );
+        }
+        const rows = (await readJsonFile(ledgerPath, "--ledger")) as IssueRow[];
         const resolution = (await readJsonFile(path.resolve(runRoot(command), options.resolution as string), "--resolution")) as ResolutionSet;
-        const result = closeWave(rows, Number.parseInt(options.wave as string, 10), resolution);
+        const result = closeWave(rows, waveNumber, resolution);
         if (!result.ok) return refuse("wave-issues-open", result.violations);
-        return { wave: Number.parseInt(options.wave as string, 10) };
+        return { wave: waveNumber };
       });
     });
 
@@ -2703,7 +2726,10 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           index = replayIndexFromJson(await readJsonFile(indexPath, "--index"), "--index", indexPath);
         }
         const plan = replayDeferredMutations(queue, index);
-        return { calls: plan.calls, indexAfter: plan.indexAfter };
+        // @req IR-CLI-118 AC-1 — a call its mutation would refuse is found here, where the lane that
+        // wrote it can still correct it, and not at the host's apply after the calls before it landed.
+        // The plan itself is still the answer (IR-CLI-091 AC-1); the list is what the caller checks.
+        return { calls: plan.calls, indexAfter: plan.indexAfter, inputRefusals: replayInputRefusals(plan) };
       });
     });
 
@@ -2727,6 +2753,10 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         });
         // The refusals and the applied count are reported either way — a run that stopped still has
         // to say what it did before it stopped.
+        if (!result.ok && result.inputRefusals !== undefined) {
+          const refusals = result.inputRefusals.map((refusal) => `#${refusal.index} ${refusal.tool} — ${refusal.message}`).join("; ");
+          throw new OperationalError(`${result.gate}: no call was applied, because these fail their input check: ${refusals}`);
+        }
         if (!result.ok) {
           throw new OperationalError(
             `${result.gate}: ${result.failure?.tool} — ${result.failure?.error} (applied ${result.applied})`

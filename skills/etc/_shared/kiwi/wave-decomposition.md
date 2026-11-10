@@ -25,7 +25,7 @@
 3. **feasibility 한 번** — `Skill({ skill: "kiwi-srs-feasibility", args: "TARGET=<제품 target> [--auto] [--max] [--mini|--loops N]" })` 을 처음 저작 뒤, 첫 dispatch 앞에 한 번 부른다. wave 마다 부르지 않는다. 뒤 wave 의 요구는 `draft` 로 남겨도 되고, 그 노드를 스케줄하기 직전에 올린다(`parallel-waves.md` PW-4).
 4. **PRD 커버리지** — §5.
 5. **영향 분석** — 서브에이전트 하나가 요구마다 바꿀 것으로 예상되는 파일을 `{artifact_root}waves/expected-files.json`(요구 ID → 경로 목록)으로 쓴다. 입력은 요구 ID 와 AC, `existing_modules`, 저장소다. 수렴 레지스트리(`run-ledger.md`)가 `orchestrator-only` · `regenerate` 로 표시한 경로는 넣지 않는다 — 그 경로는 호스트가 병합 뒤에 처리한다(`parallel-waves.md` PW-12). 이 지도는 다음 단계의 `--files` 로만 넘기고 어느 SRS 필드에도 쓰지 않는다.
-6. **초안** — `speckiwi orchestrate wave propose --target <제품 target> --files {artifact_root}waves/expected-files.json --run-id {run_id} --json`. 도구가 노드(`wave-1`, `wave-2`, …) · `acs` · `edges` · `files` 를 정한다. run 이 target 의 요구 일부만 구현하면 `--target` 대신 `--requirements <남기는 요구 ID>` 를 주어 그래프의 `scope.requirements` 에 남기는 요구를 적고, 그 좁힘에 대한 사용자 동의를 run 당 한 번 받아 기록한다(`out-of-scope-user-consent`, `--auto` 도 멈춘다).
+6. **초안** — `speckiwi orchestrate wave propose --target <제품 target> --files {artifact_root}waves/expected-files.json --run-id {run_id} --json`. 도구가 노드(`wave-1`, `wave-2`, …) · `acs` · `edges` · `files` 를 정한다. run 이 target 의 요구 일부만 구현하면 `--target` 대신 `--requirements <남기는 요구 ID>` 를 주어 그래프의 `scope.requirements` 에 남기는 요구를 적고, 그 좁힘에 대한 사용자 동의를 run 당 한 번 받아 기록한다(`out-of-scope-user-consent`, `--auto` 도 멈춘다). 출력의 `crossNodeCitations` 는 `depends_on` 행 없이 본문 인용만으로 이어진 두 요구가 서로 다른 노드로 갈라진 쌍이다. 그 쌍이 실제 의존이면 SRS 에 `depends_on` Trace Link 행을 더하고 다시 propose 한다 — 도구는 `depends_on` 행에서만 간선을 만들므로 그래프에 간선을 손으로 더하지 않는다.
 7. **메타데이터** — 에이전트가 그래프 최상위 `prd` 에 run 의 PRD 경로(1단계의 PRD)를 적고, 노드마다 `title` · `purpose` · `description` · `cautions` · `done_when` · `on_complete` · `github_issues` 를 채운다. `wave show` 는 그 `prd` 로 노드의 PRD 항목(§4)을 푼다 — 없으면 `prd_items` 가 비어 검증자가 받을 PRD 항목도 빈다.
 8. **확정** — `{artifact_root}waves/waves.json` 에 `schema_version` 2.0.0 으로 쓰고 `speckiwi orchestrate wave check --waves {artifact_root}waves/waves.json --run-id {run_id} --json` 을 통과시킨 뒤 명시 pathspec 으로 커밋한다. error 진단이 하나라도 있으면 dispatch 하지 않고 그래프를 고쳐 다시 check 한다. 커밋한 그래프의 `graph {path, digest}`(digest 는 그래프 파일 바이트의 sha256)를 run 의 첫 graph 줄(그래프를 커밋한 뒤 처음 쓰는 저널 줄)에 싣는다 — 도구가 run 의 최신 그래프를 그 줄과 `redecompose` 줄에서 찾는다.
 
@@ -52,6 +52,8 @@ run 도중 새 요구가 생기면(`wave-srs-registration.md §2`) 영향 분석
 - **R3** — F 가 남은 노드가 아닌 노드와만 겹치면 새 노드를 만든다. run 당 추가 wave 상한 3 에 센다(`wave-append-cap-exhausted`).
 - **R4** — F 가 어느 노드와도 겹치지 않으면 간선 없는 새 노드를 만들거나, 그 요구가 의존하는 요구를 가진 노드에 넣는다.
 - **R5** — 그 결과 노드가 `wave propose` 의 크기 상한을 넘으면, 남은 노드일 때만 둘로 나눈다.
+
+`waves.lock.json` 은 Phase 2 의 첫 판(첫 그래프)을 고정하고, 재분해해도 다시 동결하지 않는다. 현재 그래프는 최신 `redecompose` 줄이 가리키는 판이며, `wave status` · `wave show` · `wave check` · `schedule waves` 는 그 최신 판을 읽는다.
 
 변경마다 그래프의 새 판을 늘 같은 경로 `{artifact_root}waves/waves.json` 에 덮어쓰고, 그 판의 `graph {path, digest}` 를 실은 `phase="redecompose"` 줄을 `speckiwi orchestrate journal append --run-id {run_id} --payload-file <그 줄>` 로 덧붙인 뒤, 다음 dispatch 전에 `orchestrate wave check` 와 `orchestrate schedule waves` 를 다시 통과시킨다.
 

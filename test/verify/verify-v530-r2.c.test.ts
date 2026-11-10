@@ -12,15 +12,18 @@ const CITE = { "test/cite.test.ts": "// @req FR-ARCH-001 AC-1\n" };
 type Row = Record<string, unknown>;
 
 /**
- * A run whose worker line names its wave `wave-01`: `journal append` accepts the line, and the readers
- * attribute it to node `wave-1` (its status, phase, state and start time all come from it).
+ * A run whose worker line names its wave `wave-01`, and the readers attribute it to node `wave-1` (its
+ * status, phase, state and start time all come from it). Since 5.4.0 `journal append` refuses `wave-01`
+ * (FR-NODE-286 AC-1), so the line is written as an earlier version let it be written: the readers must
+ * still attribute such a journal's lines.
  */
 async function workerLineAsWave01(): Promise<string> {
   const { root, graphText } = await workGraphWorkspace({ requirements: [DONE], graph: graphOf([node(1, ["FR-ARCH-001 AC-1"])]), firstLine: null, lines: [], files: CITE });
   await writeUnder(root, JOURNAL, `${JSON.stringify(firstLineFor(graphText, { writer: JOURNAL_WRITER_STAMP }))}\n`);
   const { ts: _ts, ...line } = { ...waveLine(1, "in_progress", { phase: "worker" }), wave: "wave-01" };
-  const appended = await orchestrate(root, ["journal", "append", "--run-id", "r1", "--payload", JSON.stringify(line)]);
-  expect(appended.exit, JSON.stringify(appended.payload)).toBe(0);
+  await writeUnder(root, JOURNAL, `${JSON.stringify(firstLineFor(graphText, { writer: JOURNAL_WRITER_STAMP }))}
+${JSON.stringify({ ...line, ts: "2026-11-05T01:00:00.000Z", writer: JOURNAL_WRITER_STAMP })}
+`);
   return root;
 }
 

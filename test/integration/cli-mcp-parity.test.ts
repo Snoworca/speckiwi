@@ -33,7 +33,7 @@ describe("CLI MCP parity surface", () => {
           "--type",
           "test",
           "--reference",
-          "test/integration/cli-mcp-parity.test.ts",
+          "docs/spec/10.product-architecture.srs.md",
           "--notes",
           "parity note",
           "--dry-run",
@@ -49,7 +49,7 @@ describe("CLI MCP parity surface", () => {
     const mcpMutation = await server.callTool("add_verification_evidence", {
       id: "FR-ARCH-001",
       type: "test",
-      reference: "test/integration/cli-mcp-parity.test.ts",
+      reference: "docs/spec/10.product-architecture.srs.md",
       notes: "parity note",
       dryRun: true
     });

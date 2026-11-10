@@ -77,14 +77,22 @@ export async function addTraceLink(root: ProjectRoot, input: AddTraceInput): Pro
   return withSrsMutationLock(root, { operation: "add_trace_link", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addTraceLinkUnlocked(root, input));
 }
 
-async function addTraceLinkUnlocked(root: ProjectRoot, input: AddTraceInput): Promise<MutationResult> {
-  const notes = input.notes ?? "-";
-  const unsafeCell = assertSafeMarkdownTableCells({
+/**
+ * @req IR-CLI-118 AC-4 — the refusals that read no SRS, in one place: the mutation calls it, and
+ * `orchestrate replay` calls it on every deferred call before it applies the first.
+ */
+export function traceLinkInputRefusal(input: Pick<AddTraceInput, "type" | "reference" | "relation" | "notes">): MutationResult | undefined {
+  return assertSafeMarkdownTableCells({
     "Trace Link type": input.type,
     "Trace Link reference": input.reference,
     "Trace Link relation": input.relation,
-    "Trace Link notes": notes
+    "Trace Link notes": input.notes ?? "-"
   });
+}
+
+async function addTraceLinkUnlocked(root: ProjectRoot, input: AddTraceInput): Promise<MutationResult> {
+  const notes = input.notes ?? "-";
+  const unsafeCell = traceLinkInputRefusal(input);
   if (unsafeCell) return unsafeCell;
   const workspace = await parseWorkspace(root);
   if (input.type === "Requirement" && !workspace.records.some((record) => record.id === input.reference)) {

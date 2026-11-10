@@ -4,6 +4,7 @@
 //
 // Pure: the document and the journal's wave statuses arrive as values. Reading the file, the journal
 // and the SDS files stays in the command.
+import { WAVE_NAME } from "./wave-name.js";
 import { createHash } from "node:crypto";
 import { canonicalJson } from "./canonical-json.js";
 import { compareStrings } from "./conflict.js";
@@ -17,8 +18,7 @@ export const WAVE_DECLARATION_SCHEMA_VERSION = "1.0.0";
 /** The work-graph schema: nodes and edges, normalized to the same declaration. @req FR-NODE-244 */
 export const WORK_GRAPH_SCHEMA_VERSION = "2.0.0";
 
-/** The only wave name the journal view parses (`waveNumber`): `wave-<n>`, n from 1, no leading zero. */
-const WAVE_NAME = /^wave-[1-9][0-9]*$/;
+export { isWaveName } from "./wave-name.js";
 
 const DOCUMENT_KEYS = ["schema_version", "waves"] as const;
 const ENTRY_KEYS = ["wave", "depends_on", "files", "requirements", "sds"] as const;
@@ -245,6 +245,8 @@ export interface WorkGraphNode {
   /** Normalized, sorted and deduplicated, as in the declaration. */
   readonly files: readonly string[];
   readonly sds?: readonly string[];
+  /** A quick check inside the wave; landing and promotion still run the run's pinned command. @req FR-NODE-289 */
+  readonly verificationCmd?: string;
 }
 
 export interface WorkGraphEdge {
@@ -276,7 +278,7 @@ export type WorkGraphParse = { readonly ok: true; readonly graph: WorkGraph } | 
 const GRAPH_REQUIRED_KEYS = ["schema_version", "run_id", "title", "scope", "nodes", "edges"] as const;
 const GRAPH_KEYS = [...GRAPH_REQUIRED_KEYS, "engine", "prd", "defaults"] as const;
 const NODE_REQUIRED_KEYS = ["wave", "title", "purpose", "acs", "done_when", "files"] as const;
-const NODE_KEYS = [...NODE_REQUIRED_KEYS, "description", "github_issues", "cautions", "on_complete", "sds"] as const;
+const NODE_KEYS = [...NODE_REQUIRED_KEYS, "description", "github_issues", "cautions", "on_complete", "sds", "verification_cmd"] as const;
 const EDGE_KEYS = ["from", "to", "reason"] as const;
 const NOTIFY_KEYS = ["id", "kind", "channel", "message", "blocking"] as const;
 const INSTRUCTION_KEYS = ["id", "kind", "text", "blocking"] as const;
@@ -394,6 +396,10 @@ function readNode(value: unknown, index: number): { readonly node: WorkGraphNode
   if (value.cautions !== undefined && !(Array.isArray(value.cautions) && value.cautions.every((item) => boundedText(item, 0, 300)))) {
     return `${wave}.cautions must be a list of strings of at most 300 characters`;
   }
+  // @req FR-NODE-289 AC-1, AC-2 — one command line: a line break would run a second command.
+  if (value.verification_cmd !== undefined && !(boundedText(value.verification_cmd, 1, 500) && !/[\r\n]/.test(value.verification_cmd))) {
+    return `${wave}.verification_cmd must be one line of 1 to 500 characters`;
+  }
   const requirements = requirementsOfAcs(value.acs, wave);
   if (typeof requirements === "string") return requirements;
   const doneWhen = readDoneWhen(value.done_when, wave);
@@ -420,7 +426,8 @@ function readNode(value: unknown, index: number): { readonly node: WorkGraphNode
     doneWhen,
     ...(onComplete === undefined ? {} : { onComplete }),
     files,
-    ...(sds === undefined ? {} : { sds })
+    ...(sds === undefined ? {} : { sds }),
+    ...(value.verification_cmd === undefined ? {} : { verificationCmd: value.verification_cmd as string })
   };
   return { node, entry: { wave, order, dependsOn: undefined, files, requirements, sds } };
 }
