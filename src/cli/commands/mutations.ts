@@ -8,7 +8,7 @@ import { removeProject } from "../../core/bootstrap/remove-project.js";
 import { mutationFail } from "../../core/mutation/guards.js";
 import { updateStatus, restore } from "../../core/mutation/update-status.js";
 import { updateStability } from "../../core/mutation/update-stability.js";
-import { appendSectionNote } from "../../core/mutation/append-section-note.js";
+import { APPENDED_NOTE_DATE_RULE, appendSectionNote } from "../../core/mutation/append-section-note.js";
 import { appendAcceptanceCriterion, setAcceptanceCriteriaChecked, editAcceptanceCriteria } from "../../core/mutation/check-ac.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { addTraceLink, setSupersede } from "../../core/mutation/add-trace.js";
@@ -304,7 +304,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .command("append-note")
     .argument("<id>")
     .requiredOption("--section <section>", "rationale | research | implementation_notes")
-    .requiredOption("--text <text>", "append: one note, max 500 UTF-16 code units; replace: the whole section body, uncapped")
+    .requiredOption("--text <text>", `append: one note, max 500 UTF-16 code units; ${APPENDED_NOTE_DATE_RULE}; replace: the whole section body, uncapped, written as given`)
     .option("--mode <mode>", "append (default) or replace; any other value is refused. A replace that removes an item needs --confirm-replace; --dry-run shows removedItems and removedLines first")
     .option("--confirm-replace", "let a replace remove the items its dry run reports; refused with append")
     .option("--dry-run")

@@ -712,6 +712,7 @@ speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summ
 - `set-target-status` refuses any status other than `active` for the Active Target. Move the Active Target first, as above.
 - Most mutation commands accept `--json`, `--dry-run` and `--ignore-lock`. A failed mutation exits with `5`.
 - Discarding a protected requirement is refused unless `update-status` also gets `--confirm-discard-verified`. Protected means Status `verified`, Stability `stable` or `frozen`, or `implemented` with verification evidence.
+- `append-note` (MCP `append_section_note`) adds one note as a bullet. An appended note is stamped with the day's date: when the text starts with that same date and a separator and the rest of that line holds text, the date is written once, and any other date in the text is kept.
 - `append-note --mode replace` (MCP `append_section_note` with `mode: "replace"`) rewrites the whole Rationale, Research or Implementation Notes section. A replace that removes an item, a note the new text does not carry again, is refused unless it gets `--confirm-replace` (MCP `confirmReplace: true`). `--dry-run` first reports those items as `removedItems` and `removedLines`.
 - `edit-requirement-table-rows` (MCP `edit_requirement_table_rows`) updates or deletes rows of the Verification Evidence, Trace Links and Change Notes tables. A row is addressed by its zero-based `rowIndex`. A Change Notes row takes `date`, `change` and `reason`.
 - A `|` or a line break in a Change Notes value, or in the `--reason` of `update-status` or `update-stability`, is rewritten so that it cannot split the table row.
@@ -1711,6 +1712,7 @@ speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summ
 - `set-target-status`는 Active Target에 `active`가 아닌 상태를 주면 거부합니다. 위의 예처럼 먼저 Active Target을 옮기십시오.
 - 대부분의 변경 명령은 `--json`, `--dry-run`, `--ignore-lock`을 받습니다. 변경이 실패하면 종료 코드 `5`로 끝납니다.
 - 보호된 요구사항을 폐기하려 하면, `update-status`에 `--confirm-discard-verified`를 함께 주지 않는 한 거부됩니다. 보호된 요구사항이란 Status가 `verified`이거나, Stability가 `stable` 또는 `frozen`이거나, 검증 증거가 있는 `implemented` 요구사항입니다.
+- `append-note`(MCP `append_section_note`)는 노트 하나를 글머리 항목으로 덧붙입니다. 덧붙인 노트에는 그날 날짜가 찍힙니다. 본문이 같은 날짜와 구분자로 시작하고 그 줄의 나머지에 내용이 있으면 날짜를 한 번만 쓰고, 다른 날짜는 그대로 둡니다.
 - `append-note --mode replace`(MCP에서는 `append_section_note`에 `mode: "replace"`)는 Rationale, Research, Implementation Notes 중 한 절 전체를 다시 씁니다. 새 텍스트에 다시 나오지 않는 항목을 하나라도 지우는 replace는 `--confirm-replace`(MCP `confirmReplace: true`)가 없으면 거부됩니다. `--dry-run`이 지울 항목을 먼저 `removedItems`와 `removedLines`로 보여 줍니다.
 - `edit-requirement-table-rows`(MCP `edit_requirement_table_rows`)는 Verification Evidence, Trace Links, Change Notes 표의 행을 갱신하거나 삭제합니다. 행은 0부터 세는 `rowIndex`로 지정합니다. Change Notes 행은 `date`, `change`, `reason`을 받습니다.
 - Change Notes 값이나 `update-status`·`update-stability`의 `--reason`에 들어간 `|`와 줄바꿈은 표의 행을 쪼개지 않도록 바꿔 씁니다.

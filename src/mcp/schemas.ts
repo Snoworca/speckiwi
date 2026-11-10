@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isReadOnlyTool, toolSchemas } from "./server.js";
 import { BILINGUAL_SEARCH_EXAMPLE, BILINGUAL_SEARCH_RULE } from "../core/bootstrap/templates.js";
 import { MCP_READ_DIAGNOSTICS_SENTENCE } from "./read-diagnostics.js";
+import { APPENDED_NOTE_DATE_RULE } from "../core/mutation/append-section-note.js";
 import {
   ORCHESTRATE_TOOL_BINDINGS,
   ORCHESTRATE_CONTAINER_PATHS,
@@ -466,7 +467,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("append-note", mcp("append_section_note", "Appends text to one narrative section of a requirement (Rationale, Research / Analysis or Implementation Notes), or replaces that section's body outright. The section arrives as a key rather than as its heading — `rationale`, `research`, `implementation_notes` — no table is reachable from here, an appended note is capped at 500 characters and rendered as a dated bullet — so carrying your own date doubles it — while a `replace` carries the whole section body and is capped by nothing. A `replace` reports the items it removes as `removedItems` and `removedLines`, and one that removes an item is refused unless `confirmReplace` is true, so run it with `dryRun` first. It works at any Status, no Status refuses it, and it writes no Change Note. Writes the requirement block."), "req-scoped", "appendSectionNote", [
+  mutationSpec("append-note", mcp("append_section_note", "Appends text to one narrative section of a requirement (Rationale, Research / Analysis or Implementation Notes), or replaces that section's body outright. The section arrives as a key rather than as its heading — `rationale`, `research`, `implementation_notes` — no table is reachable from here, an appended note is capped at 500 characters and rendered as a bullet, and " + APPENDED_NOTE_DATE_RULE + ", while a `replace` carries the whole section body as given and is capped by nothing. A `replace` reports the items it removes as `removedItems` and `removedLines`, and one that removes an item is refused unless `confirmReplace` is true, so run it with `dryRun` first. It works at any Status, no Status refuses it, and it writes no Change Note. Writes the requirement block."), "req-scoped", "appendSectionNote", [
     opt("--section <section>", "section"),
     opt("--text <text>", "text"),
     opt("--mode <mode>", "mode"),

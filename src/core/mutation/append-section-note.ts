@@ -109,6 +109,46 @@ function removedItemsOf(oldLines: readonly string[], newLines: readonly string[]
   });
 }
 
+/** @req FR-NODE-291 AC-5 — the one wording of the date rule, shared by the CLI help and the MCP description. */
+export const APPENDED_NOTE_DATE_RULE =
+  "an appended note is stamped with the day's date: when the text starts with that same date and a separator and the rest of that line holds text, the date is written once, and any other date in the text is kept";
+
+/*
+ * The separator rule. A separator is spaces or tabs, a `:`, `-` or `—` with a space or tab on both
+ * sides, or one of those characters touching the date — except a `-` or `—` touching a bare date,
+ * which would read `2026-11-10-01` as a date and a separator. A character with a space on one side
+ * only is text, not a separator, so `[D] -1` keeps its `-1`. Each separator takes the spaces or tabs
+ * after it. Patterns are tried in order, so a spaced `:`, `-` or `—` wins over the plain spaces.
+ */
+const AFTER_BARE_DATE = /^(?::[ \t]*|[ \t]+[:\-—][ \t]+|[ \t]+)/;
+const AFTER_BRACKETED_DATE = /^(?:[:\-—][ \t]*|[ \t]+[:\-—][ \t]+|[ \t]+)/;
+/** Text worth a row: anything on the line but spaces, tabs and separator characters. */
+const HOLDS_TEXT = /[^\s:\-—]/;
+
+/**
+ * The appended text with a leading copy of the tool's own stamp dropped, so the row carries the date
+ * once. Only that same date goes: a different one is the day something happened, not the day the
+ * note was written, and stays. The date goes only when the rest of its line holds text, so a line of
+ * separators or a line break after the date never pulls the next line up behind the stamp.
+ * @req FR-NODE-291 AC-1 AC-2
+ */
+function withoutLeadingStamp(text: string, stamp: string): string {
+  const heads: ReadonlyArray<readonly [string, RegExp]> = [
+    [stamp, AFTER_BARE_DATE],
+    [`[${stamp}]`, AFTER_BRACKETED_DATE],
+    [`(${stamp})`, AFTER_BRACKETED_DATE]
+  ];
+  for (const [head, separator] of heads) {
+    if (!text.startsWith(head)) continue;
+    const after = text.slice(head.length);
+    const taken = separator.exec(after)?.[0];
+    if (taken === undefined) continue;
+    const rest = after.slice(taken.length);
+    if (HOLDS_TEXT.test(rest.split("\n", 1)[0] ?? "")) return rest;
+  }
+  return text;
+}
+
 export async function appendSectionNote(
   root: ProjectRoot,
   input: AppendSectionNoteInput
@@ -168,7 +208,8 @@ async function appendSectionNoteUnlocked(
   if (mode === "append") {
     const insertion = findSectionInsertionLine(loaded.file, loaded.record, heading);
     if (!insertion) return mutationFail("MUTATION_DENIED", `cannot locate insertion point for section '${heading}'`);
-    const noteLine = `- [${todayStamp()}] ${input.text}`;
+    const stamp = todayStamp();
+    const noteLine = `- [${stamp}] ${withoutLeadingStamp(input.text, stamp)}`;
     if (insertion.mode === "append") {
       operations.push({ type: "insertLines", line: insertion.line, lines: [noteLine] });
     } else {
