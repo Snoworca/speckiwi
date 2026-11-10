@@ -397,7 +397,7 @@ trace links, and completed-work logging require `speckiwi mcp`. CLI commands may
 diagnose installation/version/configuration or help the user restore MCP, but
 they are not normal fallback mutation paths.
 
-미등록 target 등록만이 이 원칙의 **유일한 예외**다 — MCP 를 쓸 수 없는 degraded 상태에서 `speckiwi set-active-target <t> --create` 로 Target Map 등록을 복구할 수 있다 (SKILL.md "MCP / CLI fallback — target 등록", §3.1 진입 조건). 이 예외는 target 등록 한 가지에만 적용되며, 다른 어떤 SRS mutation 도 CLI 로 대체하지 않는다.
+kiwi-srs 가 하는 mutation 가운데 미등록 target 등록만이 이 원칙의 **예외**다(MCP 도구가 없는 target 이름 바꾸기 `speckiwi rename-target` 와 target 상태 설정 `speckiwi set-target-status` 는 루트 지침이 CLI 로 허용하지만, 사용자가 정하는 일이라 kiwi-srs 는 하지 않는다) — MCP 를 쓸 수 없는 degraded 상태에서 `speckiwi set-active-target <t> --create` 로 Target Map 등록을 복구할 수 있다 (SKILL.md "MCP / CLI fallback — target 등록", §3.1 진입 조건). 이 예외는 target 등록 한 가지에만 적용되며, 다른 어떤 SRS mutation 도 CLI 로 대체하지 않는다.
 
 | 작업 | MCP | CLI (원칙: 진단 전용) |
 |---|---|---|

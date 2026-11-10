@@ -8,7 +8,7 @@ import path from "node:path";
 import { z } from "zod";
 import { TARGET_TYPES } from "../core/target-types.js";
 import { REPORT_PATH_TOKEN_REGEX } from "../core/completed-work/report-paths.js";
-import { createTestMcpServer, type McpDependencies, type McpServerHandle, type McpToolHandler } from "./adapter.js";
+import { createTestMcpServer, WRITE_TOOL_WORKSPACE_ROOT_REFUSAL, type McpDependencies, type McpServerHandle, type McpToolHandler } from "./adapter.js";
 import { mcpFailure } from "./errors.js";
 import { getServerMetadata, type PackageInfo } from "./metadata.js";
 // @req FR-MCP-060 — imported for its side-effect-free projection only, and read inside a function
@@ -45,10 +45,17 @@ export function createMcpServer(deps: McpDependencies): McpServerHandle {
   const server = createTestMcpServer(deps);
   // @req FR-NODE-281 AC-7 — every mutation tool is registered through this one seam, whichever file
   // registers it, so a tool added later refuses an undeclared argument without being listed here.
+  // @req FR-MCP-074 AC-3 — and says, when handed workspaceRoot, why a write stays in this checkout;
+  // `kind` cannot decide that, because writers such as supersede_requirement register without one.
   const registrar: McpServerHandle = {
     ...server,
     registerTool: (name, handler, metadata) =>
-      server.registerTool(name, isReadOnlyTool(name) ? handler : refusingUndeclaredArguments(name, handler), metadata)
+      isReadOnlyTool(name)
+        ? server.registerTool(name, handler, metadata)
+        : server.registerTool(name, refusingUndeclaredArguments(name, handler), {
+          ...metadata,
+          workspaceRootRefusal: metadata?.workspaceRootRefusal ?? WRITE_TOOL_WORKSPACE_ROOT_REFUSAL
+        })
   };
   registerReadTools(registrar, deps);
   registerMutationTools(registrar, deps);

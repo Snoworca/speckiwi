@@ -75,7 +75,7 @@ export interface McpToolMetadata {
   kind?: MutationToolKind;
   workspaceScope?: WorkspaceScope;
   callerPathKeys?: readonly string[];
-  workspaceRootRefusal?: { reason: WorkspaceRootReason; message: string };
+  workspaceRootRefusal?: { reason: WorkspaceRootReason; message: string; recovery?: string };
   [key: string]: unknown;
 }
 
@@ -90,12 +90,29 @@ export interface McpServerHandle {
 
 const VALID_KINDS: readonly MutationToolKind[] = ["req-scoped", "log-append", "workspace"];
 
+// @req FR-MCP-074 AC-4 — about this tool only: the SRS query family does take the argument.
 const UNSUPPORTED_MESSAGE =
-  "Per-call workspace root override is not supported; start a server for the intended workspace root.";
+  "This tool does not take a per-call workspace root; it answers for the root this MCP server was started in, so start a server for the intended workspace root.";
 // @req FR-MCP-055: no tool can move an already-running server, so name the operator action instead
 // of a tool this server does not register.
 const UNSUPPORTED_RECOVERY =
   "The workspace root is resolved only from the MCP server process working directory. Start the SpecKiwi MCP server — or the agent session that owns it — in the intended project directory instead of passing root per call.";
+/**
+ * What a tool that writes says when it is handed `workspaceRoot`: the refusal stays (REL-MCP-005
+ * AC-3), and the caller learns why and how to write in a worktree instead of reaching for the CLI,
+ * whose `--root` checks nothing. The server applies it to every tool outside the read-only set.
+ * @req FR-MCP-074 AC-1 AC-2 AC-3
+ */
+export const WRITE_TOOL_WORKSPACE_ROOT_REFUSAL = Object.freeze({
+  reason: "workspace-root-unsupported-for-tool" as const,
+  message:
+    "This tool writes only in the checkout this MCP server was started in and does not take a per-call workspace root: the Requirement ID counter and the SRS mutation lock are kept per checkout, so one session writing into two checkouts would allocate Requirement IDs from two counters that neither lock excludes, and a write that omitted the argument would land in this checkout unnoticed.",
+  recovery:
+    "To write in a worktree, start a new agent session with that worktree as its working directory, so that its MCP server binds there; an orchestrator lane records the mutation with --defer-srs-mutation and the host applies it with orchestrate_replay_apply. " +
+    "Requirement IDs that two branches allocated alike collide between branches at merge, where the duplicate Requirement ID repair workflow resolves them. " +
+    UNSUPPORTED_RECOVERY
+});
+
 /** @req FR-MCP-067 AC-5 — what an unbound server tells the caller to do. */
 export function unboundRecovery(unbound: McpUnboundStartup): string {
   const common =
@@ -212,7 +229,8 @@ export function createTestMcpServer(deps: McpDependencies): McpServerHandle {
           "MCP_WORKSPACE_ROOT_UNSUPPORTED",
           override?.reason ?? "workspace-root-unsupported-for-tool",
           override?.message ?? UNSUPPORTED_MESSAGE,
-          { root: input.root, workspaceRoot: input.workspaceRoot }
+          { root: input.root, workspaceRoot: input.workspaceRoot },
+          override?.recovery
         )
       };
     }

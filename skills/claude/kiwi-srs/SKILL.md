@@ -848,7 +848,7 @@ emit 실패는 best-effort — 본 작업 (SRS 갱신·사용자 보고) 의 성
 
 ## 13. MCP / CLI fallback — target 등록 예외와 CLI 진단
 
-정상 target-scoped SRS read/mutation 은 전부 MCP 로만 수행한다. 아래 CLI 칸은 그 작업의 대체 경로가 아니라 설치·버전·설정을 확인하는 자리다. **미등록 target 등록만이 이 원칙의 유일한 예외**이며, 다른 어떤 SRS mutation 도 CLI 로 대체하지 않는다.
+정상 target-scoped SRS read/mutation 은 전부 MCP 로만 수행한다. 아래 CLI 칸은 그 작업의 대체 경로가 아니라 설치·버전·설정을 확인하는 자리다. **kiwi-srs 가 하는 mutation 가운데 미등록 target 등록만이 이 원칙의 예외**이며, 다른 어떤 SRS mutation 도 CLI 로 대체하지 않는다. 루트 지침은 MCP 도구가 없는 target 이름 바꾸기(`speckiwi rename-target`)와 target 상태 설정(`speckiwi set-target-status`)도 CLI 로 허용하지만, 둘 다 사용자가 정하는 일이라 kiwi-srs 는 하지 않는다.
 
 | 작업 | MCP | CLI (원칙: 진단 전용) |
 |---|---|---|
