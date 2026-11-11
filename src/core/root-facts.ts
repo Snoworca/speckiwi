@@ -36,10 +36,11 @@ export interface GitAnswer {
  * Runs one git command in `root`. A non-zero exit is an answer, not a failure — `merge-base
  * --is-ancestor` reports its verdict that way — so nothing here throws. `env` replaces the inherited
  * environment for this one call; callers that pass none get the process environment, as always.
+ * `input`, when given, is written to git's standard input, for the `--stdin` forms.
  */
-export function git(root: string, args: readonly string[], env?: NodeJS.ProcessEnv): Promise<GitAnswer> {
+export function git(root: string, args: readonly string[], env?: NodeJS.ProcessEnv, input?: string): Promise<GitAnswer> {
   return new Promise((resolve) => {
-    execFile(
+    const child = execFile(
       "git",
       ["-C", root, ...args],
       { encoding: "utf8", windowsHide: true, maxBuffer: 64 * 1024 * 1024, timeout: GIT_TIMEOUT_MS, ...(env ? { env } : {}) },
@@ -48,6 +49,11 @@ export function git(root: string, args: readonly string[], env?: NodeJS.ProcessE
         resolve({ code, stdout, stderr });
       }
     );
+    if (input === undefined) return;
+    // A git that never started, or exited before reading, breaks the pipe; the callback above already
+    // reports that outcome, so the write error carries nothing more.
+    child.stdin?.on("error", () => undefined);
+    child.stdin?.end(input, "utf8");
   });
 }
 

@@ -1,5 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { environmentWithoutRepositoryLocation, git } from "../root-facts.js";
 
 // @req FR-NODE-210 AC-1 AC-3 @req REL-NODE-007
 //
@@ -220,6 +221,33 @@ export function testFileMatcher(globs: readonly string[] = DEFAULT_TEST_FILE_GLO
 /** Every test file under `rootPath`, as sorted workspace-relative POSIX paths. */
 export async function listTestFiles(rootPath: string, globs: readonly string[] = DEFAULT_TEST_FILE_GLOBS): Promise<string[]> {
   return walkFiles(rootPath, rootPath, testFileMatcher(globs));
+}
+
+export interface TestFileSearch {
+  /** The test files counted, as sorted workspace-relative POSIX paths. */
+  readonly files: string[];
+  /** Test files the repository's ignore rules left out. */
+  readonly ignoredCount: number;
+  /** `git` when the repository's ignore rules were applied; `none` when git could not answer. */
+  readonly ignoreRules: "git" | "none";
+}
+
+/**
+ * The test files under `rootPath` that the repository's git ignore rules do not exclude, so a build
+ * output under an ignored `build/` or `bin/` never counts as a test. git is asked once, for every
+ * candidate. `check-ignore` never reports a tracked path, so a force-added test stays, and it applies
+ * `!` re-includes itself; it exits 1 when nothing is ignored. Any other answer — no repository, no
+ * git, a candidate inside a submodule — keeps every candidate and says the rules were not applied.
+ *
+ * @req FR-NODE-292 AC-1 AC-2 AC-4 AC-5
+ */
+export async function findTestFiles(rootPath: string, globs: readonly string[] = DEFAULT_TEST_FILE_GLOBS): Promise<TestFileSearch> {
+  const candidates = await listTestFiles(rootPath, globs);
+  const answer = await git(rootPath, ["check-ignore", "-z", "--stdin"], environmentWithoutRepositoryLocation(), candidates.map((file) => `${file}\0`).join(""));
+  if (answer.code !== 0 && answer.code !== 1) return { files: candidates, ignoredCount: 0, ignoreRules: "none" };
+  const ignored = new Set(answer.stdout.split("\0").filter((file) => file !== ""));
+  const files = candidates.filter((file) => !ignored.has(file));
+  return { files, ignoredCount: candidates.length - files.length, ignoreRules: "git" };
 }
 
 export interface TestCitation {

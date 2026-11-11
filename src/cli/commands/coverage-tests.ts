@@ -38,8 +38,10 @@ function scopeOf(options: CoverageTestsOptions): TestSufficiencyScope {
 function formatReport(report: TestSufficiencyReport): string {
   const criteria = report.requirements.flatMap((item) => item.acs);
   const subject = report.scope.ids !== null ? `ids ${report.scope.ids.join(", ")}` : `target ${report.scope.target ?? "-"}`;
+  // @req FR-NODE-292 AC-3 AC-4 — the header says how many test files the ignore rules left out, or that none were applied.
+  const ignored = report.ignoreRules === "git" ? `${report.ignoredTestFileCount} ignored` : "git ignore rules not applied";
   const lines = [
-    `Test sufficiency (${subject}, ${report.testFileCount} test files): ${criteria.filter((ac) => ac.cited).length} of ${criteria.length} acceptance criteria cited` +
+    `Test sufficiency (${subject}, ${report.testFileCount} test files, ${ignored}): ${criteria.filter((ac) => ac.cited).length} of ${criteria.length} acceptance criteria cited` +
       (report.scope.sds !== null ? `; ${report.sdsContracts.filter((ac) => ac.cited).length} of ${report.sdsContracts.length} contracts of ${report.scope.sds} cited` : "")
   ];
   for (const gap of report.gaps.requirements) for (const acId of gap.acIds) lines.push(`gap ${gap.requirementId} ${acId}`);

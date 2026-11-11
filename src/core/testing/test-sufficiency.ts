@@ -3,7 +3,7 @@ import { knownRequirements, loadSdsFile, readWorkspaceText } from "../sds/check-
 import type { LiteSdsDocument } from "../sds/lite-sds.js";
 import type { ParsedWorkspace, RequirementRecord } from "../types.js";
 import { resolveTargetSelection } from "../query/summary.js";
-import { DEFAULT_TEST_FILE_GLOBS, indexTestCitations, listTestFiles, type TestCitation } from "./test-citations.js";
+import { DEFAULT_TEST_FILE_GLOBS, findTestFiles, indexTestCitations, type TestCitation } from "./test-citations.js";
 
 // @req FR-NODE-210 AC-2 AC-4 AC-5 @req FR-MCP-066
 //
@@ -52,6 +52,10 @@ export interface ExpiredCitation {
 export interface TestSufficiencyReport {
   readonly scope: { target: string | null; ids: string[] | null; sds: string | null; testGlobs: string[] };
   readonly testFileCount: number;
+  /** @req FR-NODE-292 AC-3 — test files the repository's git ignore rules left out. */
+  readonly ignoredTestFileCount: number;
+  /** `git` when the ignore rules were applied; `none` when git could not answer and every candidate counts. */
+  readonly ignoreRules: "git" | "none";
   readonly requirements: RequirementCoverage[];
   readonly sdsContracts: ContractCoverage[];
   /** Listed apart from `requirements` and never a gap or a pass. */
@@ -103,7 +107,8 @@ export async function checkTestSufficiency(workspace: ParsedWorkspace, scope: Te
   }
 
   const globs = scope.testGlobs !== undefined && scope.testGlobs.length > 0 ? [...scope.testGlobs] : [...DEFAULT_TEST_FILE_GLOBS];
-  const testFiles = await listTestFiles(rootPath, globs);
+  const search = await findTestFiles(rootPath, globs);
+  const testFiles = search.files;
   const planned = contracts === null ? [] : [...new Set(contracts.testPlan.flatMap((row) => row.testFiles))];
   const texts = new Map<string, string | null>();
   for (const file of [...new Set([...testFiles, ...planned])]) texts.set(file, await readWorkspaceText(rootPath, file));
@@ -167,6 +172,8 @@ export async function checkTestSufficiency(workspace: ParsedWorkspace, scope: Te
   return ok({
     scope: { target: resolved.value.target, ids: resolved.value.ids, sds: contracts?.path ?? null, testGlobs: globs },
     testFileCount: testFiles.length,
+    ignoredTestFileCount: search.ignoredCount,
+    ignoreRules: search.ignoreRules,
     requirements,
     sdsContracts,
     expiredCitations,

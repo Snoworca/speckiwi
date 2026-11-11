@@ -611,7 +611,7 @@ speckiwi coverage --tests --ids FR-APP-001,FR-APP-002        # the same for name
 speckiwi coverage --tests --sds docs/sds/<sds-id>.sds.md --fail-on-gap   # also the SDS contracts; exit 1 on a gap
 ```
 
-A test counts for an acceptance criterion when its line cites `<REQ-ID> AC-<n>`, such as `it("FR-APP-001 AC-2: rejects an expired token", ...)`. With `--sds`, each SDS contract also needs a line citing `SDS-AC-<n>` in the test file its Test Plan row names. The requirements checked default to the Active Target; `--ids` or `--target` narrows them. `--test-glob <glob>` replaces the default test-file patterns. The MCP equivalents are `check_sds` and `check_test_sufficiency`.
+A test counts for an acceptance criterion when its line cites `<REQ-ID> AC-<n>`, such as `it("FR-APP-001 AC-2: rejects an expired token", ...)`. With `--sds`, each SDS contract also needs a line citing `SDS-AC-<n>` in the test file its Test Plan row names. The requirements checked default to the Active Target; `--ids` or `--target` narrows them. `--test-glob <glob>` replaces the default test-file patterns. A file the repository's git ignore rules exclude, such as a build output under an ignored `build/`, is never counted, and the report gives how many were left out (`ignoredTestFileCount`). When git cannot answer, as outside a repository, every matching file counts and the report says so (`ignoreRules: none`). The MCP equivalents are `check_sds` and `check_test_sufficiency`.
 
 ### Maintain the index
 
@@ -1611,7 +1611,7 @@ speckiwi coverage --tests --ids FR-APP-001,FR-APP-002        # 지정한 요구�
 speckiwi coverage --tests --sds docs/sds/<sds-id>.sds.md --fail-on-gap   # SDS 계약까지 확인하고, 공백이 있으면 종료 코드 1
 ```
 
-테스트가 수용 기준을 다룬다고 인정받으려면 그 테스트의 줄에 `<REQ-ID> AC-<n>`이 인용되어 있어야 합니다. 예를 들면 `it("FR-APP-001 AC-2: rejects an expired token", ...)`입니다. `--sds`를 주면 SDS 계약마다, 그 계약의 Test Plan 행이 지정한 테스트 파일 안에 `SDS-AC-<n>`을 인용한 줄도 있어야 합니다. 확인할 요구사항은 기본적으로 Active Target의 요구사항이며, `--ids`나 `--target`으로 좁힐 수 있습니다. `--test-glob <glob>`은 기본 테스트 파일 패턴을 대체합니다. 같은 일을 하는 MCP 도구는 `check_sds`와 `check_test_sufficiency`입니다.
+테스트가 수용 기준을 다룬다고 인정받으려면 그 테스트의 줄에 `<REQ-ID> AC-<n>`이 인용되어 있어야 합니다. 예를 들면 `it("FR-APP-001 AC-2: rejects an expired token", ...)`입니다. `--sds`를 주면 SDS 계약마다, 그 계약의 Test Plan 행이 지정한 테스트 파일 안에 `SDS-AC-<n>`을 인용한 줄도 있어야 합니다. 확인할 요구사항은 기본적으로 Active Target의 요구사항이며, `--ids`나 `--target`으로 좁힐 수 있습니다. `--test-glob <glob>`은 기본 테스트 파일 패턴을 대체합니다. 저장소의 git 무시 규칙이 제외하는 파일(무시된 `build/` 아래의 빌드 산출물 등)은 세지 않으며, 그렇게 빠진 파일 수가 결과에 나옵니다(`ignoredTestFileCount`). 저장소 밖처럼 git이 답하지 못하면 패턴에 맞는 파일을 모두 세고, 결과에 그 사실을 적습니다(`ignoreRules: none`). 같은 일을 하는 MCP 도구는 `check_sds`와 `check_test_sufficiency`입니다.
 
 ### 인덱스 관리
 
