@@ -39,7 +39,7 @@
 
 ## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`
 
-처음 저작 뒤와 증분 저작(`wave-srs-registration.md §2`) 뒤마다 `speckiwi prd coverage <PRD> --target <제품 target> --json` 을 돌린다. 그 `uncitedItems` 의 항목은 `speckiwi targets --json` 이 나열하는 다른 target `t` 마다 `speckiwi prd coverage <PRD> --target <t> --json` 의 `uncitedItems` 에도 있을 때만 이 run 에서 빠진 항목으로 센다. 빠진 항목이 하나라도 있으면 다음 dispatch 전에 `wave-decomposition-coverage-gap` 으로 멈춘다. 다른 target 의 요구가 인용한 항목(그 target 의 `uncitedItems` 에 없는 항목)은 멈추지 않고 그 target 에 배정되었다고 보고한다.
+처음 저작 뒤와 증분 저작(`wave-srs-registration.md §2`) 뒤마다 `speckiwi prd coverage <PRD> --target <제품 target> --json` 을 돌린다. 다른 target 의 대조도 같은 호출이 한다: 그 결과의 `missingItems` 가 이 run 에서 빠진 항목이고, `assignedToOtherTargets` 는 다른 target 의 요구가 이 PRD 의 경로를 붙여(`docs/prd/<file>.prd.md#PRD-<n>`) 인용한 항목이다. `missingItems` 가 하나라도 있으면 다음 dispatch 전에 `wave-decomposition-coverage-gap` 으로 멈추고, `assignedToOtherTargets` 의 항목은 멈추지 않고 그 target 에 배정되었다고 보고한다. 다른 target 의 요구가 번호만 쓴 인용(`PRD-<n>`)은 그 target 자신의 PRD 항목으로 읽으므로 세지 않는다 — 그런 요구는 빠진 항목의 `bareCitations` 에 나오며, 그 요구가 이 PRD 의 항목을 뜻하면 경로를 붙여 인용하라고 보고한다.
 
 ## 6. 재분해 — 아직 dispatch 하지 않은 노드만
 

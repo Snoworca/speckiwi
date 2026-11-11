@@ -169,6 +169,11 @@ export function parseStatusPaths(output: string): string[] {
   return paths;
 }
 
+function lockReasonOf(block: readonly string[]): { lockReason?: string } {
+  const reason = block.find((line) => line.startsWith("locked "))?.slice("locked ".length).trim();
+  return reason ? { lockReason: reason } : {};
+}
+
 /** `git worktree list --porcelain`, one entry per block. */
 function parseWorktrees(text: string): GitFacts["worktrees"] {
   return text
@@ -180,7 +185,9 @@ function parseWorktrees(text: string): GitFacts["worktrees"] {
       return {
         path: (block.find((line) => line.startsWith("worktree ")) as string).slice("worktree ".length),
         branch: branch === null ? null : branch.replace(/^refs\/heads\//, ""),
-        locked: block.some((line) => line === "locked" || line.startsWith("locked "))
+        locked: block.some((line) => line === "locked" || line.startsWith("locked ")),
+        // @req FR-NODE-299 AC-1 — `locked <reason>`: the reason is the pid an isolated agent records.
+        ...lockReasonOf(block)
       };
     });
 }

@@ -78,6 +78,25 @@ export interface AppendWorkflowJsonlOutput {
   relativePath: string;
   written: boolean;
   eventKey: string;
+  /** The diagnostics of the lines already in the file, as counts. @req FR-NODE-300 AC-1 */
+  existingLineDiagnostics: DiagnosticCounts;
+}
+
+/** Diagnostics reported as a total and a count per code. */
+export interface DiagnosticCounts {
+  total: number;
+  byCode: Record<string, number>;
+}
+
+/**
+ * @req FR-NODE-300 — the lines already in a journal are reported as counts. Each of them rode on every
+ * append in full, so one emit over a journal with 139 old warnings answered 31 KB; the full list is
+ * what the read tools (`pipeline-status`, `pipeline-tail`) are for.
+ */
+export function countDiagnostics(diagnostics: readonly Diagnostic[]): DiagnosticCounts {
+  const byCode: Record<string, number> = {};
+  for (const entry of diagnostics) byCode[entry.code] = (byCode[entry.code] ?? 0) + 1;
+  return { total: diagnostics.length, byCode };
 }
 
 const DEFAULT_SCHEMA_VERSIONS = ["1.0.0"];
@@ -454,8 +473,13 @@ export async function appendWorkflowJsonl(
       await handle.close();
     }
   }
+  // A refusal above reports every diagnostic (FR-NODE-193); a write lists its own line's and counts the
+  // rest — `diagnosticsSummary` still counts both, as it always did.
   return withMutationEnvelope(
-    mutationOk({ relativePath, written: !dryRun, eventKey: eventKey(event) }, diagnostics),
+    {
+      ...mutationOk({ relativePath, written: !dryRun, eventKey: eventKey(event), existingLineDiagnostics: countDiagnostics(parsed.diagnostics) }, eventDiagnostics),
+      diagnosticsSummary: summarizeDiagnostics(diagnostics)
+    },
     appendEnvelope(relativePath, dryRun, !dryRun, line)
   );
 }

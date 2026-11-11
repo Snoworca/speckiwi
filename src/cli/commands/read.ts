@@ -52,7 +52,7 @@ import {
 } from "../../core/workflow/read.js";
 import { buildNextWorkOrder } from "../../core/workflow/work-order.js";
 import { planVerificationRound, recordSectionVerified } from "../../core/workflow/verification-ledger.js";
-import { applyWorkflowMutation, type WorkflowMutationInput, type WorkflowMutationKind } from "../../core/workflow/mutation.js";
+import { applyWorkflowMutation, defaultWorkflowOwner, type WorkflowMutationInput, type WorkflowMutationKind } from "../../core/workflow/mutation.js";
 import type { WorkflowArtifactKind } from "../../core/workflow/artifacts.js";
 
 async function workspaceFrom(options: { root?: string }) {
@@ -256,10 +256,10 @@ function parseJsonObjectOption(value: unknown, label: string, command: Command):
   command.error(`${label} must be a JSON object`, { exitCode: exitCodeFor("USAGE") });
 }
 
-function workflowMutationBase(kind: WorkflowMutationKind, raw: Record<string, unknown>, command: Command): WorkflowMutationInput {
+function workflowMutationBase(kind: WorkflowMutationKind, raw: Record<string, unknown>, command: Command, event?: Record<string, unknown>): WorkflowMutationInput {
   return {
     kind,
-    owner: typeof raw.owner === "string" ? raw.owner : "kiwi-pm",
+    owner: typeof raw.owner === "string" ? raw.owner : defaultWorkflowOwner(event),
     runId: requireStringOption(raw, "runId", command),
     ...(typeof raw.taskId === "string" ? { taskId: raw.taskId } : {}),
     ...(typeof raw.reqId === "string" ? { reqId: raw.reqId } : {}),
@@ -654,7 +654,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
 
   const addWorkflowMutationOptions = (target: Command): Command =>
     addWorkflowOptions(target)
-      .option("--owner <owner>", "workflow mutation owner", "kiwi-pm")
+      .option("--owner <owner>", "workflow mutation owner (default: the event's skill, else kiwi-pm)")
       .option("--req-id <reqId>")
       .option("--reason <text>")
       .option("--expected-sha256 <sha>")
@@ -667,26 +667,29 @@ export function registerReadCommands(command: Command, context: CliContext): voi
   };
 
   addWorkflowMutationOptions(workflow.command("pipeline-emit").requiredOption("--event <json>", "JSON event object")).action(async (options) => {
+    const event = parseJsonObjectOption(options.event, "event", workflow);
     await workflowMutationOutput(options, {
-      ...workflowMutationBase("pipeline_event_append", options, workflow),
+      ...workflowMutationBase("pipeline_event_append", options, workflow, event),
       jsonlPath: typeof options.path === "string" ? options.path : "kiwi/pipeline.jsonl",
-      event: parseJsonObjectOption(options.event, "event", workflow)
+      event
     });
   });
   addWorkflowMutationOptions(workflow.command("worklog-emit").requiredOption("--event <json>", "JSON event object")).action(async (options) => {
     const runId = requireStringOption(options, "runId", workflow);
+    const event = parseJsonObjectOption(options.event, "event", workflow);
     await workflowMutationOutput(options, {
-      ...workflowMutationBase("worklog_event_append", options, workflow),
+      ...workflowMutationBase("worklog_event_append", options, workflow, event),
       jsonlPath: typeof options.path === "string" ? options.path : `.kiwi/sessions/${runId}/worklog.jsonl`,
-      event: parseJsonObjectOption(options.event, "event", workflow)
+      event
     });
   });
   addWorkflowMutationOptions(workflow.command("repair-record").requiredOption("--event <json>", "JSON repair event object")).action(async (options) => {
     const runId = requireStringOption(options, "runId", workflow);
+    const event = parseJsonObjectOption(options.event, "event", workflow);
     await workflowMutationOutput(options, {
-      ...workflowMutationBase("workflow_repair_record", options, workflow),
+      ...workflowMutationBase("workflow_repair_record", options, workflow, event),
       jsonlPath: typeof options.path === "string" ? options.path : `.kiwi/sessions/${runId}/worklog.jsonl`,
-      event: parseJsonObjectOption(options.event, "event", workflow)
+      event
     });
   });
   const reclassifyRecord = workflow

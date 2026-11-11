@@ -135,13 +135,18 @@ export interface OrchTrailerCommit {
  * carrying three of them belongs to a different unit of the same run and proves nothing about this one.
  */
 export function hasMergeWitness(commits: readonly OrchTrailerCommit[], runId: string, key: LaneKey): boolean {
+  return mergeWitnessOf(commits, runId, key) !== undefined;
+}
+
+/** The first commit that witnesses the unit's landing, by the same four trailers. @req FR-NODE-299 AC-3 */
+export function mergeWitnessOf(commits: readonly OrchTrailerCommit[], runId: string, key: LaneKey): OrchTrailerCommit | undefined {
   const expected: Record<(typeof MERGE_WITNESS_TRAILERS)[number], string> = {
     "Orch-Run": runId,
     "Orch-Wave": String(key.wave),
     "Orch-Stage": String(key.stage),
     "Orch-Lane": key.lane
   };
-  return commits.some((commit) => MERGE_WITNESS_TRAILERS.every((trailer) => commit.trailers[trailer] === expected[trailer]));
+  return commits.find((commit) => MERGE_WITNESS_TRAILERS.every((trailer) => commit.trailers[trailer] === expected[trailer]));
 }
 
 export interface PriorStagesInput {

@@ -20,7 +20,7 @@ import {
   type VerbName,
   type WavesEvent
 } from "./journal-schema.js";
-import { hasMergeWitness, readLaneDisposition, type OrchTrailerCommit } from "./lane-state.js";
+import { mergeWitnessOf, readLaneDisposition, type OrchTrailerCommit } from "./lane-state.js";
 import type { WaveSdsDigest } from "./freeze.js";
 import { computeInvariantDigest, type ResumeCard } from "./resume-card.js";
 // @req FR-NODE-113 — 09 §9.5 step 3's drift check, and deliberately not the classifier: the rung is
@@ -31,7 +31,8 @@ import type { WavesJournalView } from "./waves-journal.js";
 
 export interface GitFacts {
   branches: Array<{ name: string; sha: string; ancestorOfIntegration: boolean }>;
-  worktrees: Array<{ path: string; branch: string | null; locked: boolean }>;
+  /** `lockReason` is git's `locked <reason>` text, when git gives one. @req FR-NODE-299 AC-1 */
+  worktrees: Array<{ path: string; branch: string | null; locked: boolean; lockReason?: string }>;
   /**
    * Phase 2's freshness conjunct (§P2 5.5.3). Phase 1 creates no worktree, so liveness here is decided
    * by the workspace lock and by the unattributed-workspace window alone — which is what keeps this
@@ -108,12 +109,24 @@ export interface DriftInputs {
   routeObserved?: { probeDigest: string; lockDigest: string };
 }
 
+/**
+ * What a blocking classification rests on. @req FR-NODE-299 — a refusal that named no lane left the
+ * session unable to tell a running worker from an interrupted verb.
+ */
+export type LaneEvidence =
+  | { reason: "locked-worktree"; worktree: string; lockReason?: string }
+  | { reason: "unmatched-external-intent"; interruptedVerb: string; journalLine: number; detachedWorktrees: string[] }
+  | { reason: "landed-without-integrate-result"; branch?: string; mergeWitness?: string }
+  | { reason: "unreadable-disposition"; detail: string };
+
 export interface LaneClass {
   lane: string;
   wave: number;
   stage: number;
   klass: LaneClassName;
   nextVerb: VerbName | null;
+  /** Set only on the classes that block a resume. */
+  evidence?: LaneEvidence;
 }
 
 export interface NextAction {
@@ -184,10 +197,15 @@ function branchFor(gitFacts: GitFacts, lane: string) {
  * `unknown` is the pre-rename window — an unattributed workspace while some verb of the scope has an
  * unmatched externally-visible intent; everything else is `dead`. The function is TOTAL.
  */
-function liveness(gitFacts: GitFacts, lane: string, hasUnmatchedExternalIntent: boolean): "live" | "unknown" | "dead" {
+function liveness(gitFacts: GitFacts, lane: string, interrupted: InterruptedVerb | null): LaneEvidence | "dead" {
   const attributed = gitFacts.worktrees.find((tree) => tree.branch !== null && (tree.branch === lane || tree.branch.endsWith(`/${lane}`)));
-  if (attributed?.locked === true) return "live";
-  if (hasUnmatchedExternalIntent && gitFacts.worktrees.some((tree) => tree.branch === null)) return "unknown";
+  if (attributed?.locked === true) {
+    return { reason: "locked-worktree", worktree: attributed.path, ...(attributed.lockReason ? { lockReason: attributed.lockReason } : {}) };
+  }
+  const detached = gitFacts.worktrees.filter((tree) => tree.branch === null).map((tree) => tree.path);
+  if (interrupted !== null && recoveryClassOf(interrupted.event.verb as string) === "externally-visible" && detached.length > 0) {
+    return { reason: "unmatched-external-intent", interruptedVerb: interrupted.event.verb as string, journalLine: interrupted.event.journalLine, detachedWorktrees: detached };
+  }
   return "dead";
 }
 
@@ -195,7 +213,7 @@ function classifyLanes(
   view: WavesJournalView,
   card: ResumeCard,
   gitFacts: GitFacts,
-  hasUnmatchedExternalIntent: boolean
+  interrupted: InterruptedVerb | null
 ): LaneClass[] {
   const wave = card.position?.wave ?? 0;
   const stage = card.position?.stage ?? 0;
@@ -229,18 +247,27 @@ function classifyLanes(
     // @req FR-NODE-160 — a landed worker may leave no lane branch, only a trailered commit on the
     // integration branch, so `ancestorOfIntegration` alone read a landed wave as never dispatched with
     // nothing blocking. Either witness is a landing.
-    const merged =
-      branch?.ancestorOfIntegration === true ||
-      hasMergeWitness(gitFacts.integrationCommits ?? [], view.runId, { wave, stage, lane });
+    const branchLanded = branch?.ancestorOfIntegration === true;
+    const witness = mergeWitnessOf(gitFacts.integrationCommits ?? [], view.runId, { wave, stage, lane });
+    const merged = branchLanded || witness !== undefined;
     const integrated = events.some((event) => event.verb === "integrate-lane" && event.event === "result");
-    const live = liveness(gitFacts, lane, hasUnmatchedExternalIntent);
+    const live = liveness(gitFacts, lane, interrupted);
 
     // First match wins, in §4.6's order.
-    if (live !== "dead") return { lane, wave, stage, klass: "lane-possibly-live" as LaneClassName, nextVerb: null };
-    if (!read.ok) return { lane, wave, stage, klass: "divergent" as LaneClassName, nextVerb: null };
+    if (live !== "dead") return { lane, wave, stage, klass: "lane-possibly-live" as LaneClassName, nextVerb: null, evidence: live };
+    if (!read.ok) {
+      return { lane, wave, stage, klass: "divergent" as LaneClassName, nextVerb: null, evidence: { reason: "unreadable-disposition", detail: read.detail } };
+    }
     if (disposition && !merged) return { lane, wave, stage, klass: "lane-quarantined" as LaneClassName, nextVerb: null };
     if (merged && integrated) return { lane, wave, stage, klass: "lane-landed" as LaneClassName, nextVerb: null };
-    if (merged && !integrated) return { lane, wave, stage, klass: "journal-behind-git" as LaneClassName, nextVerb: null };
+    if (merged && !integrated) {
+      const landed: LaneEvidence = {
+        reason: "landed-without-integrate-result",
+        ...(branchLanded && branch ? { branch: branch.name } : {}),
+        ...(witness ? { mergeWitness: witness.commit } : {})
+      };
+      return { lane, wave, stage, klass: "journal-behind-git" as LaneClassName, nextVerb: null, evidence: landed };
+    }
     // @req FR-NODE-160 AC-4 — an un-landed wave's worker is dispatched again.
     return { lane, wave, stage, klass: "not-dispatched" as LaneClassName, nextVerb: "dispatch-lane" as VerbName };
   });
@@ -403,6 +430,24 @@ export function retiredRunMarkers(view: WavesJournalView, card: ResumeCard): str
 
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * The lane classes behind each blocking reconciliation outcome. Deciding the outcome and naming the
+ * lanes that caused it read this one table, so a refusal cannot list a lane its gate did not come
+ * from. @req FR-NODE-299
+ */
+const RECONCILIATION_GATE_CLASSES: Readonly<Record<"interrupted-external-action" | "ledger-reconciliation-divergent", readonly LaneClassName[]>> = {
+  "interrupted-external-action": ["lane-possibly-live"],
+  "ledger-reconciliation-divergent": ["journal-behind-git", "divergent"]
+};
+
+/** The lanes whose class raises `gate`, in classification order. */
+export function reconciliationLanes(
+  gate: "interrupted-external-action" | "ledger-reconciliation-divergent",
+  classification: readonly LaneClass[]
+): LaneClass[] {
+  return classification.filter((entry) => RECONCILIATION_GATE_CLASSES[gate].includes(entry.klass));
+}
+
 export function computeResumeState(
   view: WavesJournalView,
   card: ResumeCard,
@@ -411,14 +456,11 @@ export function computeResumeState(
 ): ResumeState {
   const interrupted = firstInterruptedVerb(view);
   const interruptedVerb = interrupted ? (interrupted.event.verb as string) : null;
-  const recoveryClass = interruptedVerb === null ? null : recoveryClassOf(interruptedVerb);
-  const hasUnmatchedExternalIntent = recoveryClass === "externally-visible";
-
-  const classification = classifyLanes(view, card, gitFacts, hasUnmatchedExternalIntent);
+  const classification = classifyLanes(view, card, gitFacts, interrupted);
   const drift = computeDrift(view, card, driftInputs);
 
-  const possiblyLive = classification.some((entry) => entry.klass === "lane-possibly-live");
-  const divergent = classification.some((entry) => entry.klass === "journal-behind-git" || entry.klass === "divergent");
+  const possiblyLive = reconciliationLanes("interrupted-external-action", classification).length > 0;
+  const divergent = reconciliationLanes("ledger-reconciliation-divergent", classification).length > 0;
   const reconciliation: ReconciliationOutcome = possiblyLive
     ? "interrupted-external-action"
     : divergent

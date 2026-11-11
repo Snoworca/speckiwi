@@ -38,7 +38,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
 ### 9.1 작성자 컨텍스트
 
 작성자 local-LLM max-profile 위임 worker에게 전달:
-- PRD 경로(요약 금지) — 요구마다 Rationale 에 인용한 PRD 항목(`AC-n ← PRD-m`)이나 `fills:` 근거를 적는다(SKILL.md 핵심 규칙 블록)
+- PRD 경로(요약 금지) — 요구마다 Rationale 에 인용한 PRD 항목(`AC-n ← PRD-m`)이나 `fills:` 근거를 적는다(SKILL.md 핵심 규칙 블록). 그 target 을 저작한 PRD 가 아닌 다른 PRD 의 항목을 덮는 요구는 경로를 붙여 `docs/prd/<file>.prd.md#PRD-<n>` 으로 인용한다 — 번호만 쓴 인용은 그 target 의 PRD 항목으로 읽혀, 다른 PRD 의 `prd coverage` 가 그 항목을 이 target 에 배정된 것으로 세지 않는다.
 - 요구 사이 의존 — `depends_on` Trace Link 로 적는다(핵심 규칙 블록 FR-FLOW-208)
 - Phase 1/2/3 산출물
 - `existing_srs_context.json` (관련 REQ 전체 내용)

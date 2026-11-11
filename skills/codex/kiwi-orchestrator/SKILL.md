@@ -872,7 +872,7 @@ loop P 의 단위 계층과 착지 판정이 세는 명령은 run 이 pin 한 `v
 
 ### 13.2 닫힌 분류 목록
 
-`wave-issue-triage` 는 **3.m 에서, loop P 뒤·`promote-requirements` 앞**에 실행되며 `waves/wave-{n}/issues.md` 와 생성된 `issues.lock.json` 을 쓴다. **모든 이슈는 정확히 하나의 분류를 받고 목록은 닫혀 있다.**
+`wave-issue-triage` 는 **3.m 에서, loop P 뒤·`promote-requirements` 앞**에 실행되며 `waves/wave-{n}/issues.md` 와 생성된 `issues.lock.json` 을 쓴다. 이 verb 와 `promote-requirements` 의 줄이 loop P 의 `pass` 를 가리지 않는다: `verification` 을 싣지 않은 줄 — verb 의 `intent`·`result` 원장 줄 등 — 은 `phase` 를 `wave-verify` 로 달아도 wave-verify 기록이 아니며, 게이트는 `verification` 을 실은 wave-verify 줄(`orchestrate round record` 가 쓰는 라운드 줄) 가운데 최신 1줄만 본다 — `journal append` 의 `complete-without-latest-pass` 거절은 그 줄의 번호와 verdict 를 적는다. **모든 이슈는 정확히 하나의 분류를 받고 목록은 닫혀 있다.**
 
 합집합의 잔여는 MCP `orchestrate_issue_open` 에 `payload` 로 행 하나를 주어 원장에 열고, MCP 가 없으면 CLI `speckiwi orchestrate issue open --payload <payload> --ledger <path> --json` 이다. 이 호출은 아래 여섯 밖의 분류를 거절하고, 원장이 이미 들고 있는 `issueId` 도 함께 거절한다 — 같은 id 가 둘이면 중복 감사의 `issue:{id}` 해소가 어느 행을 가리키는지 정해지지 않으며, `orchestrate wave close` 의 분류 검사는 중복 id 를 보지 않는다. 그래서 원장에 행을 더하는 자리는 이 호출이고, 거절은 `wave-issues-open` 으로 온다.
 
@@ -1187,7 +1187,7 @@ recovery class **pure-reauthor**. Phase 3.e′. `waves/stage-{s}/partition.md` �
 ### §V.dispatch-lane
 
 recovery class **externally-visible**. Phase 3.f, `parallel-waves.md` PW-5. dispatch 직전에 run root 의 `git status --porcelain docs/spec docs/sds` 를 기록하고, 워커 입력 카드 `waves/stage-{s}/{laneId}.dispatch.json` 을 쓴 뒤 그 stage 의 워커를 한 번에 — `--serial` 이면 하나씩 — 워크트리 격리로 띄운다. 워커는 §10 의 실행자를 부른다.
-복구: `git worktree list --porcelain` 에서 그 lane 의 워크트리가 `locked … (pid N)` 이면 그 워커는 살아 있을 수 있다(FR-FLOW-118: 살아 있을 수 있는 워커는 다시 dispatch 하지 않는다) — 그 lane 을 **다시 dispatch 하지 않고** 그 워크트리의 잠금도 풀지 않으며, critical 게이트 `lane-worker-possibly-live` 로 멈춘다(`--auto` 가 결정하지 않는다 — `NEEDS_USER`). 보고에는 워크트리 경로, pid N, 생존 확인 힌트(Windows `tasklist /FI "PID eq N"`, POSIX `kill -0 N`)를 적고, pid N 이 어느 프로세스인지는 확정되지 않았으며 WSL 이나 다른 namespace 의 pid 는 죽은 것처럼 보일 수 있다고 덧붙인다. 다시 dispatch 하거나 잠금을 푸는 것은 사용자의 답이 있을 때만이며, 그 절차는 `run-ledger.md` 의 `dispatch-lane` 이 소유한다. 워커 브랜치 `kiwi/orch/{run_id}/{laneId}` 에 trailer 커밋이 있거나 매니페스트가 있으면 `collect-lane` 으로 넘어간다.
+복구: `git worktree list --porcelain` 에서 그 lane 의 워크트리가 `locked … (pid N)` 이면 그 워커는 살아 있을 수 있다(FR-FLOW-118: 살아 있을 수 있는 워커는 다시 dispatch 하지 않는다) — 그 lane 을 **다시 dispatch 하지 않고** 그 워크트리의 잠금도 풀지 않으며, critical 게이트 `lane-worker-possibly-live` 로 멈춘다(`--auto` 가 결정하지 않는다 — `NEEDS_USER`). drift 게이트(`run-invariant-drift` 등)가 먼저 걸리지 않는 한 도구로는 `orchestrate resume` 이 이 경우를 `interrupted-external-action` 으로 거절하고, `violations` 에 그 lane 을 `klass` 가 `lane-possibly-live` 이고 `evidence.reason` 이 `locked-worktree` 인 항목(워크트리 경로 `evidence.worktree`, 잠금 사유 `evidence.lockReason`)으로 싣는다 — 그 항목이 이 `lane-worker-possibly-live` 게이트다. 보고에는 워크트리 경로, pid N, 생존 확인 힌트(Windows `tasklist /FI "PID eq N"`, POSIX `kill -0 N`)를 적고, pid N 이 어느 프로세스인지는 확정되지 않았으며 WSL 이나 다른 namespace 의 pid 는 죽은 것처럼 보일 수 있다고 덧붙인다. 다시 dispatch 하거나 잠금을 푸는 것은 사용자의 답이 있을 때만이며, 그 절차는 `run-ledger.md` 의 `dispatch-lane` 이 소유한다. 워커 브랜치 `kiwi/orch/{run_id}/{laneId}` 에 trailer 커밋이 있거나 매니페스트가 있으면 `collect-lane` 으로 넘어간다.
 게이트: `integration-test-user-consent` · `cost-warning-large-task` · `interrupted-external-action` · `lane-worker-possibly-live`.
 
 ### §V.collect-lane

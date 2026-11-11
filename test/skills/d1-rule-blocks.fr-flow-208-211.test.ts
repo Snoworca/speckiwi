@@ -90,7 +90,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "SKILL.md\t## 0. 공통 규약 (SSOT)\t25\t3cd39375:1 4199ba45:1 b49ed306:1 eb7749d9:1 cf39f9d4:1 695b2fd5:1 d41ce53e:1 409d5935:1 66105baa:1 32391a33:1 4e7732cb:1 69be011d:1 b7735515:1 bb651fbb:1 59ea2061:1 a2f4baf6:1 f6344a99:1 b1193bb3:1 c49a9d1a:1 475f9c0c:1 61d41699:1 8991009c:1 363ef397:1 55118954:1 163b506f:1",
       "SKILL.md\t### 6.1 분류\t18\tb6ce8fb9:1 a56726cd:1 021fb596:1 eb868a52:1 8a718f6d:1 0371d57a:1 80778808:1 06001ab4:1 42402ab3:1 39d4b54e:1 ee407353:1 9b6879ad:1 5db94bf9:1 717c35b4:1 18c43429:1 671df184:1 d10b36aa:1 f1b90184:1",
       "SKILL.md\t### 6.5 Multi-aspect 요구사항 분리\t5\t2c70a7a0:1 5bfbc903:1 e292f01d:1 c93d17b9:1 cb3f91d5:1",
-      "SKILL.md\t### 9.1 작성자 컨텍스트\t10\tf496c86c:1 c054a537:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
+      "SKILL.md\t### 9.1 작성자 컨텍스트\t10\tf496c86c:1 0cc77084:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
       "SKILL.md\t#### new-feature\t12\t5ed2f36c:1 ce98a41b:1 f1b90184:1 f633b27f:1 f1b90184:1 8d517f4a:1 ce39536f:1 7fbee4b0:1 848a58ec:1 058c4be0:1 5be11a5a:1 7c6abcba:1",
       "SKILL.md\t### 11.1 keep / drop\t7\t571a66ca:1 1196e5c7:1 23cca02b:1 3c7052db:1 cd083da4:1 94be3cb9:1 79b35da1:1"
     ],
@@ -99,7 +99,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "SKILL.md\t## 0. 공통 규약 (SSOT)\t25\t3cd39375:1 4199ba45:1 b49ed306:1 eb7749d9:1 cf39f9d4:1 695b2fd5:1 d41ce53e:1 2828f516:1 d8e89fe9:1 32391a33:1 4e7732cb:1 69be011d:1 b7735515:1 bb651fbb:1 59ea2061:1 0c22beea:1 f6344a99:1 b1193bb3:1 c49a9d1a:1 475f9c0c:1 87438d74:1 f8319948:1 6cdf0ecf:1 fc0d1db1:1 163b506f:1",
       "SKILL.md\t### 6.1 분류\t18\tb6ce8fb9:1 a56726cd:1 021fb596:1 eb868a52:1 8a718f6d:1 0371d57a:1 80778808:1 06001ab4:1 42402ab3:1 39d4b54e:1 ee407353:1 9b6879ad:1 5db94bf9:1 717c35b4:1 18c43429:1 671df184:1 d10b36aa:1 f1b90184:1",
       "SKILL.md\t### 6.5 Multi-aspect 요구사항 분리\t5\t2c70a7a0:1 5bfbc903:1 e292f01d:1 c93d17b9:1 cb3f91d5:1",
-      "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tcb2239cb:1 3557c2f2:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
+      "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tcb2239cb:1 8e42b0a4:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
       "references/extended-workflow.md\t#### new-feature\t12\t5ed2f36c:1 ce98a41b:1 f1b90184:1 f633b27f:1 f1b90184:1 8d517f4a:1 ce39536f:1 7fbee4b0:1 848a58ec:1 058c4be0:1 5be11a5a:1 7c6abcba:1",
       "references/extended-workflow.md\t### 11.1 keep / drop\t7\t571a66ca:1 1196e5c7:1 23cca02b:1 3c7052db:1 cd083da4:1 94be3cb9:1 79b35da1:1"
     ],
@@ -108,7 +108,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "SKILL.md\t## 0. 공통 규약 (SSOT)\t24\t3cd39375:1 4199ba45:1 8d3669a9:1 eb7749d9:1 cf39f9d4:1 695b2fd5:1 d41ce53e:1 e5a4b6f8:1 db970291:1 32391a33:1 4e7732cb:1 69be011d:1 b7735515:1 bb651fbb:1 59ea2061:1 e227a985:1 f6344a99:1 b1193bb3:1 c49a9d1a:1 475f9c0c:1 99701985:1 3a8996be:1 9702d609:1 8ed3ace5:1",
       "SKILL.md\t### 6.1 분류\t18\tb6ce8fb9:1 a56726cd:1 021fb596:1 eb868a52:1 8a718f6d:1 0371d57a:1 80778808:1 06001ab4:1 42402ab3:1 39d4b54e:1 ee407353:1 9b6879ad:1 5db94bf9:1 717c35b4:1 18c43429:1 671df184:1 d10b36aa:1 f1b90184:1",
       "SKILL.md\t### 6.5 Multi-aspect 요구사항 분리\t5\t2c70a7a0:1 5bfbc903:1 e292f01d:1 c93d17b9:1 cb3f91d5:1",
-      "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tc0a00764:1 3557c2f2:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
+      "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tc0a00764:1 8e42b0a4:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
       "references/extended-workflow.md\t#### new-feature\t12\t5ed2f36c:1 ce98a41b:1 f1b90184:1 f633b27f:1 f1b90184:1 8d517f4a:1 ce39536f:1 7fbee4b0:1 848a58ec:1 058c4be0:1 5be11a5a:1 7c6abcba:1",
       "references/extended-workflow.md\t### 11.1 keep / drop\t7\t571a66ca:1 1196e5c7:1 23cca02b:1 3c7052db:1 cd083da4:1 94be3cb9:1 79b35da1:1"
     ],
@@ -117,7 +117,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "SKILL.md\t## 0. 공통 규약 (SSOT)\t25\t3cd39375:1 4199ba45:1 b49ed306:1 eb7749d9:1 cf39f9d4:1 695b2fd5:1 d41ce53e:1 2828f516:1 d8e89fe9:1 32391a33:1 4e7732cb:1 69be011d:1 b7735515:1 bb651fbb:1 59ea2061:1 0c22beea:1 f6344a99:1 b1193bb3:1 c49a9d1a:1 475f9c0c:1 87438d74:1 f8319948:1 6cdf0ecf:1 fc0d1db1:1 163b506f:1",
       "SKILL.md\t### 6.1 분류\t18\tb6ce8fb9:1 a56726cd:1 021fb596:1 eb868a52:1 8a718f6d:1 0371d57a:1 80778808:1 06001ab4:1 42402ab3:1 39d4b54e:1 ee407353:1 9b6879ad:1 5db94bf9:1 717c35b4:1 18c43429:1 671df184:1 d10b36aa:1 f1b90184:1",
       "SKILL.md\t### 6.5 Multi-aspect 요구사항 분리\t5\t2c70a7a0:1 5bfbc903:1 e292f01d:1 c93d17b9:1 cb3f91d5:1",
-      "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tcb2239cb:1 3557c2f2:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
+      "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tcb2239cb:1 8e42b0a4:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
       "references/extended-workflow.md\t#### new-feature\t12\t5ed2f36c:1 ce98a41b:1 f1b90184:1 f633b27f:1 f1b90184:1 8d517f4a:1 ce39536f:1 7fbee4b0:1 848a58ec:1 058c4be0:1 5be11a5a:1 7c6abcba:1",
       "references/extended-workflow.md\t### 11.1 keep / drop\t7\t571a66ca:1 1196e5c7:1 23cca02b:1 3c7052db:1 cd083da4:1 94be3cb9:1 79b35da1:1"
     ]
@@ -125,22 +125,22 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
   "FR-FLOW-209": {
     "skills/claude": [
       "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)\t15\t7287441c:1 c4d1e424:1 3fda81f9:1 ad332335:1 47fcb43d:1 97d93c95:1 f1b90184:1 c9b58f8c:1 fedf5f55:1 e090372b:1 836ee316:1 b7586751:1 5ce42c99:1 06b389ea:1 cb3f91d5:1",
-      "SKILL.md\t### 9.1 작성자 컨텍스트\t10\tf496c86c:1 c054a537:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
+      "SKILL.md\t### 9.1 작성자 컨텍스트\t10\tf496c86c:1 0cc77084:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
       "SKILL.md\t### 10.3 출력 스키마\t27\ta56726cd:1 021fb596:1 27032e39:1 b9b8ab92:1 b68c3150:1 021fb596:1 2d2b4dac:1 631d4c4c:1 374ca6fa:1 bd3d33aa:1 4e877f3f:1 a35c03a6:1 5426aa43:1 ed2d6de9:1 e5890a48:1 d10b36aa:1 39d4b54e:1 ec5e9af8:1 b6e56484:1 39d4b54e:1 34d8e0c7:1 d61e285c:1 39d4b54e:1 a363748f:1 d10b36aa:1 f1b90184:1 9d0321a5:1"
     ],
     "skills/codex": [
       "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)\t15\t7287441c:1 c4d1e424:1 3fda81f9:1 ad332335:1 47fcb43d:1 97d93c95:1 f1b90184:1 c9b58f8c:1 fedf5f55:1 e090372b:1 836ee316:1 b7586751:1 5ce42c99:1 06b389ea:1 cb3f91d5:1",
-      "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tcb2239cb:1 3557c2f2:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
+      "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tcb2239cb:1 8e42b0a4:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
       "references/extended-workflow.md\t### 10.3 출력 스키마\t27\ta56726cd:1 021fb596:1 27032e39:1 b9b8ab92:1 b68c3150:1 021fb596:1 2d2b4dac:1 631d4c4c:1 374ca6fa:1 bd3d33aa:1 4e877f3f:1 a35c03a6:1 5426aa43:1 ed2d6de9:1 e5890a48:1 d10b36aa:1 39d4b54e:1 ec5e9af8:1 b6e56484:1 39d4b54e:1 34d8e0c7:1 d61e285c:1 39d4b54e:1 a363748f:1 d10b36aa:1 f1b90184:1 9d0321a5:1"
     ],
     "skills/etc": [
       "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)\t15\t7287441c:1 c4d1e424:1 3fda81f9:1 ad332335:1 47fcb43d:1 97d93c95:1 f1b90184:1 c9b58f8c:1 fedf5f55:1 e090372b:1 836ee316:1 b7586751:1 5ce42c99:1 06b389ea:1 cb3f91d5:1",
-      "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tc0a00764:1 3557c2f2:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
+      "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tc0a00764:1 8e42b0a4:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
       "references/extended-workflow.md\t### 10.3 출력 스키마\t27\ta56726cd:1 021fb596:1 27032e39:1 b9b8ab92:1 b68c3150:1 021fb596:1 2d2b4dac:1 631d4c4c:1 374ca6fa:1 bd3d33aa:1 4e877f3f:1 a35c03a6:1 5426aa43:1 ed2d6de9:1 e5890a48:1 d10b36aa:1 39d4b54e:1 ec5e9af8:1 b6e56484:1 39d4b54e:1 34d8e0c7:1 d61e285c:1 39d4b54e:1 a363748f:1 d10b36aa:1 f1b90184:1 9d0321a5:1"
     ],
     ".agents/skills": [
       "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)\t15\t7287441c:1 c4d1e424:1 3fda81f9:1 ad332335:1 47fcb43d:1 97d93c95:1 f1b90184:1 c9b58f8c:1 fedf5f55:1 e090372b:1 836ee316:1 b7586751:1 5ce42c99:1 06b389ea:1 cb3f91d5:1",
-      "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tcb2239cb:1 3557c2f2:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
+      "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tcb2239cb:1 8e42b0a4:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
       "references/extended-workflow.md\t### 10.3 출력 스키마\t27\ta56726cd:1 021fb596:1 27032e39:1 b9b8ab92:1 b68c3150:1 021fb596:1 2d2b4dac:1 631d4c4c:1 374ca6fa:1 bd3d33aa:1 4e877f3f:1 a35c03a6:1 5426aa43:1 ed2d6de9:1 e5890a48:1 d10b36aa:1 39d4b54e:1 ec5e9af8:1 b6e56484:1 39d4b54e:1 34d8e0c7:1 d61e285c:1 39d4b54e:1 a363748f:1 d10b36aa:1 f1b90184:1 9d0321a5:1"
     ]
   },

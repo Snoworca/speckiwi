@@ -65,7 +65,7 @@ describe("FR-NODE-132 readiness derived from a snapshot, transport-independently
     expect(blocks.length).toBeGreaterThan(10);
     expect(blocks.map((block) => block.name)).toContain("deriveCanonicalRequirementReadiness");
     const summaryReaders = blocks.filter((block) => /\bsummary\s*\.\s*\w/u.test(block.body)).map((block) => block.name);
-    expect(summaryReaders).toEqual(["summaryContradictsRecords"]);
+    expect(summaryReaders).toEqual(["summaryContradictions"]);
 
     // Flipping only a record field flips the verdict; the summary is regenerated consistently
     // around it, so nothing in the summary can be what produced the change.

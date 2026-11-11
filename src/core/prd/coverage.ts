@@ -14,7 +14,7 @@ import type { PrdDocument, PrdItem } from "./model.js";
 const COVERED_KINDS = new Set(["intent", "goal", "in-scope"]);
 
 export const PRD_COVERAGE_NOT_JUDGED =
-  "Coverage reports only what string comparison decides: which items no requirement or criterion cites, which requirements cite no item, and which criteria carry neither a PRD citation nor a fills: basis of their own. Whether an addition stays within the item it cites, and whether the SRS contradicts an item, is left to the verifier.";
+  "Coverage reports only what string comparison decides: which items no requirement or criterion cites, which of those a requirement of another target cites with this PRD's path, which requirements cite no item, and which criteria carry neither a PRD citation nor a fills: basis of their own. Whether an addition stays within the item it cites, and whether the SRS contradicts an item, is left to the verifier.";
 
 export interface PrdCoverageReport {
   prd: string;
@@ -25,8 +25,22 @@ export interface PrdCoverageReport {
   uncitedRequirements: Array<{ requirementId: string; title: string }>;
   /** Live criteria of the target with no basis of their own: no usable citation in their text or attached to them in the Rationale. */
   ungroundedCriteria: Array<{ requirementId: string; criterionId: string; text: string }>;
+  /**
+   * @req FR-NODE-302 — the uncited items a live requirement of another target cites with this PRD's
+   * path; they are assigned to that target. Only the path says a citation means this PRD: a bare
+   * `PRD-<n>` in another target is read as that target's own PRD.
+   */
+  assignedToOtherTargets: Array<{ id: string; requirements: OtherTargetCitation[] }>;
+  /** The uncited items no other target cites with this PRD's path: what the run is missing. */
+  missingItems: Array<{ id: string; kind: string; title: string; bareCitations: OtherTargetCitation[] }>;
   /** @req FR-NODE-242 AC-3 */
   notJudged: string;
+}
+
+/** A requirement of another target citing an item number. */
+export interface OtherTargetCitation {
+  requirementId: string;
+  target: string;
 }
 
 export interface PrdReferenceProblem {
@@ -80,6 +94,31 @@ function basisOf(doc: PrdDocument): (citation: PrdCitation) => boolean {
 }
 
 /**
+ * The citations of an item of `doc` by live requirements of targets other than `target`: `qualified`
+ * when the citation carries this PRD's path, bare when it carries no path. A citation of another
+ * PRD's path names nothing here. @req FR-NODE-302 AC-1 AC-2
+ */
+function otherTargetCitations(
+  doc: PrdDocument,
+  records: readonly RequirementRecord[],
+  target: string
+): Array<{ itemId: string; requirementId: string; target: string; qualified: boolean }> {
+  const items = new Set(doc.items.filter((item) => item.state !== "rejected").map((item) => item.id));
+  const found: Array<{ itemId: string; requirementId: string; target: string; qualified: boolean }> = [];
+  for (const record of records) {
+    if (record.target === target || record.status === "discarded") continue;
+    for (const citation of requirementCitations(record)) {
+      if (!items.has(citation.itemId)) continue;
+      const qualified = citation.path !== undefined && sameRepositoryPath(citation.path, doc.path);
+      if (citation.path !== undefined && !qualified) continue;
+      if (found.some((entry) => entry.itemId === citation.itemId && entry.requirementId === record.id && entry.qualified === qualified)) continue;
+      found.push({ itemId: citation.itemId, requirementId: record.id, target: record.target, qualified });
+    }
+  }
+  return found;
+}
+
+/**
  * The items of `doc` the Rationales of `records` cite, in the PRD's item order, each citation read as
  * coverage reads it. @req IR-CLI-114 AC-2
  */
@@ -95,10 +134,20 @@ export function prdCoverage(doc: PrdDocument, records: readonly RequirementRecor
   const scoped = inTarget(records, options.target);
   const citations = new Map(scoped.map((record) => [record, requirementCitations(record).filter(isBasis)]));
   const cited = new Set([...citations.values()].flatMap((found) => found.map((citation) => citation.itemId)));
+  const uncited = doc.items.filter((item) => mustBeCited(item) && !cited.has(item.id));
+  const elsewhere = otherTargetCitations(doc, records, options.target);
+  const citingOf = (id: string, qualified: boolean) => elsewhere.filter((entry) => entry.itemId === id && entry.qualified === qualified).map(({ requirementId, target }) => ({ requirementId, target }));
   return {
     prd: doc.pointer,
     target: options.target,
-    uncitedItems: doc.items.filter((item) => mustBeCited(item) && !cited.has(item.id)).map((item) => ({ id: item.id, kind: item.kind, title: item.title })),
+    uncitedItems: uncited.map((item) => ({ id: item.id, kind: item.kind, title: item.title })),
+    assignedToOtherTargets: uncited.flatMap((item) => {
+      const requirements = citingOf(item.id, true);
+      return requirements.length > 0 ? [{ id: item.id, requirements }] : [];
+    }),
+    missingItems: uncited
+      .filter((item) => citingOf(item.id, true).length === 0)
+      .map((item) => ({ id: item.id, kind: item.kind, title: item.title, bareCitations: citingOf(item.id, false) })),
     uncitedRequirements: scoped.filter((record) => citations.get(record)!.length === 0).map((record) => ({ requirementId: record.id, title: record.title })),
     ungroundedCriteria: scoped.flatMap((record) => {
       const grounded = groundedCriteria(record, isBasis);

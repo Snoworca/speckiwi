@@ -38,8 +38,11 @@ describe("FR-MCP-037 AC-4 — an append over a journal that already holds an unr
     const result = (await server.callTool(tool, { runId: "run-a", event })) as ToolResult;
 
     expect(result, JSON.stringify(result)).toMatchObject({ ok: true, value: { written: true }, mutation: { kind } });
-    const warnings = (result.diagnostics ?? []).filter((entry) => entry.severity === "warning").map((entry) => entry.code);
-    expect(warnings).toEqual(expect.arrayContaining(["SRS-W052", "SRS-W055"]));
+    // Lines already in the journal are reported as counts per code since FR-NODE-300; the summary
+    // still counts them, so the warnings are reported, not dropped.
+    const summary = (result as { diagnosticsSummary?: { warnings: number; byCode: Record<string, number> } }).diagnosticsSummary;
+    expect(Object.keys(summary?.byCode ?? {})).toEqual(expect.arrayContaining(["SRS-W052", "SRS-W055"]));
+    expect(summary?.warnings).toBeGreaterThanOrEqual(2);
 
     const after = await readFile(absolute, "utf8");
     expect(after.startsWith(DAMAGED), "the lines the tool could not read are left as they were").toBe(true);

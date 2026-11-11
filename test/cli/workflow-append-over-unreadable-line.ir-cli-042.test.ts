@@ -37,9 +37,11 @@ describe("IR-CLI-042 AC-3 — an append over a journal that already holds an unr
 
     expect(result.exit, JSON.stringify(result.payload)).toBe(0);
     expect(result.payload).toMatchObject({ ok: true, value: { written: true }, mutation: { kind } });
-    const diagnostics = (result.payload.diagnostics ?? []) as Array<{ code: string; severity: string }>;
-    const warnings = diagnostics.filter((entry) => entry.severity === "warning").map((entry) => entry.code);
-    expect(warnings).toEqual(expect.arrayContaining(["SRS-W052", "SRS-W055"]));
+    // Lines already in the journal are reported as counts per code since FR-NODE-300; the summary
+    // still counts them, so the warnings are reported, not dropped.
+    const summary = result.payload.diagnosticsSummary as { warnings: number; byCode: Record<string, number> } | undefined;
+    expect(Object.keys(summary?.byCode ?? {})).toEqual(expect.arrayContaining(["SRS-W052", "SRS-W055"]));
+    expect(summary?.warnings).toBeGreaterThanOrEqual(2);
 
     const after = await readFile(absolute, "utf8");
     expect(after.startsWith(DAMAGED), "the lines the command could not read are left as they were").toBe(true);

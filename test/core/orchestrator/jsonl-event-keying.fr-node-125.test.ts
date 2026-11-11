@@ -144,7 +144,8 @@ describe("FR-NODE-125 workflow JSONL eventKeying", () => {
 
     expect(underDefault.ok, "the append itself no longer depends on the keying").toBe(true);
     expect(
-      (underDefault.diagnostics ?? []).some((entry) => entry.code === "SRS-W053"),
+      // Existing lines are counted in the summary since FR-NODE-300, not listed one by one.
+      (underDefault.diagnosticsSummary?.byCode["SRS-W053"] ?? 0) > 0,
       "the default keying stopped diagnosing duplicates, so `none` suppresses nothing"
     ).toBe(true);
   });

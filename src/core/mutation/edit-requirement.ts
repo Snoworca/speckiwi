@@ -93,10 +93,21 @@ function forwardFailure<T>(result: MutationResult): MutationResult<T> {
   );
 }
 
-/** The refusal every criterion and field edit gives a verified block. @req FR-NODE-041 AC-5 */
+/**
+ * The refusal every criterion and field edit gives a verified block. @req FR-NODE-041 AC-5
+ * @req FR-NODE-297 AC-1 AC-3 — the lock stays; the refusal names the documented way through it,
+ * because a refusal that named no tool sent a session to edit the Markdown by hand.
+ */
 export function assertEditable(record: RequirementRecord): MutationResult | undefined {
-  if (record.status === "verified") return mutationFail("MUTATION_DENIED", "Granular edits cannot modify verified requirements; change status through a guarded status mutation first");
-  return undefined;
+  if (record.status !== "verified") return undefined;
+  const id = record.id;
+  return mutationFail(
+    "MUTATION_DENIED",
+    `${id} is verified, and a granular edit does not change a verified requirement. Change it in three steps: ` +
+      `(1) update_status ${id} to implemented with a reason saying what will change (CLI: speckiwi update-status ${id} implemented --reason "<what changes>"); ` +
+      `(2) make this edit again, and if it leaves an acceptance criterion unchecked, tick it once it is met with check_acceptance_criteria (CLI: speckiwi check-ac ${id} <AC-n>) and make sure an evidence row covers it (add_verification_evidence); ` +
+      `(3) update_status ${id} back to verified with a reason saying what changed (CLI: speckiwi update-status ${id} verified --reason "<what changed>"), which checks the acceptance criteria and evidence again.`
+  );
 }
 
 function assertText(label: string, value: string): MutationResult | undefined {

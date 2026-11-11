@@ -302,12 +302,20 @@ function checkRoundInvariants(event: WavesEvent, diagnostics: WavesDiagnostic[])
 // Journal-level rules
 // ---------------------------------------------------------------------------------------------
 
-/** The latest `phase="wave-verify"` record for `wave`, at or before `beforeIndex`. */
+/**
+ * The latest wave-verify record for `wave`, at or before `beforeIndex`: a `phase="wave-verify"` line
+ * that carries a `verification`. @req FR-NODE-301 — reading the last line with the phase let the
+ * wave-issue-triage and promote-requirements intent/result lines, written after loop P's pass in the
+ * order the skill prescribes, stand in for that pass and refuse the `complete`. The test is the
+ * `verification` object, not the line's `event`: `round record` itself writes the round as a
+ * `result` line that carries one.
+ */
 function latestWaveVerify(view: WavesJournalView, wave: string, beforeIndex: number): WavesEvent | null {
   for (let index = beforeIndex - 1; index >= 0; index -= 1) {
     const candidate = view.lines[index];
     if (!candidate) continue;
     if (candidate.phase !== "wave-verify") continue;
+    if (verificationOf(candidate) === null) continue;
     // @req FR-NODE-142 — the record belongs to the wave by the one wave-name rule (`sameWave`).
     if (!sameWave(candidate.wave, wave)) continue;
     return candidate;
@@ -331,10 +339,15 @@ function checkCompletionGate(view: WavesJournalView, diagnostics: WavesDiagnosti
     const latest = latestWaveVerify(view, event.wave as string, index);
     if (latest && verdictOf(latest) === "pass") return;
 
+    // @req FR-NODE-301 AC-3 — the refusal says which record it judged by.
+    const basis = latest
+      ? `the latest wave-verify record for ${String(event.wave)} is journal line ${latest.journalLine} with verdict ${verdictOf(latest) ?? "(none)"}`
+      : `${String(event.wave)} has no wave-verify record carrying a verification before this line`;
     diagnostics.push(
-      diagnosticFor("complete-without-latest-pass", "error", "complete is not preceded by a passing wave-verify record for this run and wave", event, {
+      diagnosticFor("complete-without-latest-pass", "error", `complete is not preceded by a passing wave-verify record for this run and wave: ${basis}`, event, {
         wave: event.wave,
-        latestVerdict: latest ? verdictOf(latest) : null
+        latestVerdict: latest ? verdictOf(latest) : null,
+        latestLine: latest ? latest.journalLine : null
       })
     );
   });

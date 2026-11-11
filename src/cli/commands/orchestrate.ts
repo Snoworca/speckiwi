@@ -34,7 +34,7 @@ import {
 import { appendUtf8LineAndSync } from "../../core/workflow/mutation.js";
 import { RequirementNotReadyError, assertRequirementsReady, parseRequirementSnapshot } from "../../core/orchestrator/readiness.js";
 import { computeInvariantDigest, readCard, stampCard, validateCard, writeCard, resumeCardPath, type ResumeCard } from "../../core/orchestrator/resume-card.js";
-import { computeResumeState, retiredRunMarkers, type DriftInputs, type GitFacts } from "../../core/orchestrator/resume.js";
+import { computeResumeState, reconciliationLanes, retiredRunMarkers, type DriftInputs, type GitFacts } from "../../core/orchestrator/resume.js";
 import { computeRoute } from "../../core/orchestrator/route.js";
 import { freezeRoute, frozenRouteEntry, resumeRung, routeLockDigest, serializeRouteLock, type RouteGateRecord, type RouteLock } from "../../core/orchestrator/route-lock.js";
 import { parseRouteProbe } from "../../core/orchestrator/route-probe.js";
@@ -1841,7 +1841,19 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           throw new OperationalError("--facts must supply both gitFacts and driftInputs; the tool never invents them");
         }
         const state = computeResumeState(view, parsed.card, facts.gitFacts, facts.driftInputs);
-        if (state.blocking !== null) return refuse(state.blocking, state.drift.digests.filter((entry) => entry.gate !== null));
+        if (state.blocking !== null) {
+          const driftViolations = state.drift.digests.filter((entry) => entry.gate !== null);
+          // @req FR-NODE-299 — a reconciliation gate has no drift digest behind it, so the lanes whose
+          // class raised it are what the refusal names; the list was always empty before.
+          return refuse(
+            state.blocking,
+            driftViolations.length > 0
+              ? driftViolations
+              : state.blocking === "interrupted-external-action" || state.blocking === "ledger-reconciliation-divergent"
+                ? reconciliationLanes(state.blocking, state.classification).map(({ lane, wave, stage, klass, evidence }) => ({ lane, wave, stage, klass, evidence }))
+                : []
+          );
+        }
         // @req FR-NODE-217 AC-3 — with self-collected facts digest 2 had no comparand, so it is reported
         // as not checked rather than as a match.
         const reported = collected

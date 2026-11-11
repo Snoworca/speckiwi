@@ -66,6 +66,22 @@ const LINE_SUFFIX = /:\d+(?:[-:]\d+)?$/;
 export function withoutLineDesignation(reference: string): string {
   return reference.replace(LINE_SUFFIX, "");
 }
+/** One pair of backticks around the whole reference, holding no backtick inside. */
+const ENCLOSING_BACKTICKS = /^`([^`]+)`$/;
+
+/**
+ * `reference` without one pair of backticks enclosing it whole. Rules §22.1 and §22.4 write a local
+ * file as inline code, and the resolver looked for a file whose name began and ended with a backtick.
+ * Only a single pair around the whole part counts: a code span inside prose, a lone backtick or a
+ * double-backtick span is left as written, and so is a pair around only whitespace, which would
+ * otherwise name the project root.
+ * @req FR-NODE-296 AC-1 AC-3 AC-4
+ */
+export function withoutEnclosingBackticks(reference: string): string {
+  const trimmed = reference.trim();
+  const inside = ENCLOSING_BACKTICKS.exec(trimmed)?.[1]?.trim();
+  return inside ? inside : trimmed;
+}
 /** A reference that names a file: one token, an extension, no whitespace. */
 const REPOSITORY_PATH = /^[A-Za-z0-9_.@/-]+\.[A-Za-z0-9]+$/;
 
@@ -87,7 +103,7 @@ const REPOSITORY_PATH = /^[A-Za-z0-9_.@/-]+\.[A-Za-z0-9]+$/;
  * ever held onto a different file and scored them fresh.
  */
 export function traceReferencePath(part: string): string | undefined {
-  const candidate = withoutLineDesignation(part.trim().replace(/#.*$/, ""));
+  const candidate = withoutLineDesignation(withoutEnclosingBackticks(part).replace(/#.*$/, ""));
   return REPOSITORY_PATH.test(candidate) ? candidate : undefined;
 }
 

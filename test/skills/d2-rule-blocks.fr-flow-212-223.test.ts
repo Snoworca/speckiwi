@@ -129,24 +129,24 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
   },
   "parallel-waves PW-1–PW-17 · §5.1 · §6": {
     "skills/claude": [
-      "_shared/kiwi/parallel-waves.md\t## 5. stage 한 번의 순서\t62\t8675588a:1 033400c6:1 f1b90184:1 d88fb04c:1 0333e3c0:1 f1b90184:1 b86dafb1:1 d152111c:1 03c47672:1 00416823:1 26afced6:1 45153ab0:1 feeca658:1 d1691b93:1 ce4dd16f:1 f89b306f:1 f1b90184:1 806859f1:1 05ad41fe:1 f1b90184:1 a4f3b710:1 14f9bd8b:1 c82efb09:1 f1b90184:1 4f95bcbf:1 11787def:1 f1b90184:1 1ea124b3:1 f1573fcf:1 9acc88bb:1 45af41f1:1 226f7247:1 888f1ed6:1 f1b90184:1 94403b50:1 f18b7a11:1 c6a175d8:1 40aa29cb:1 07834a6a:1 bbf000d5:1 ca77962c:1 85c26369:1 7890f841:1 08d89f70:1 f1b90184:1 9492db10:1 3f16799f:1 2af4ed68:1 34d644c9:1 4336d188:1 f1b90184:1 475996c8:1 67ac2625:1 f1b90184:1 66f9540a:1 5a29cb76:1 99bd1f10:1 7d72a3b7:1 0f4041c4:1 8ab6639d:1 d7b54435:1 c901d0a4:1",
+      "_shared/kiwi/parallel-waves.md\t## 5. stage 한 번의 순서\t62\t8675588a:1 033400c6:1 f1b90184:1 d88fb04c:1 0333e3c0:1 f1b90184:1 b86dafb1:1 d152111c:1 03c47672:1 00416823:1 cc0e79fd:1 45153ab0:1 feeca658:1 d1691b93:1 ce4dd16f:1 f89b306f:1 f1b90184:1 806859f1:1 05ad41fe:1 f1b90184:1 a4f3b710:1 14f9bd8b:1 c82efb09:1 f1b90184:1 4f95bcbf:1 11787def:1 f1b90184:1 1ea124b3:1 f1573fcf:1 9acc88bb:1 45af41f1:1 226f7247:1 888f1ed6:1 f1b90184:1 94403b50:1 f18b7a11:1 c6a175d8:1 40aa29cb:1 07834a6a:1 bbf000d5:1 ca77962c:1 85c26369:1 7890f841:1 08d89f70:1 f1b90184:1 9492db10:1 3f16799f:1 2af4ed68:1 34d644c9:1 4336d188:1 f1b90184:1 475996c8:1 67ac2625:1 f1b90184:1 66f9540a:1 5a29cb76:1 99bd1f10:1 7d72a3b7:1 0f4041c4:1 8ab6639d:1 d7b54435:1 089e49ed:1",
       "_shared/kiwi/parallel-waves.md\t### 5.1 완료 행동 — 노드의 `complete` 뒤, 호스트만\t6\t4d656802:1 f574a434:1 5e471838:1 54ba0f9d:1 2e31fe7f:1 cb3f91d5:1",
-      "_shared/kiwi/parallel-waves.md\t## 6. 재개\t5\t33e781be:1 e871a11e:1 f5e0b35a:1 110eb556:1 f28fdefa:1"
+      "_shared/kiwi/parallel-waves.md\t## 6. 재개\t5\t33e781be:1 b9664eef:1 f5e0b35a:1 110eb556:1 f28fdefa:1"
     ],
     "skills/codex": [
-      "_shared/kiwi/parallel-waves.md\t## 5. The order of one stage\t62\tc56b6365:1 a4067cb0:1 f1b90184:1 a82cabc2:1 710aa74f:1 f1b90184:1 cc004d61:1 19e72f83:1 bee44a24:1 b3d69172:1 422360c1:1 36691000:1 885408c8:1 d1691b93:1 1c5b1fd2:1 592bdbcb:1 f1b90184:1 35f6b0fe:1 4bc65e76:1 f1b90184:1 d192ddda:1 475ce599:1 45b882d0:1 f1b90184:1 85223555:1 11787def:1 f1b90184:1 ea1687b3:1 feb29f48:1 56e90e66:1 0fc3dbe5:1 b98b8ac9:1 28a21f1d:1 f1b90184:1 c1180d93:1 69423d7c:1 ff289189:1 d2489833:1 8a7b492b:1 d6f4aff8:1 fa8c69e0:1 b358c4a2:1 50760c9d:1 4200df1b:1 f1b90184:1 8f7020ec:1 f9b09ef4:1 6f88d89f:1 b0affde5:1 239bf83e:1 f1b90184:1 a595a209:1 67ac2625:1 f1b90184:1 aa534b07:1 a0aa41fb:1 86e2bc0f:1 86d15411:1 d9c91562:1 8813cc4f:1 ed155ef0:1 5876fff1:1",
+      "_shared/kiwi/parallel-waves.md\t## 5. The order of one stage\t62\tc56b6365:1 a4067cb0:1 f1b90184:1 a82cabc2:1 710aa74f:1 f1b90184:1 cc004d61:1 19e72f83:1 bee44a24:1 b3d69172:1 5e641f80:1 36691000:1 885408c8:1 d1691b93:1 1c5b1fd2:1 592bdbcb:1 f1b90184:1 35f6b0fe:1 4bc65e76:1 f1b90184:1 d192ddda:1 475ce599:1 45b882d0:1 f1b90184:1 85223555:1 11787def:1 f1b90184:1 ea1687b3:1 feb29f48:1 56e90e66:1 0fc3dbe5:1 b98b8ac9:1 28a21f1d:1 f1b90184:1 c1180d93:1 69423d7c:1 ff289189:1 d2489833:1 8a7b492b:1 d6f4aff8:1 fa8c69e0:1 b358c4a2:1 50760c9d:1 4200df1b:1 f1b90184:1 8f7020ec:1 f9b09ef4:1 6f88d89f:1 b0affde5:1 239bf83e:1 f1b90184:1 a595a209:1 67ac2625:1 f1b90184:1 aa534b07:1 a0aa41fb:1 86e2bc0f:1 86d15411:1 d9c91562:1 8813cc4f:1 ed155ef0:1 69a0bbb7:1",
       "_shared/kiwi/parallel-waves.md\t### 5.1 Completion actions — after a node's `complete`, host only\t6\tcf87ff5c:1 1aead9e2:1 939881da:1 417e8fec:1 12e3746f:1 cb3f91d5:1",
-      "_shared/kiwi/parallel-waves.md\t## 6. Resume\t5\t9b8b77f6:1 0a08322d:1 4cb75060:1 cbed460f:1 425bc951:1"
+      "_shared/kiwi/parallel-waves.md\t## 6. Resume\t5\t9b8b77f6:1 aa8a11fa:1 4cb75060:1 cbed460f:1 425bc951:1"
     ],
     "skills/etc": [
-      "_shared/kiwi/parallel-waves.md\t## 5. The order of one stage\t62\tc56b6365:1 a4067cb0:1 f1b90184:1 a82cabc2:1 710aa74f:1 f1b90184:1 cc004d61:1 19e72f83:1 bee44a24:1 b3d69172:1 422360c1:1 36691000:1 885408c8:1 d1691b93:1 1c5b1fd2:1 592bdbcb:1 f1b90184:1 35f6b0fe:1 4bc65e76:1 f1b90184:1 d192ddda:1 475ce599:1 45b882d0:1 f1b90184:1 85223555:1 11787def:1 f1b90184:1 ea1687b3:1 feb29f48:1 56e90e66:1 0fc3dbe5:1 b98b8ac9:1 28a21f1d:1 f1b90184:1 c1180d93:1 69423d7c:1 ff289189:1 d2489833:1 8a7b492b:1 d6f4aff8:1 fa8c69e0:1 b358c4a2:1 50760c9d:1 4200df1b:1 f1b90184:1 8f7020ec:1 f9b09ef4:1 6f88d89f:1 b0affde5:1 239bf83e:1 f1b90184:1 a595a209:1 67ac2625:1 f1b90184:1 aa534b07:1 a0aa41fb:1 86e2bc0f:1 86d15411:1 d9c91562:1 8813cc4f:1 ed155ef0:1 5876fff1:1",
+      "_shared/kiwi/parallel-waves.md\t## 5. The order of one stage\t62\tc56b6365:1 a4067cb0:1 f1b90184:1 a82cabc2:1 710aa74f:1 f1b90184:1 cc004d61:1 19e72f83:1 bee44a24:1 b3d69172:1 5e641f80:1 36691000:1 885408c8:1 d1691b93:1 1c5b1fd2:1 592bdbcb:1 f1b90184:1 35f6b0fe:1 4bc65e76:1 f1b90184:1 d192ddda:1 475ce599:1 45b882d0:1 f1b90184:1 85223555:1 11787def:1 f1b90184:1 ea1687b3:1 feb29f48:1 56e90e66:1 0fc3dbe5:1 b98b8ac9:1 28a21f1d:1 f1b90184:1 c1180d93:1 69423d7c:1 ff289189:1 d2489833:1 8a7b492b:1 d6f4aff8:1 fa8c69e0:1 b358c4a2:1 50760c9d:1 4200df1b:1 f1b90184:1 8f7020ec:1 f9b09ef4:1 6f88d89f:1 b0affde5:1 239bf83e:1 f1b90184:1 a595a209:1 67ac2625:1 f1b90184:1 aa534b07:1 a0aa41fb:1 86e2bc0f:1 86d15411:1 d9c91562:1 8813cc4f:1 ed155ef0:1 69a0bbb7:1",
       "_shared/kiwi/parallel-waves.md\t### 5.1 Completion actions — after a node's `complete`, host only\t6\tcf87ff5c:1 1aead9e2:1 939881da:1 417e8fec:1 12e3746f:1 cb3f91d5:1",
-      "_shared/kiwi/parallel-waves.md\t## 6. Resume\t5\t9b8b77f6:1 0a08322d:1 4cb75060:1 cbed460f:1 425bc951:1"
+      "_shared/kiwi/parallel-waves.md\t## 6. Resume\t5\t9b8b77f6:1 aa8a11fa:1 4cb75060:1 cbed460f:1 425bc951:1"
     ],
     ".agents/skills": [
-      "_shared/kiwi/parallel-waves.md\t## 5. The order of one stage\t62\tc56b6365:1 a4067cb0:1 f1b90184:1 a82cabc2:1 710aa74f:1 f1b90184:1 cc004d61:1 19e72f83:1 bee44a24:1 b3d69172:1 422360c1:1 36691000:1 885408c8:1 d1691b93:1 1c5b1fd2:1 592bdbcb:1 f1b90184:1 35f6b0fe:1 4bc65e76:1 f1b90184:1 d192ddda:1 475ce599:1 45b882d0:1 f1b90184:1 85223555:1 11787def:1 f1b90184:1 ea1687b3:1 feb29f48:1 56e90e66:1 0fc3dbe5:1 b98b8ac9:1 28a21f1d:1 f1b90184:1 c1180d93:1 69423d7c:1 ff289189:1 d2489833:1 8a7b492b:1 d6f4aff8:1 fa8c69e0:1 b358c4a2:1 50760c9d:1 4200df1b:1 f1b90184:1 8f7020ec:1 f9b09ef4:1 6f88d89f:1 b0affde5:1 239bf83e:1 f1b90184:1 a595a209:1 67ac2625:1 f1b90184:1 aa534b07:1 a0aa41fb:1 86e2bc0f:1 86d15411:1 d9c91562:1 8813cc4f:1 ed155ef0:1 5876fff1:1",
+      "_shared/kiwi/parallel-waves.md\t## 5. The order of one stage\t62\tc56b6365:1 a4067cb0:1 f1b90184:1 a82cabc2:1 710aa74f:1 f1b90184:1 cc004d61:1 19e72f83:1 bee44a24:1 b3d69172:1 5e641f80:1 36691000:1 885408c8:1 d1691b93:1 1c5b1fd2:1 592bdbcb:1 f1b90184:1 35f6b0fe:1 4bc65e76:1 f1b90184:1 d192ddda:1 475ce599:1 45b882d0:1 f1b90184:1 85223555:1 11787def:1 f1b90184:1 ea1687b3:1 feb29f48:1 56e90e66:1 0fc3dbe5:1 b98b8ac9:1 28a21f1d:1 f1b90184:1 c1180d93:1 69423d7c:1 ff289189:1 d2489833:1 8a7b492b:1 d6f4aff8:1 fa8c69e0:1 b358c4a2:1 50760c9d:1 4200df1b:1 f1b90184:1 8f7020ec:1 f9b09ef4:1 6f88d89f:1 b0affde5:1 239bf83e:1 f1b90184:1 a595a209:1 67ac2625:1 f1b90184:1 aa534b07:1 a0aa41fb:1 86e2bc0f:1 86d15411:1 d9c91562:1 8813cc4f:1 ed155ef0:1 69a0bbb7:1",
       "_shared/kiwi/parallel-waves.md\t### 5.1 Completion actions — after a node's `complete`, host only\t6\tcf87ff5c:1 1aead9e2:1 939881da:1 417e8fec:1 12e3746f:1 cb3f91d5:1",
-      "_shared/kiwi/parallel-waves.md\t## 6. Resume\t5\t9b8b77f6:1 0a08322d:1 4cb75060:1 cbed460f:1 425bc951:1"
+      "_shared/kiwi/parallel-waves.md\t## 6. Resume\t5\t9b8b77f6:1 aa8a11fa:1 4cb75060:1 cbed460f:1 425bc951:1"
     ]
   },
   "wave-decomposition §1–§7": {
@@ -155,7 +155,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "_shared/kiwi/wave-decomposition.md\t## 2. 순서 — run 당 한 번\t8\t599a737f:1 2f0a97e1:1 b41fcde4:1 c6de7a14:1 c8e94e9a:1 16ca11bc:1 733b7331:1 57935fc1:1",
       "_shared/kiwi/wave-decomposition.md\t## 3. 배정은 그래프의 `acs` 다\t1\t10cd731e:1",
       "_shared/kiwi/wave-decomposition.md\t## 4. 노드의 PRD 항목\t1\t979e531b:1",
-      "_shared/kiwi/wave-decomposition.md\t## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`\t1\taaed8894:1",
+      "_shared/kiwi/wave-decomposition.md\t## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`\t1\t4444a277:1",
       "_shared/kiwi/wave-decomposition.md\t## 6. 재분해 — 아직 dispatch 하지 않은 노드만\t9\t6c203021:1 9a75905f:1 e305b2a8:1 ba76a06b:1 19fc95b3:1 26b8801f:1 1d71e47a:1 3bfd1252:1 e80801c2:1",
       "_shared/kiwi/wave-decomposition.md\t## 7. 제외 분류\t1\t03f768a3:1"
     ],
@@ -164,7 +164,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "_shared/kiwi/wave-decomposition.md\t## 2. 순서 — run 당 한 번\t8\t599a737f:1 2f0a97e1:1 b41fcde4:1 c6de7a14:1 c8e94e9a:1 16ca11bc:1 733b7331:1 57935fc1:1",
       "_shared/kiwi/wave-decomposition.md\t## 3. 배정은 그래프의 `acs` 다\t1\t10cd731e:1",
       "_shared/kiwi/wave-decomposition.md\t## 4. 노드의 PRD 항목\t1\t979e531b:1",
-      "_shared/kiwi/wave-decomposition.md\t## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`\t1\taaed8894:1",
+      "_shared/kiwi/wave-decomposition.md\t## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`\t1\t4444a277:1",
       "_shared/kiwi/wave-decomposition.md\t## 6. 재분해 — 아직 dispatch 하지 않은 노드만\t9\t6c203021:1 9a75905f:1 e305b2a8:1 ba76a06b:1 19fc95b3:1 26b8801f:1 1d71e47a:1 3bfd1252:1 e80801c2:1",
       "_shared/kiwi/wave-decomposition.md\t## 7. 제외 분류\t1\t03f768a3:1"
     ],
@@ -173,7 +173,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "_shared/kiwi/wave-decomposition.md\t## 2. 순서 — run 당 한 번\t8\t599a737f:1 2f0a97e1:1 b41fcde4:1 c6de7a14:1 c8e94e9a:1 16ca11bc:1 733b7331:1 57935fc1:1",
       "_shared/kiwi/wave-decomposition.md\t## 3. 배정은 그래프의 `acs` 다\t1\t10cd731e:1",
       "_shared/kiwi/wave-decomposition.md\t## 4. 노드의 PRD 항목\t1\t979e531b:1",
-      "_shared/kiwi/wave-decomposition.md\t## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`\t1\taaed8894:1",
+      "_shared/kiwi/wave-decomposition.md\t## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`\t1\t4444a277:1",
       "_shared/kiwi/wave-decomposition.md\t## 6. 재분해 — 아직 dispatch 하지 않은 노드만\t9\t6c203021:1 9a75905f:1 e305b2a8:1 ba76a06b:1 19fc95b3:1 26b8801f:1 1d71e47a:1 3bfd1252:1 e80801c2:1",
       "_shared/kiwi/wave-decomposition.md\t## 7. 제외 분류\t1\t03f768a3:1"
     ],
@@ -182,7 +182,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "_shared/kiwi/wave-decomposition.md\t## 2. 순서 — run 당 한 번\t8\t599a737f:1 2f0a97e1:1 b41fcde4:1 c6de7a14:1 c8e94e9a:1 16ca11bc:1 733b7331:1 57935fc1:1",
       "_shared/kiwi/wave-decomposition.md\t## 3. 배정은 그래프의 `acs` 다\t1\t10cd731e:1",
       "_shared/kiwi/wave-decomposition.md\t## 4. 노드의 PRD 항목\t1\t979e531b:1",
-      "_shared/kiwi/wave-decomposition.md\t## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`\t1\taaed8894:1",
+      "_shared/kiwi/wave-decomposition.md\t## 5. PRD 커버리지 — `wave-decomposition-coverage-gap`\t1\t4444a277:1",
       "_shared/kiwi/wave-decomposition.md\t## 6. 재분해 — 아직 dispatch 하지 않은 노드만\t9\t6c203021:1 9a75905f:1 e305b2a8:1 ba76a06b:1 19fc95b3:1 26b8801f:1 1d71e47a:1 3bfd1252:1 e80801c2:1",
       "_shared/kiwi/wave-decomposition.md\t## 7. 제외 분류\t1\t03f768a3:1"
     ]

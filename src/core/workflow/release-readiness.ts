@@ -12,7 +12,7 @@ import type {
   RequirementRecord,
   ValidationResult
 } from "../types.js";
-import { withoutLineDesignation } from "../parser/file-references.js";
+import { withoutEnclosingBackticks, withoutLineDesignation } from "../parser/file-references.js";
 import { findHeadingMatching, RELEASE_RESIDUE_HEADING, TARGET_MAP_HEADING } from "../parser/index-parser.js";
 import { resolveTargetSelection } from "../query/summary.js";
 import { validateWorkspace } from "../validator/validate-workspace.js";
@@ -63,9 +63,15 @@ export function collectAcCoverageGaps(records: RequirementRecord[]): AcCoverageG
   return gaps;
 }
 
-function fullMarkdownLinkTarget(value: string): string {
-  const match = /^\[[^\]]+]\(([^)]+)\)$/.exec(value.trim());
-  return match?.[1] ?? value.trim();
+/**
+ * What one reference names once its wrapping is off: the text inside one enclosing pair of backticks,
+ * then the target of a whole Markdown link. The reference itself is reported as written.
+ * @req FR-NODE-296 AC-1 AC-2
+ */
+function evidenceTarget(value: string): string {
+  const unwrapped = withoutEnclosingBackticks(value);
+  const match = /^\[[^\]]+]\(([^)]+)\)$/.exec(unwrapped);
+  return match?.[1] ?? unwrapped;
 }
 
 /**
@@ -73,7 +79,7 @@ function fullMarkdownLinkTarget(value: string): string {
  * extension, a line designation aside. @req FR-NODE-293 AC-3
  */
 function isPathShaped(part: string): boolean {
-  const head = part.trim().split("#")[0] ?? "";
+  const head = withoutEnclosingBackticks(part).split("#")[0] ?? "";
   return head !== "" && !/\s/.test(head) && (/[\\/]/.test(head) || /\.[A-Za-z0-9]{1,8}$/.test(withoutLineDesignation(head)));
 }
 
@@ -100,18 +106,19 @@ function evidenceType(row: EvidenceRow): string {
 
 function isCommandReference(row: EvidenceRow, reference: string): boolean {
   const type = evidenceType(row);
-  const normalized = reference.trim().replace(/^\$\s*/, "");
-  return type === "command" || type === "cmd" || type === "shell" || reference.trim().startsWith("$") || /^(npm|npx|node|pnpm|yarn|vitest|tsc|python|python3|bash|sh|pwsh|powershell|make|git|go|cargo|pytest|uv)\b/.test(normalized);
+  const target = evidenceTarget(reference);
+  const normalized = target.replace(/^\$\s*/, "");
+  return type === "command" || type === "cmd" || type === "shell" || target.startsWith("$") || /^(npm|npx|node|pnpm|yarn|vitest|tsc|python|python3|bash|sh|pwsh|powershell|make|git|go|cargo|pytest|uv)\b/.test(normalized);
 }
 
 function isUrlReference(row: EvidenceRow, reference: string): boolean {
   const type = evidenceType(row);
-  return type === "url" || type === "link" || /^https?:\/\//i.test(fullMarkdownLinkTarget(reference));
+  return type === "url" || type === "link" || /^https?:\/\//i.test(evidenceTarget(reference));
 }
 
 function isValidHttpUrl(reference: string): boolean {
   try {
-    const url = new URL(fullMarkdownLinkTarget(reference));
+    const url = new URL(evidenceTarget(reference));
     return (url.protocol === "http:" || url.protocol === "https:") && url.hostname.length > 0;
   } catch {
     return false;
@@ -120,7 +127,7 @@ function isValidHttpUrl(reference: string): boolean {
 
 function isPathLikeReference(row: EvidenceRow, reference: string): boolean {
   const type = evidenceType(row);
-  const value = fullMarkdownLinkTarget(reference);
+  const value = evidenceTarget(reference);
   return (
     type === "file" ||
     type === "path" ||
@@ -138,7 +145,7 @@ function isPathLikeReference(row: EvidenceRow, reference: string): boolean {
 }
 
 function localEvidencePath(root: string, reference: string): string {
-  let candidate = fullMarkdownLinkTarget(reference).replace(/#.*$/, "");
+  let candidate = evidenceTarget(reference).replace(/#.*$/, "");
   if (!path.isAbsolute(candidate)) {
     candidate = withoutLineDesignation(candidate);
   }
@@ -268,8 +275,9 @@ function commandPolicyViolation(record: RequirementRecord, row: EvidenceRow, ref
   return result;
 }
 
+/** @req FR-NODE-296 AC-1 — a wrapped command meets the policy exactly as the unwrapped one does. */
 function satisfiesCommandEvidencePolicy(reference: string): boolean {
-  const normalized = reference.trim().replace(/^\$\s*/, "");
+  const normalized = evidenceTarget(reference).replace(/^\$\s*/, "");
   if (/[;&|`<>]|\$\(/.test(normalized)) return false;
   return (
     /^npm\s+test(?:\s|$)/.test(normalized) ||

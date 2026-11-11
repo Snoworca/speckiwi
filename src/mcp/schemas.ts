@@ -407,7 +407,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     opt("--ref <ref>", "refs", { repeatable: true }),
     opt("--index <n>", "index", { encoding: "number", zod: z.number() })
   ]),
-  readSpec("coverage", mcp("check_prd_coverage", "Compares one PRD file with the SRS of a target by string only: the intent, goal and in-scope items no requirement or criterion of the target cites, the requirements that cite no PRD item, and the criteria with neither a PRD citation nor a `fills:` basis. Whether an addition stays within its item, or the SRS contradicts one, is left to the verifier. Read-only."), "prdFileCoverage", {
+  readSpec("coverage", mcp("check_prd_coverage", "Compares one PRD file with the SRS of a target by string only: the intent, goal and in-scope items no requirement or criterion of the target cites — split into `assignedToOtherTargets`, those a requirement of another target cites with this PRD's path, and `missingItems`, the rest — the requirements that cite no PRD item, and the criteria with neither a PRD citation nor a `fills:` basis. Whether an addition stays within its item, or the SRS contradicts one, is left to the verifier. Read-only."), "prdFileCoverage", {
     args: { path: { type: "string" } },
     options: [opt("--target <target>", "target")]
   }),

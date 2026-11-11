@@ -94,7 +94,7 @@ description: "PRD 로 제품 target 의 SRS 를 한 번 저작하고 그 요구 
 | `wave-append-cap-exhausted` | run 당 wave 추가 상한 **3** 소진 — 무인 실행의 종료를 보장하는 유일한 경계 | §0.5 · §5.6 |
 | `invalid-loop-option` | `--loops N` 이 정수 ≥1 이 아님 — `loop-option.md` §1 이 명령하는 HALT 를 게이트로 전사 | §0.7 / loop-option.md |
 | `requirement-not-ready` | PW-4 의 feasibility 승급 뒤에도 `orchestrate schedule waves` 가 노드의 요구(없음 · `draft` · `deprecated` · `discarded`)로 거절 — 그 wave 는 dispatch 전에 멈춘다(`parallel-waves.md` PW-4) | §5 |
-| `lane-worker-possibly-live` | 워커 워크트리가 `locked` 로 보고되어 그 워커가 살아 있을 수 있음 — 다시 dispatch 하지 않는다(FR-FLOW-118). `--auto` 가 결정하지 않는다 — `NEEDS_USER`(`parallel-waves.md` PW-5 · §6) | §5 / §6 |
+| `lane-worker-possibly-live` | 워커 워크트리가 `locked` 로 보고되어 그 워커가 살아 있을 수 있음 — 다시 dispatch 하지 않는다(FR-FLOW-118). `--auto` 가 결정하지 않는다 — `NEEDS_USER`(`parallel-waves.md` PW-5 · §6). drift 게이트(`run-invariant-drift` 등)가 먼저 걸리지 않는 한 도구로는 `orchestrate resume` 이 이 경우를 `interrupted-external-action` 으로 거절하고, `violations` 에 그 lane 을 `klass` 가 `lane-possibly-live` 이고 `evidence.reason` 이 `locked-worktree` 인 항목(워크트리 경로 `evidence.worktree`, 잠금 사유 `evidence.lockReason`)으로 싣는다 — 그 항목이 이 `lane-worker-possibly-live` 게이트다. | §5 / §6 |
 | `schedule-cycle` | wave 의존 사이클 때문에 `orchestrate schedule waves` 가 stage 를 계산하지 못함 | §5 |
 | `files-not-grounded` | 그래프 노드의 `files`(`--sds` 면 SDS 의 Files · Test Plan 경로도)가 기존 경로의 오타로 판정됨 | §5 |
 | `lane-plan-drift` | 재개 때 stage 계획을 다시 계산한 결과가 `lanes.lock.json` 과 다름 — 선언 항목 digest, 또는 close-out 이 아직 손대지 않은 wave SDS 의 digest 가 달라짐 | §6 |
@@ -310,7 +310,7 @@ wave 의 워커가 병합되고 그 유예 SRS mutation 이 재생된 뒤(`paral
 | `fail-residual` | 상한에 닿지 **않았는데도** 미해소 finding 을 남긴 채 루프를 끝낸 경우 — §5.5.5 의 cross-wave HALT, 사용자 중단, 코드로 닫을 수 없는 SRS 수준 잔여가 여기 해당한다. `complete` 를 append 하지 않는다. **단 통과한 라운드가 이월·재진입으로 넘긴 항목은 여기 해당하지 않는다** — 그쪽은 `pass` + `residual` 이다 |
 
 `fail-*` 로 끝난 wave 는 미완료로 남고 §0.6 재개가 그 wave 로 되돌아온다.
-비종료 라운드는 `verdict="in-progress"` 로 쓰고, 종료 verdict(`pass` / `fail-cap` / `fail-residual`)는 루프를 실제로 끝낸 **마지막** 줄에만 쓴다. append-only 파일에서 "마지막 줄"은 그 wave 의 wave-verify 이벤트 중 최신 1줄로 결정되며, waves-event §3 의 게이트도 그 최신 줄의 verdict 를 본다.
+비종료 라운드는 `verdict="in-progress"` 로 쓰고, 종료 verdict(`pass` / `fail-cap` / `fail-residual`)는 루프를 실제로 끝낸 **마지막** 줄에만 쓴다. append-only 파일에서 "마지막 줄"은 그 wave 의 wave-verify 이벤트 중 최신 1줄로 결정되며, waves-event §3 의 게이트도 그 최신 줄의 verdict 를 본다. `verification` 을 싣지 않은 줄 — verb 의 `intent`·`result` 원장 줄 등 — 은 `phase` 를 `wave-verify` 로 달아도 wave-verify 기록이 아니며, 게이트는 `verification` 을 실은 wave-verify 줄(`orchestrate round record` 가 쓰는 라운드 줄) 가운데 최신 1줄만 본다 — `journal append` 의 `complete-without-latest-pass` 거절은 그 줄의 번호와 verdict 를 적는다.
 
 `base_sha` 는 **wave 진입** 시점의 HEAD — 그 wave 의 입력 커밋, 곧 dispatch base — 를 캡처해 그 wave 의 이벤트에 싣는다 — 재개 세션에는 분해 대화가 없으므로, 캡처 시점을 규정하지 않으면 보존 검사의 창이 통째로 사라진다.
 

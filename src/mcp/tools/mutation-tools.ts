@@ -28,7 +28,7 @@ import { renameScope } from "../../core/mutation/rename-scope.js";
 import { retargetSelection } from "../../core/mutation/retarget.js";
 import { expireAcceptanceCriterion } from "../../core/mutation/expire-ac.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
-import { applyWorkflowMutation, type WorkflowMutationInput, type WorkflowMutationKind } from "../../core/workflow/mutation.js";
+import { applyWorkflowMutation, defaultWorkflowOwner, type WorkflowMutationInput, type WorkflowMutationKind } from "../../core/workflow/mutation.js";
 import { applyRequirementIdCollisionRepair, type RequirementIdCollisionRepairApplyInput, type RequirementOccurrenceIdentity } from "../../core/mutation/repair-requirement-id.js";
 import { editRequirementTableRows, replaceAcceptanceCriteria, updateRequirementFields } from "../../core/mutation/edit-requirement.js";
 import type { McpCallContext, McpDependencies, McpServerHandle } from "../adapter.js";
@@ -66,7 +66,7 @@ function mutationOptions(input: Record<string, unknown>): { dryRun?: boolean; ig
 function workflowBase(kind: WorkflowMutationKind, input: Record<string, unknown>): WorkflowMutationInput {
   return {
     kind,
-    owner: typeof input.owner === "string" ? input.owner : "kiwi-pm",
+    owner: typeof input.owner === "string" ? input.owner : defaultWorkflowOwner(input.event),
     runId: String(input.runId),
     ...(typeof input.taskId === "string" ? { taskId: input.taskId } : {}),
     ...(typeof input.reqId === "string" ? { reqId: input.reqId } : {}),

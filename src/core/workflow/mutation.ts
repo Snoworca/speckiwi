@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { open, readFile } from "node:fs/promises";
 import path from "node:path";
-import { diagnostic } from "../diagnostic.js";
+import { diagnostic, summarizeDiagnostics } from "../diagnostic.js";
 import { resolveInsideRoot } from "../fs/safe-path.js";
 import { mutationFail, mutationOk } from "../mutation/guards.js";
 import { withMutationEnvelope } from "../mutation/envelope.js";
@@ -9,7 +9,7 @@ import type { Diagnostic, MutationEnvelope, MutationOperationDetail, MutationRes
 import * as artifactLockModule from "./artifact-lock.js";
 import type { AcquireArtifactLockResult, ArtifactLockCapability, ReleaseArtifactLockResult } from "./artifact-lock.js";
 import * as workflowJsonl from "./jsonl.js";
-import type { WorkflowJsonlEntry, WorkflowJsonlEvent } from "./jsonl.js";
+import type { DiagnosticCounts, WorkflowJsonlEntry, WorkflowJsonlEvent } from "./jsonl.js";
 import { resolveWorkflowArtifacts } from "./artifacts.js";
 import {
   canonicalWorkflowJson,
@@ -31,6 +31,17 @@ export type WorkflowMutationKind =
   | "workflow_logical_delete";
 
 export type WorkflowJournalState = "planned" | "applied" | "confirmed" | "failed" | "skipped_dry_run";
+
+/**
+ * The owner a workflow mutation records when the caller names none: the event's own `skill`, so a
+ * kiwi-orchestrator event is not written as kiwi-pm's. A mutation without an event, or an event
+ * without a skill, keeps `kiwi-pm` — the owner `workflow_logical_delete` accepts. The MCP and CLI
+ * adapters both take it from here. @req FR-NODE-300 AC-4
+ */
+export function defaultWorkflowOwner(event: unknown): string {
+  const skill = typeof event === "object" && event !== null ? (event as Record<string, unknown>).skill : undefined;
+  return typeof skill === "string" && skill.trim().length > 0 ? skill : "kiwi-pm";
+}
 
 export interface WorkflowMutationInput {
   kind: WorkflowMutationKind;
@@ -79,6 +90,8 @@ export interface WorkflowMutationOutput {
   operations?: MutationOperationDetail[];
   artifact?: WorkflowMutationArtifact;
   diagnosticDelta?: WorkflowDiagnosticDelta;
+  /** The journal's existing lines' diagnostics, as counts. @req FR-NODE-300 */
+  existingLineDiagnostics?: DiagnosticCounts;
 }
 
 export interface WorkflowMutationArtifact {
@@ -228,6 +241,7 @@ function output(input: {
   operations?: MutationOperationDetail[];
   artifact?: WorkflowMutationArtifact;
   diagnosticDelta?: WorkflowDiagnosticDelta;
+  existingLineDiagnostics?: DiagnosticCounts;
 }): WorkflowMutationOutput {
   return {
     kind: input.kind,
@@ -243,7 +257,8 @@ function output(input: {
     ...(input.repairToken ? { repairToken: input.repairToken } : {}),
     ...(input.operations ? { operations: input.operations } : {}),
     ...(input.artifact ? { artifact: input.artifact } : {}),
-    ...(input.diagnosticDelta ? { diagnosticDelta: input.diagnosticDelta } : {})
+    ...(input.diagnosticDelta ? { diagnosticDelta: input.diagnosticDelta } : {}),
+    ...(input.existingLineDiagnostics ? { existingLineDiagnostics: input.existingLineDiagnostics } : {})
   };
 }
 
@@ -452,8 +467,9 @@ async function applyJsonlAppendMutation(root: ProjectRoot, input: WorkflowMutati
   const incomingEventKey = `${String(event.skill ?? "")}|${String(event.run_id ?? "")}`;
   if (parsed.entries.some((entry) => entry.eventKey === incomingEventKey)) {
     const completedOperations = [`confirm:${input.kind}`];
-    const value = output({ kind: input.kind, written: false, identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [] });
-    return withMutationEnvelope(mutationOk(value, parsed.diagnostics), envelope({ kind: input.kind, filePath, dryRun: input.dryRun ?? false, written: false, operations: [], identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [] }));
+    // @req FR-NODE-300 AC-2 — a confirmed duplicate reports the journal's lines as counts too.
+    const value = output({ kind: input.kind, written: false, identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [], existingLineDiagnostics: workflowJsonl.countDiagnostics(parsed.diagnostics) });
+    return withMutationEnvelope({ ...mutationOk(value, []), diagnosticsSummary: summarizeDiagnostics(parsed.diagnostics) }, envelope({ kind: input.kind, filePath, dryRun: input.dryRun ?? false, written: false, operations: [], identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [] }));
   }
   const appended = await workflowJsonl.appendWorkflowJsonl(root, filePath, event, {
     policy: "halt",
@@ -469,8 +485,8 @@ async function applyJsonlAppendMutation(root: ProjectRoot, input: WorkflowMutati
   const completedOperations = input.dryRun ? [] : [`write:${input.kind}`, `confirm:${input.kind}`];
   const journalState: WorkflowJournalState = input.dryRun ? "skipped_dry_run" : "confirmed";
   const operations = appended.mutation?.operations ?? [];
-  const value = output({ kind: input.kind, written: appended.value?.written ?? false, identity, journalState, completedOperations, pendingOperations, pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [] });
-  return withMutationEnvelope(mutationOk(value, appended.diagnostics), envelope({ kind: input.kind, filePath, dryRun: input.dryRun ?? false, written: appended.value?.written ?? false, operations, identity, journalState, completedOperations, pendingOperations, pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [] }));
+  const value = output({ kind: input.kind, written: appended.value?.written ?? false, identity, journalState, completedOperations, pendingOperations, pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [], ...(appended.value ? { existingLineDiagnostics: appended.value.existingLineDiagnostics } : {}) });
+  return withMutationEnvelope({ ...mutationOk(value, appended.diagnostics), ...(appended.diagnosticsSummary ? { diagnosticsSummary: appended.diagnosticsSummary } : {}) }, envelope({ kind: input.kind, filePath, dryRun: input.dryRun ?? false, written: appended.value?.written ?? false, operations, identity, journalState, completedOperations, pendingOperations, pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [] }));
   };
 
   if (input.dryRun) return execute();
@@ -1240,10 +1256,12 @@ async function applyLogicalDeleteMutation(root: ProjectRoot, input: WorkflowMuta
       pendingOperations: [],
       pendingRepair: null,
       targetRecord: logicalDeleteTargetRecord(input, target.deletedBy[0]),
-      staleGuards: []
+      staleGuards: [],
+      // @req FR-NODE-300 AC-2 — a confirmed repeat reports the journal's lines as counts too.
+      existingLineDiagnostics: workflowJsonl.countDiagnostics(parsed.diagnostics)
     });
     return withMutationEnvelope(
-      mutationOk(value, parsed.diagnostics),
+      { ...mutationOk(value, []), diagnosticsSummary: summarizeDiagnostics(parsed.diagnostics) },
       envelope({
         kind: input.kind,
         filePath,
@@ -1311,10 +1329,11 @@ async function applyLogicalDeleteMutation(root: ProjectRoot, input: WorkflowMuta
     pendingOperations,
     pendingRepair: null,
     targetRecord: record,
-    staleGuards: []
+    staleGuards: [],
+    ...(appended.value ? { existingLineDiagnostics: appended.value.existingLineDiagnostics } : {})
   });
   return withMutationEnvelope(
-    mutationOk(value, appended.diagnostics),
+    { ...mutationOk(value, appended.diagnostics), ...(appended.diagnosticsSummary ? { diagnosticsSummary: appended.diagnosticsSummary } : {}) },
     envelope({ kind: input.kind, filePath, dryRun: input.dryRun ?? false, written: appended.value?.written ?? false, operations, identity, journalState, completedOperations, pendingOperations, pendingRepair: null, targetRecord: record, staleGuards: [] })
   );
   };

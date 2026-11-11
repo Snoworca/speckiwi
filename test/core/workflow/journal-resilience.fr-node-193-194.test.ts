@@ -2,7 +2,7 @@ import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { appendWorkflowJsonl } from "../../../src/core/workflow/jsonl.js";
+import { appendWorkflowJsonl, parseWorkflowJsonl } from "../../../src/core/workflow/jsonl.js";
 import { applyWorkflowMutation } from "../../../src/core/workflow/mutation.js";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
 
@@ -72,8 +72,9 @@ describe("FR-NODE-193 AC-1/AC-2 — a legacy line does not deny the write", () =
     const after = await readFile(abs, "utf8");
     expect(after.startsWith(legacy), "the legacy line was rewritten or removed").toBe(true);
     expect(nonEmptyLines(after)).toHaveLength(2);
-    // Proceeding is not the same as pretending the file is clean.
-    expect(result.diagnostics?.some((entry) => entry.code === "SRS-W055"), "the warning was dropped").toBe(true);
+    // Proceeding is not the same as pretending the file is clean. The existing line's warning is
+    // reported as a count per code (FR-NODE-193 AC-1, revised 2026-11-11 by FR-NODE-300).
+    expect(result.ok && result.value?.existingLineDiagnostics.byCode["SRS-W055"], "the warning was dropped").toBe(1);
   });
 
   it("appends past an unsupported version string too", async () => {
@@ -97,7 +98,7 @@ describe("FR-NODE-193 AC-3 — an unreadable line is stepped over, not repaired"
     const after = await readFile(abs, "utf8");
     // The tool cannot read this line, so it has no business rewriting it — only adding after it.
     expect(after.startsWith(`${VALID}${broken}`), "the unreadable line was altered").toBe(true);
-    expect(result.diagnostics?.some((entry) => entry.code === "SRS-W052"), "the parse warning was dropped").toBe(true);
+    expect(result.ok && result.value?.existingLineDiagnostics.byCode["SRS-W052"], "the parse warning was dropped").toBe(1);
   });
 });
 
@@ -145,11 +146,13 @@ describe("FR-NODE-193 AC-5/AC-6 — an error still refuses, and severity is what
     ].join("\n"); // and no trailing newline, for SRS-W056
     const { root } = await seeded(messy);
 
+    // The parser's own output: since FR-NODE-300 a successful append carries existing lines as counts.
+    const parsed = await parseWorkflowJsonl(root, REL);
     const result = await appendWorkflowJsonl(root, REL, event("r-1"));
 
-    const codes = (result.diagnostics ?? []).map((entry) => entry.code);
+    const codes = parsed.diagnostics.map((entry) => entry.code);
     expect(new Set(codes).size, "the fixture did not exercise several diagnostics at once").toBeGreaterThan(2);
-    const severities = new Set((result.diagnostics ?? []).map((entry) => entry.severity));
+    const severities = new Set(parsed.diagnostics.map((entry) => entry.severity));
     expect([...severities], "the parser now emits a non-warning diagnostic; decide whether it should block appends").toEqual(["warning"]);
     expect(result.ok, "warnings denied the write").toBe(true);
   });

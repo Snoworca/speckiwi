@@ -123,13 +123,16 @@ export type SnapshotPayload =
     readonly summary: Record<string, unknown>;
   };
 
+/** A refused requirement; `invalidBecause` names why its snapshot was not trusted. @req FR-NODE-298 */
+export type NotReadyRequirement = DerivedRequirementReadiness & { readonly invalidBecause?: readonly SnapshotInvalidCause[] };
+
 export class RequirementNotReadyError extends Error {
   /** §13's critical gate raised at Phase 3.c′ when derived readiness refuses the dispatch. */
   readonly gate = REQUIREMENT_NOT_READY_GATE;
-  readonly notReady: readonly DerivedRequirementReadiness[];
+  readonly notReady: readonly NotReadyRequirement[];
   readonly unresolved: readonly string[];
 
-  constructor(notReady: readonly DerivedRequirementReadiness[], unresolved: readonly string[]) {
+  constructor(notReady: readonly NotReadyRequirement[], unresolved: readonly string[]) {
     super(`Requirements are not ready for dispatch: ${[...notReady.map((entry) => entry.id), ...unresolved].join(", ")}`);
     this.name = "RequirementNotReadyError";
     this.notReady = notReady;
@@ -340,29 +343,35 @@ function rawMissingEvidence(record: SpecRequirementRecord): boolean {
  * ready verdict: a summary that disagrees with the records makes the whole snapshot untrustworthy.
  * Everything the three readiness fields are computed from is a raw record.
  */
-function summaryContradictsRecords(snapshot: RequirementSnapshot, target: string): boolean {
+function summaryContradictions(snapshot: RequirementSnapshot, target: string): string[] {
   const summary = snapshot.summary;
-  if (snapshot.target !== target || summary.target !== target) return true;
+  // A summary of another target says nothing about these records, so nothing else is compared.
+  if (snapshot.target !== target || summary.target !== target) return ["target"];
   const records = snapshot.records.filter((record) => record.target === target);
   const errors = snapshot.diagnostics.filter((item) => item.severity === "error").length;
   const warnings = snapshot.diagnostics.filter((item) => item.severity === "warning").length;
-  const agrees = summary.total === records.length
-    && sameCounts(summary.countsByStatus, positiveCounts(records.map((record) => record.status)))
-    && sameCounts(summary.countsByStability, positiveCounts(records.map((record) => record.stability)))
-    && sameStringSet(summary.blocked, records.filter((record) => record.status === "blocked").map((record) => record.id))
-    && sameStringSet(summary.implementedNotVerified, records.filter((record) => record.status === "implemented").map((record) => record.id))
-    && sameStringSet(summary.missingEvidence, records.filter(rawMissingEvidence).map((record) => record.id))
-    && sameStringSet(summary.draftRequirements, records.filter((record) => record.stability === "draft").map((record) => record.id))
-    && sameStringSet(summary.deprecatedRequirements, records.filter((record) => record.stability === "deprecated").map((record) => record.id))
-    && sameStringSet(
-      summary.stabilityBlockers,
-      records
-        .filter((record) => record.status !== "discarded" && (record.stability === "draft" || record.stability === "deprecated"))
-        .map((record) => record.id)
-    )
-    && summary.diagnosticsSummary.errors === errors
-    && summary.diagnosticsSummary.warnings === warnings;
-  return !agrees;
+  const checks: Array<[string, boolean]> = [
+    ["total", summary.total === records.length],
+    ["countsByStatus", sameCounts(summary.countsByStatus, positiveCounts(records.map((record) => record.status)))],
+    ["countsByStability", sameCounts(summary.countsByStability, positiveCounts(records.map((record) => record.stability)))],
+    ["blocked", sameStringSet(summary.blocked, records.filter((record) => record.status === "blocked").map((record) => record.id))],
+    ["implementedNotVerified", sameStringSet(summary.implementedNotVerified, records.filter((record) => record.status === "implemented").map((record) => record.id))],
+    ["missingEvidence", sameStringSet(summary.missingEvidence, records.filter(rawMissingEvidence).map((record) => record.id))],
+    ["draftRequirements", sameStringSet(summary.draftRequirements, records.filter((record) => record.stability === "draft").map((record) => record.id))],
+    ["deprecatedRequirements", sameStringSet(summary.deprecatedRequirements, records.filter((record) => record.stability === "deprecated").map((record) => record.id))],
+    [
+      "stabilityBlockers",
+      sameStringSet(
+        summary.stabilityBlockers,
+        records
+          .filter((record) => record.status !== "discarded" && (record.stability === "draft" || record.stability === "deprecated"))
+          .map((record) => record.id)
+      )
+    ],
+    ["diagnosticsSummary.errors", summary.diagnosticsSummary.errors === errors],
+    ["diagnosticsSummary.warnings", summary.diagnosticsSummary.warnings === warnings]
+  ];
+  return checks.filter(([, agrees]) => !agrees).map(([field]) => field);
 }
 
 function isLifecycleReady(record: SpecRequirementRecord): boolean {
@@ -547,11 +556,70 @@ export function deriveCanonicalRequirementReadiness(
   target: string,
   requirementIds: readonly string[]
 ): DerivedRequirementReadiness[] {
+  return judgedReadiness(snapshot, target, requirementIds).derived;
+}
+
+/**
+ * Why the snapshot, or one requirement in it, is not trusted. @req FR-NODE-298 — a refusal that gave
+ * only four false flags was read as "verified is not ready", when the snapshot was what failed.
+ */
+export interface SnapshotInvalidCause {
+  readonly cause: "summary-contradicts-records" | "error-diagnostic" | "unowned-warning" | "requirement-warning";
+  /** The summary fields that disagree with the records. */
+  readonly fields?: readonly string[];
+  readonly code?: string;
+  readonly count?: number;
+  /** The message of the first diagnostic of this code. */
+  readonly message?: string;
+}
+
+function causesByCode(cause: SnapshotInvalidCause["cause"], diagnostics: readonly ReadinessDiagnostic[]): SnapshotInvalidCause[] {
+  const groups = new Map<string, ReadinessDiagnostic[]>();
+  for (const item of diagnostics) groups.set(item.code, [...(groups.get(item.code) ?? []), item]);
+  return [...groups].map(([code, items]) => ({ cause, code, count: items.length, message: items[0]!.message }));
+}
+
+/**
+ * The one judgement of a snapshot: the causes that make every record in it untrusted, and the
+ * requirements a warning of their own makes untrusted. The readiness flags and the refusal's causes
+ * are both read from it, so a refusal cannot show an invalid snapshot without saying why.
+ * @req FR-NODE-298 AC-4
+ */
+function judgeSnapshot(
+  snapshot: RequirementSnapshot,
+  target: string,
+  requirementIds: readonly string[]
+): { global: SnapshotInvalidCause[]; byRequirement: ReadonlyMap<string, SnapshotInvalidCause[]> } {
+  const scopedWarnings = scopeRequirementDiagnostics(snapshot.records, snapshot.diagnostics, requirementIds)
+    .filter((item) => item.severity === "warning");
+  const owned = new Map<string, ReadinessDiagnostic[]>();
+  const unowned: ReadinessDiagnostic[] = [];
+  for (const item of scopedWarnings) {
+    const owners = diagnosticRequirementIds(item, snapshot.records);
+    if (owners.size === 0) unowned.push(item);
+    for (const id of owners) owned.set(id, [...(owned.get(id) ?? []), item]);
+  }
+  const fields = summaryContradictions(snapshot, target);
+  const global: SnapshotInvalidCause[] = [
+    ...(fields.length > 0 ? [{ cause: "summary-contradicts-records" as const, fields }] : []),
+    ...causesByCode("error-diagnostic", snapshot.diagnostics.filter((item) => item.severity === "error")),
+    ...causesByCode("unowned-warning", unowned)
+  ];
+  return {
+    global,
+    byRequirement: new Map([...owned].map(([id, items]) => [id, causesByCode("requirement-warning", items)]))
+  };
+}
+
+function judgedReadiness(
+  snapshot: RequirementSnapshot,
+  target: string,
+  requirementIds: readonly string[]
+): { derived: DerivedRequirementReadiness[]; causesOf: (id: string) => SnapshotInvalidCause[] } {
   if (!target.trim()) throw new Error("A target is required for canonical readiness derivation");
   if (requirementIds.length === 0 || !sameStringSet(requirementIds, [...new Set(requirementIds)])) {
     throw new Error("Canonical readiness requires a non-empty, duplicate-free requirement allowlist");
   }
-
   const byId = new Map<string, SpecRequirementRecord[]>();
   for (const record of snapshot.records) {
     const occurrences = byId.get(record.id) ?? [];
@@ -559,14 +627,9 @@ export function deriveCanonicalRequirementReadiness(
     byId.set(record.id, occurrences);
   }
 
-  const scopedDiagnostics = scopeRequirementDiagnostics(snapshot.records, snapshot.diagnostics, requirementIds);
-  const globalInvalid = snapshot.diagnostics.some((item) => item.severity === "error")
-    || summaryContradictsRecords(snapshot, target)
-    || scopedDiagnostics.some((item) =>
-      item.severity === "warning" && diagnosticRequirementIds(item, snapshot.records).size === 0);
-  const warningAffectedIds = new Set(scopedDiagnostics.flatMap((item) =>
-    item.severity === "warning" ? [...diagnosticRequirementIds(item, snapshot.records)] : []));
-  const recordInvalid = (id: string): boolean => globalInvalid || warningAffectedIds.has(id);
+  const judgement = judgeSnapshot(snapshot, target, requirementIds);
+  const causesOf = (id: string): SnapshotInvalidCause[] => [...judgement.global, ...(judgement.byRequirement.get(id) ?? [])];
+  const recordInvalid = (id: string): boolean => causesOf(id).length > 0;
   const selectedIds = new Set(requirementIds);
 
   const dependencyReady = (dependencyId: string, visiting: Set<string>): boolean => {
@@ -583,7 +646,7 @@ export function deriveCanonicalRequirementReadiness(
     return hardDependencyIds(dependency).every((id) => dependencyReady(id, new Set(visiting).add(dependencyId)));
   };
 
-  return requirementIds.flatMap((id) => {
+  const derived = requirementIds.flatMap((id) => {
     const occurrences = byId.get(id) ?? [];
     if (occurrences.length === 0) return [];
     const record = deterministicOccurrence(occurrences);
@@ -601,6 +664,7 @@ export function deriveCanonicalRequirementReadiness(
       ownershipVerified: !invalid && occurrences.length === 1 && record.target === target
     }];
   });
+  return { derived, causesOf };
 }
 
 /**
@@ -613,11 +677,15 @@ export function assertRequirementsReady(
   target: string,
   requirementIds: readonly string[]
 ): DerivedRequirementReadiness[] {
-  const derived = deriveCanonicalRequirementReadiness(snapshot, target, requirementIds);
+  const { derived, causesOf } = judgedReadiness(snapshot, target, requirementIds);
   const resolved = new Set(derived.map((entry) => entry.id));
   const unresolved = requirementIds.filter((id) => !resolved.has(id));
-  const notReady = derived.filter((entry) =>
-    !entry.hardDependenciesSatisfied || entry.evidenceDrift || !entry.ownershipVerified);
+  const notReady = derived
+    .filter((entry) => !entry.hardDependenciesSatisfied || entry.evidenceDrift || !entry.ownershipVerified)
+    .map((entry): NotReadyRequirement => {
+      const causes = causesOf(entry.id);
+      return causes.length > 0 ? { ...entry, invalidBecause: causes } : entry;
+    });
   if (notReady.length > 0 || unresolved.length > 0) throw new RequirementNotReadyError(notReady, unresolved);
   return derived;
 }

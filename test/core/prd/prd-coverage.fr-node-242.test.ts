@@ -143,7 +143,8 @@ describe("FR-NODE-242 PRD coverage", () => {
     expect(report.notJudged).toMatch(/string/i);
     expect(report.notJudged).toMatch(/verifier/i);
     expect(report.notJudged).toMatch(/contradict/i);
-    expect(Object.keys(report).sort()).toEqual(["notJudged", "prd", "target", "uncitedItems", "uncitedRequirements", "ungroundedCriteria"]);
+    // FR-NODE-302 added the cross-target split, which string comparison decides too.
+    expect(Object.keys(report).sort()).toEqual(["assignedToOtherTargets", "missingItems", "notJudged", "prd", "target", "uncitedItems", "uncitedRequirements", "ungroundedCriteria"]);
   });
 });
 
