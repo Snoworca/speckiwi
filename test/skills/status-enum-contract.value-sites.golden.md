@@ -574,7 +574,7 @@ verified	-	_shared/kiwi/test-sufficiency.md	구는 인용을 읽을 뿐 테스�
 verified	-	_shared/kiwi/test-sufficiency.md	맡고, 테스트가 실제로 실행·통과했는지는 §4 의 실행(verified 를 쓰는 호출자가 증거로 쓸 인용의 테스트 파일)과 §
 verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 끝난 wave 의 verified 요구 | 그 요구를 고치지 않는다. 뒤 wave 에 후
 verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 현재 wave 의 verified 아닌 요구 | 그 AC 를 고치고 그 wave 를 재진
-verified	-	kiwi-coder/SKILL.md	# 테스트 파일(경로 또는 경로:줄) — verified 전이가 파일 경로로 해석한다
+verified	-	kiwi-coder/SKILL.md	# 테스트 파일(경로, 경로:줄 또는 경로:줄-줄) — verified 전이가 줄 표기를 떼고 파일 경로로 해석한다
 verified	-	kiwi-coder/SKILL.md	- (3) skip — verified 닫지 않음
 verified	-	kiwi-coder/SKILL.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
 verified	-	kiwi-coder/SKILL.md	der 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를
@@ -1239,7 +1239,7 @@ verified	-	kiwi-coder/SKILL.md	state.failed 이거나 회귀 fail 잔존 — ver
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
 verified	-	kiwi-coder/SKILL.md	을 자동 채택해 --close-reqs 로 요구를 verified 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에
 verified	-	kiwi-coder/SKILL.md	중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 verified 를 쓰지 않는다 — 그 쓰기는 kiwi-review-
-verified	-	kiwi-coder/references/extended-workflow.md	# 테스트 파일(경로 또는 경로:줄) — verified 전이가 파일 경로로 해석한다
+verified	-	kiwi-coder/references/extended-workflow.md	# 테스트 파일(경로, 경로:줄 또는 경로:줄-줄) — verified 전이가 줄 표기를 떼고 파일 경로로 해석한다
 verified	-	kiwi-coder/references/extended-workflow.md	--close-reqs 의 verified 전이는 전적으로 $kiwi-review-fix-loop
 verified	-	kiwi-coder/references/extended-workflow.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
 verified	-	kiwi-coder/references/extended-workflow.md	der 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를
@@ -1868,7 +1868,7 @@ verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 현재 wave 의
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
 verified	-	kiwi-coder/SKILL.md	을 자동 채택해 --close-reqs 로 요구를 verified 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에
 verified	-	kiwi-coder/SKILL.md	중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 verified 를 쓰지 않는다 — 그 쓰기는 kiwi-review-
-verified	-	kiwi-coder/references/extended-workflow.md	# 테스트 파일(경로 또는 경로:줄) — verified 전이가 파일 경로로 해석한다
+verified	-	kiwi-coder/references/extended-workflow.md	# 테스트 파일(경로, 경로:줄 또는 경로:줄-줄) — verified 전이가 줄 표기를 떼고 파일 경로로 해석한다
 verified	-	kiwi-coder/references/extended-workflow.md	--close-reqs 의 verified 전이는 전적으로 $kiwi-review-fix-loop
 verified	-	kiwi-coder/references/extended-workflow.md	-fix-loop 책임이다. kiwi-coder 는 verified 전이, bulk finalize, bulk archive
 verified	-	kiwi-coder/references/extended-workflow.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
@@ -2505,7 +2505,7 @@ verified	-	kiwi-coder/SKILL.md	state.failed 이거나 회귀 fail 잔존 — ver
 verified	-	kiwi-coder/SKILL.md	tus 호출이 REQ status 를 backward (verified → implemented 등) 전이 | 차단 + WARN
 verified	-	kiwi-coder/SKILL.md	을 자동 채택해 --close-reqs 로 요구를 verified 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에
 verified	-	kiwi-coder/SKILL.md	중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 verified 를 쓰지 않는다 — 그 쓰기는 kiwi-review-
-verified	-	kiwi-coder/references/extended-workflow.md	# 테스트 파일(경로 또는 경로:줄) — verified 전이가 파일 경로로 해석한다
+verified	-	kiwi-coder/references/extended-workflow.md	# 테스트 파일(경로, 경로:줄 또는 경로:줄-줄) — verified 전이가 줄 표기를 떼고 파일 경로로 해석한다
 verified	-	kiwi-coder/references/extended-workflow.md	--close-reqs 의 verified 전이는 전적으로 $kiwi-review-fix-loop
 verified	-	kiwi-coder/references/extended-workflow.md	ceptance_criteria 를 부르지 않으므로, verified 를 시도하면 update-status.ts 의 게이
 verified	-	kiwi-coder/references/extended-workflow.md	der 는 per-REQ evidence 를 남기더라도 verified, bulk finalize, bulk archive 를

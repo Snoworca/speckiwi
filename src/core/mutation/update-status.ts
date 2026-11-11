@@ -184,7 +184,7 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput,
   // this; consulting the same rule here moves the discovery from release time to the write.
   if (input.status === "verified") {
     const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, nextRecord);
-    if (unresolved.length > 0) return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved));
+    if (unresolved.length > 0) return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved, root.root));
   }
   const statusWrite = planMetadataWrite(loaded.file, loaded.record, "Status", input.status);
   if (!statusWrite.ok) return mutationFail("MUTATION_DENIED", statusWrite.message);

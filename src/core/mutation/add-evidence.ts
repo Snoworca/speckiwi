@@ -84,12 +84,12 @@ async function addVerificationEvidenceUnlocked(root: ProjectRoot, input: AddEvid
   const row = { id: next, type: input.type, reference: input.reference, covers, notes };
   const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, { ...loaded.record, verificationEvidence: [row] });
   if (unresolved.length > 0 && loaded.record.status === "verified") {
-    return mutationFail("MUTATION_DENIED", `${input.id} is verified, so its evidence must resolve: ${describeEvidenceIssues(unresolved)}`);
+    return mutationFail("MUTATION_DENIED", `${input.id} is verified, so its evidence must resolve: ${describeEvidenceIssues(unresolved, root.root)}`);
   }
   const warnings =
     unresolved.length === 0
       ? []
-      : [diagnostic("SRS-W082", "warning", `${input.id} Verification Evidence ${next} does not resolve yet: ${describeEvidenceIssues(unresolved)}`, { filePath: loaded.record.filePath, requirementId: input.id })];
+      : [diagnostic("SRS-W082", "warning", `${input.id} Verification Evidence does not resolve yet: ${describeEvidenceIssues(unresolved, root.root)}`, { filePath: loaded.record.filePath, requirementId: input.id })];
   // @req FR-NODE-259 AC-2 @req FR-NODE-278 AC-3 — under the table's own header, the table made when missing.
   const insert = planSectionRowsInsert(loaded.file, loaded.record, "Verification Evidence", [
     { "Evidence ID": next, Type: input.type, Reference: input.reference, Covers: covers, Notes: notes }

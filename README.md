@@ -714,7 +714,7 @@ speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summ
 - Discarding a protected requirement is refused unless `update-status` also gets `--confirm-discard-verified`. Protected means Status `verified`, Stability `stable` or `frozen`, or `implemented` with verification evidence.
 - `append-note` (MCP `append_section_note`) adds one note as a bullet. An appended note is stamped with the day's date: when the text starts with that same date and a separator and the rest of that line holds text, the date is written once, and any other date in the text is kept.
 - `append-note --mode replace` (MCP `append_section_note` with `mode: "replace"`) rewrites the whole Rationale, Research or Implementation Notes section. A replace that removes an item, a note the new text does not carry again, is refused unless it gets `--confirm-replace` (MCP `confirmReplace: true`). `--dry-run` first reports those items as `removedItems` and `removedLines`.
-- `edit-requirement-table-rows` (MCP `edit_requirement_table_rows`) updates or deletes rows of the Verification Evidence, Trace Links and Change Notes tables. A row is addressed by its zero-based `rowIndex`. A Change Notes row takes `date`, `change` and `reason`.
+- `edit-requirement-table-rows` (MCP `edit_requirement_table_rows`) updates or deletes rows of the Verification Evidence, Trace Links and Change Notes tables. A row is addressed by its zero-based `rowIndex`. A Change Notes row takes `date`, `change` and `reason`. Like `edit-requirement` and `replace-acceptance-criteria`, it answers with the lines it changed rather than the whole requirement; read the requirement with `show` (MCP `get_requirement`).
 - A `|` or a line break in a Change Notes value, or in the `--reason` of `update-status` or `update-stability`, is rewritten so that it cannot split the table row.
 - `add-requirement` (MCP `add_requirement`) refuses a Status outside the six values in [Concepts](#en-concepts) with `USAGE`, and writes nothing.
 
@@ -1714,7 +1714,7 @@ speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summ
 - 보호된 요구사항을 폐기하려 하면, `update-status`에 `--confirm-discard-verified`를 함께 주지 않는 한 거부됩니다. 보호된 요구사항이란 Status가 `verified`이거나, Stability가 `stable` 또는 `frozen`이거나, 검증 증거가 있는 `implemented` 요구사항입니다.
 - `append-note`(MCP `append_section_note`)는 노트 하나를 글머리 항목으로 덧붙입니다. 덧붙인 노트에는 그날 날짜가 찍힙니다. 본문이 같은 날짜와 구분자로 시작하고 그 줄의 나머지에 내용이 있으면 날짜를 한 번만 쓰고, 다른 날짜는 그대로 둡니다.
 - `append-note --mode replace`(MCP에서는 `append_section_note`에 `mode: "replace"`)는 Rationale, Research, Implementation Notes 중 한 절 전체를 다시 씁니다. 새 텍스트에 다시 나오지 않는 항목을 하나라도 지우는 replace는 `--confirm-replace`(MCP `confirmReplace: true`)가 없으면 거부됩니다. `--dry-run`이 지울 항목을 먼저 `removedItems`와 `removedLines`로 보여 줍니다.
-- `edit-requirement-table-rows`(MCP `edit_requirement_table_rows`)는 Verification Evidence, Trace Links, Change Notes 표의 행을 갱신하거나 삭제합니다. 행은 0부터 세는 `rowIndex`로 지정합니다. Change Notes 행은 `date`, `change`, `reason`을 받습니다.
+- `edit-requirement-table-rows`(MCP `edit_requirement_table_rows`)는 Verification Evidence, Trace Links, Change Notes 표의 행을 갱신하거나 삭제합니다. 행은 0부터 세는 `rowIndex`로 지정합니다. Change Notes 행은 `date`, `change`, `reason`을 받습니다. `edit-requirement`·`replace-acceptance-criteria`와 마찬가지로 요구사항 전체가 아니라 바꾼 줄만 돌려줍니다. 요구사항 전체는 `show`(MCP `get_requirement`)로 읽습니다.
 - Change Notes 값이나 `update-status`·`update-stability`의 `--reason`에 들어간 `|`와 줄바꿈은 표의 행을 쪼개지 않도록 바꿔 씁니다.
 - `add-requirement`(MCP `add_requirement`)는 [핵심 개념](#ko-concepts)에 나온 여섯 값이 아닌 Status를 `USAGE`로 거부하고, 아무것도 쓰지 않습니다.
 

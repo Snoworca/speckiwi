@@ -66,7 +66,7 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
    args (각 PASS 한 테스트 인용별 1건):
    { id: "FR-X-001",                                # REQ id
      type: "test",
-     reference: "tests/x.test.ts:12",             # 테스트 파일(경로 또는 경로:줄) — verified 전이가 파일 경로로 해석한다
+     reference: "tests/x.test.ts:12",             # 테스트 파일(경로, 경로:줄 또는 경로:줄-줄) — verified 전이가 줄 표기를 떼고 파일 경로로 해석한다
      [covers: "AC-1", notes: "FR-X-001 AC-1 rejects invalid input"] }   # 선택 — covers 는 AC id 명시 권장, 테스트 제목은 notes 에
 
 3. update_status

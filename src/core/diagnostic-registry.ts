@@ -881,11 +881,11 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     code: "SRS-W082",
     severity: "warning",
     title: "Verification Evidence reference does not resolve yet",
-    messageTemplate: "{requirementId} Verification Evidence {evidenceId} does not resolve yet: {reference} [{issue}]",
+    messageTemplate: "{requirementId} Verification Evidence does not resolve yet: {evidenceId} {reference} [{issue}] {cause}",
     sourceRule: "FR-NODE-287",
     since: "v5.4.0",
     remediation:
-      "Create the file the reference names before promoting the requirement to verified, or correct the reference: a test row names the test file, as a path or as path:line with the test title after #, and a command belongs in notes. The verified transition refuses the same reference."
+      "Create the file the reference names before promoting the requirement to verified, or correct the reference: a test row names the test file as a path relative to the project root, optionally with :line or :line-line and the test title after #, and a command belongs in notes. The verified transition refuses the same reference."
   },
   {
     code: "SRS-E077",

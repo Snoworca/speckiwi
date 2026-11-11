@@ -66,11 +66,15 @@ export interface EditRequirementTableRowsInput {
   skipLock?: boolean;
 }
 
+/**
+ * What a granular edit answers: the mutation summary, as every other write does. The whole requirement
+ * is not re-read and attached — its Markdown and parsed form together made one cell edit answer tens of
+ * thousands of characters — because `get_requirement` reads it. @req FR-NODE-294 AC-1 AC-2
+ */
 export interface GranularRequirementEditOutput {
   id: string;
   written: boolean;
   updatedFields: string[];
-  record?: RequirementRecord;
 }
 
 function staleFailure(error: unknown, filePath: string): MutationResult | undefined {
@@ -119,7 +123,6 @@ function sectionContentRange(file: TextFile, record: RequirementRecord, heading:
 }
 
 async function applyGranularPlan(
-  root: ProjectRoot,
   id: string,
   file: TextFile,
   operations: PatchOperation[],
@@ -133,14 +136,8 @@ async function applyGranularPlan(
   const plan = createPatchPlan(file, operations);
   try {
     const applied = await applyPatchPlan(plan, { dryRun });
-    const loadedAfter = applied.written ? await loadRecordWithWorkspace(root, id) : undefined;
     return withMutationEnvelope(
-      mutationOk({
-        id,
-        written: applied.written,
-        updatedFields,
-        ...(loadedAfter?.record ? { record: loadedAfter.record } : {})
-      }),
+      mutationOk({ id, written: applied.written, updatedFields }),
       mutationEnvelopeFromPlan(kind, plan, dryRun, applied.written)
     );
   } catch (error) {
@@ -213,7 +210,7 @@ async function updateRequirementFieldsUnlocked(root: ProjectRoot, input: UpdateR
     updatedFields.push(field);
   }
 
-  return applyGranularPlan(root, input.id, loaded.file, operations, "update_requirement_fields", input.dryRun ?? false, updatedFields);
+  return applyGranularPlan(input.id, loaded.file, operations, "update_requirement_fields", input.dryRun ?? false, updatedFields);
 }
 
 export async function replaceAcceptanceCriteria(root: ProjectRoot, input: ReplaceAcceptanceCriteriaInput): Promise<MutationResult<GranularRequirementEditOutput>> {
@@ -259,7 +256,7 @@ async function replaceAcceptanceCriteriaUnlocked(root: ProjectRoot, input: Repla
   if (!range) return mutationFail("MUTATION_DENIED", "Acceptance Criteria section not found");
   const lines = ["", ...acceptanceCriteriaLines(loaded.file, loaded.record, input.items), ""];
   const operation: PatchOperation = { type: "replaceRange", startLine: range.startLine, endLine: range.endLine, lines };
-  return applyGranularPlan(root, input.id, loaded.file, [operation], "replace_acceptance_criteria", input.dryRun ?? false, ["acceptanceCriteria"]);
+  return applyGranularPlan(input.id, loaded.file, [operation], "replace_acceptance_criteria", input.dryRun ?? false, ["acceptanceCriteria"]);
 }
 
 /**
@@ -370,5 +367,5 @@ async function editRequirementTableRowsUnlocked(root: ProjectRoot, input: EditRe
     operations.push(write.operation);
   }
 
-  return applyGranularPlan(root, input.id, loaded.file, operations, "edit_requirement_table_rows", input.dryRun ?? false, [input.section, `changed:${todayStamp()}`]);
+  return applyGranularPlan(input.id, loaded.file, operations, "edit_requirement_table_rows", input.dryRun ?? false, [input.section, `changed:${todayStamp()}`]);
 }

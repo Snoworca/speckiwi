@@ -1091,7 +1091,7 @@ A criterion whose behaviour moved to another requirement, or was dropped, keeps 
 
 ### 22.4 Evidence Reference Rules
 
-1. Write a local file as an inline code path. Example: `` `src/auth/session.ts` ``.
+1. Write a local file as an inline code path, relative to the project root. Example: `` `src/auth/session.ts` ``. A file name alone names a file at the project root and is not looked for anywhere else.
 2. Write a GitHub Issue or PR as a URL.
 3. Write a document as a Markdown link.
 4. Do not write a file path that does not exist.

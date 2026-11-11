@@ -12,6 +12,7 @@ import type {
   RequirementRecord,
   ValidationResult
 } from "../types.js";
+import { withoutLineDesignation } from "../parser/file-references.js";
 import { findHeadingMatching, RELEASE_RESIDUE_HEADING, TARGET_MAP_HEADING } from "../parser/index-parser.js";
 import { resolveTargetSelection } from "../query/summary.js";
 import { validateWorkspace } from "../validator/validate-workspace.js";
@@ -67,10 +68,13 @@ function fullMarkdownLinkTarget(value: string): string {
   return match?.[1] ?? value.trim();
 }
 
-/** A part shaped like a path: the text before its own `#` has no whitespace and holds a separator or an extension. */
+/**
+ * A part shaped like a path: the text before its own `#` has no whitespace and holds a separator or an
+ * extension, a line designation aside. @req FR-NODE-293 AC-3
+ */
 function isPathShaped(part: string): boolean {
   const head = part.trim().split("#")[0] ?? "";
-  return head !== "" && !/\s/.test(head) && (/[\\/]/.test(head) || /\.[A-Za-z0-9]{1,8}(?::\d+(?::\d+)?)?$/.test(head));
+  return head !== "" && !/\s/.test(head) && (/[\\/]/.test(head) || /\.[A-Za-z0-9]{1,8}$/.test(withoutLineDesignation(head)));
 }
 
 /**
@@ -128,16 +132,22 @@ function isPathLikeReference(row: EvidenceRow, reference: string): boolean {
     path.isAbsolute(value) ||
     value.includes("/") ||
     value.includes("\\") ||
-    /\.[A-Za-z0-9]{1,8}$/.test(value)
+    // @req FR-NODE-293 AC-1 — a designation does not hide the extension of a root-level file.
+    /\.[A-Za-z0-9]{1,8}$/.test(withoutLineDesignation(value))
   );
 }
 
 function localEvidencePath(root: string, reference: string): string {
   let candidate = fullMarkdownLinkTarget(reference).replace(/#.*$/, "");
   if (!path.isAbsolute(candidate)) {
-    candidate = candidate.replace(/:\d+(?::\d+)?$/, "");
+    candidate = withoutLineDesignation(candidate);
   }
   return path.resolve(root, candidate);
+}
+
+/** The root references resolve from: the project root with its symbolic links resolved. */
+function evidenceRoot(projectRoot: string): string {
+  return realPathIfExists(path.resolve(projectRoot)) ?? path.resolve(projectRoot);
 }
 
 function isUnderRoot(root: string, candidate: string): boolean {
@@ -170,7 +180,7 @@ function evidenceReferenceIssue(record: RequirementRecord, row: EvidenceRow, ref
  */
 export function collectEvidenceReferenceIssuesForRecord(projectRoot: string, record: RequirementRecord): EvidenceReferenceIssue[] {
   const issues: EvidenceReferenceIssue[] = [];
-  const root = realPathIfExists(path.resolve(projectRoot)) ?? path.resolve(projectRoot);
+  const root = evidenceRoot(projectRoot);
   for (const row of record.verificationEvidence) {
     if (row.reference.trim() === "") {
       issues.push(evidenceReferenceIssue(record, row, row.reference, "empty"));
@@ -223,19 +233,33 @@ const EVIDENCE_ISSUE_CAUSE: Record<string, string> = {
   "invalid-url": "is a malformed URL"
 };
 
-/** Each unresolved reference with its cause, one clause apiece. */
-export function describeEvidenceIssues(issues: readonly EvidenceReferenceIssue[]): string {
+/**
+ * Each unresolved reference with its cause, one clause apiece, after the row that holds it — rows
+ * repeating one reference were otherwise indistinguishable. A `missing` clause says where it looked,
+ * because a bare file name resolves at the root and is never searched for by name (FR-NODE-206 AC-5).
+ * Clauses are joined by ` | `: `; ` is what separates references inside one cell.
+ * @req FR-NODE-295 AC-1 AC-2 AC-3
+ */
+export function describeEvidenceIssues(issues: readonly EvidenceReferenceIssue[], projectRoot: string): string {
+  const root = evidenceRoot(projectRoot);
   return issues
     .map((issue) => {
+      const row = issue.evidenceId ? `${issue.evidenceId} ` : "";
       const label = issue.reference.trim() === "" ? "(empty cell)" : issue.reference;
       const kind = issue.issue ?? "unclassified";
-      return `${label} [${kind}] ${EVIDENCE_ISSUE_CAUSE[kind] ?? `fails the ${kind} check`}`;
+      // The path the resolver checked, relative to the root it checked from: an absolute path or one
+      // through the root's own name reads as the file it names, and a backslash stays what POSIX saw.
+      const lookedFor =
+        kind === "missing"
+          ? ` (looked for ${path.relative(root, localEvidencePath(root, issue.reference)).split(path.sep).join("/")} from the project root, and a local reference is written as a path from the project root)`
+          : "";
+      return `${row}${label} [${kind}] ${EVIDENCE_ISSUE_CAUSE[kind] ?? `fails the ${kind} check`}${lookedFor}`;
     })
-    .join("; ");
+    .join(" | ");
 }
 
-export function describeEvidenceRefusal(issues: readonly EvidenceReferenceIssue[]): string {
-  return `Cannot mark verified: ${describeEvidenceIssues(issues)}`;
+export function describeEvidenceRefusal(issues: readonly EvidenceReferenceIssue[], projectRoot: string): string {
+  return `Cannot mark verified: ${describeEvidenceIssues(issues, projectRoot)}`;
 }
 
 function commandPolicyViolation(record: RequirementRecord, row: EvidenceRow, reference: string, policy: string): CommandEvidencePolicyViolation {

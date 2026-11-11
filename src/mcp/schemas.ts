@@ -457,7 +457,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("update-status", mcp("update_status", "Moves one requirement's Status through the implementation lifecycle — planned, in_progress, blocked, implemented, verified, discarded — and appends a dated Change Note whenever a `reason` comes with it. Reaching `verified` needs acceptance criteria, every one of them ticked, and an evidence row whose reference resolves on disk. Discarding a verified, frozen, stable or evidence-backed requirement is refused here with no override; `supersede_requirement` is the way to it. Writes the requirement block."), "req-scoped", "updateStatus", [
+  mutationSpec("update-status", mcp("update_status", "Moves one requirement's Status through the implementation lifecycle — planned, in_progress, blocked, implemented, verified, discarded — and appends a dated Change Note whenever a `reason` comes with it. Reaching `verified` needs acceptance criteria, every one of them ticked, and an evidence row whose reference resolves on disk; a local path is read relative to the project root. Discarding a verified, frozen, stable or evidence-backed requirement is refused here with no override; `supersede_requirement` is the way to it. Writes the requirement block."), "req-scoped", "updateStatus", [
     opt("--reason <text>", "reason"),
     DRY_RUN,
     IGNORE_LOCK
@@ -476,7 +476,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("edit-requirement", mcp("edit_requirement_fields", "Edits the scalar fields of one requirement — title, statement, priority, risk, tags, related documents, verification method, GitHub issue — leaving criteria and table rows alone. To rewrite the Rationale, Research / Analysis or Implementation Notes section, use `append_section_note` with mode `replace`. Refused while the requirement's Status is `verified`, unlike the two `add_*` tools beside it, which append to a verified block. Writes the requirement block."), "req-scoped", "updateRequirementFields", [
+  mutationSpec("edit-requirement", mcp("edit_requirement_fields", "Edits the scalar fields of one requirement — title, statement, priority, risk, tags, related documents, verification method, GitHub issue — leaving criteria and table rows alone. To rewrite the Rationale, Research / Analysis or Implementation Notes section, use `append_section_note` with mode `replace`. Refused while the requirement's Status is `verified`, unlike the two `add_*` tools beside it, which append to a verified block. Writes the requirement block. It answers with the mutation summary, the changed lines in `mutation.operations` and `mutation.preview`, rather than the whole requirement, which `get_requirement` reads."), "req-scoped", "updateRequirementFields", [
     opt("--title <title>", "title"),
     opt("--statement <statement>", "statement"),
     opt("--priority <priority>", "priority"),
@@ -488,12 +488,12 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("replace-acceptance-criteria", mcp("replace_acceptance_criteria", "Replaces one requirement's whole Acceptance Criteria list with the items you supply, each carrying its checked state; the identifiers are reassigned by position, AC-1 upward, so a reorder silently repoints any evidence row that names one. Partial edits are impossible here, the list arrives complete and may not be empty, and the call is refused while the requirement's Status is `verified`. Writes the requirement block."), "req-scoped", "replaceAcceptanceCriteria", [
+  mutationSpec("replace-acceptance-criteria", mcp("replace_acceptance_criteria", "Replaces one requirement's whole Acceptance Criteria list with the items you supply, each carrying its checked state; the identifiers are reassigned by position, AC-1 upward, so a reorder silently repoints any evidence row that names one. Partial edits are impossible here, the list arrives complete and may not be empty, and the call is refused while the requirement's Status is `verified`. Writes the requirement block. It answers with the mutation summary, the changed lines in `mutation.operations` and `mutation.preview`, rather than the whole requirement, which `get_requirement` reads."), "req-scoped", "replaceAcceptanceCriteria", [
     opt("--items <json>", "items", { encoding: "json" }),
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("edit-requirement-table-rows", mcp("edit_requirement_table_rows", "Updates or deletes rows of one requirement's Verification Evidence, Trace Links or Change Notes table through an explicit operation list; no other table is reachable from here, and appending a row belongs to the `add_*` tools and the status tools rather than to this one. A Change Notes cell is written with `|` as `/` and a line break as a space, which is how a row a pipe split is repaired. Refused while the requirement's Status is `verified`. Writes the requirement block."), "req-scoped", "editRequirementTableRows", [
+  mutationSpec("edit-requirement-table-rows", mcp("edit_requirement_table_rows", "Updates or deletes rows of one requirement's Verification Evidence, Trace Links or Change Notes table through an explicit operation list; no other table is reachable from here, and appending a row belongs to the `add_*` tools and the status tools rather than to this one. A Change Notes cell is written with `|` as `/` and a line break as a space, which is how a row a pipe split is repaired. Refused while the requirement's Status is `verified`. Writes the requirement block. It answers with the mutation summary, the changed lines in `mutation.operations` and `mutation.preview`, rather than the whole requirement, which `get_requirement` reads."), "req-scoped", "editRequirementTableRows", [
     opt("--section <section>", "section"),
     opt("--operations <json>", "operations", { encoding: "json" }),
     DRY_RUN,
@@ -550,7 +550,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("add-evidence", mcp("add_verification_evidence", "Adds one Verification Evidence row to a requirement — type, reference, the criteria it covers, notes — which is what makes a `verified` status defensible. Writes the requirement block."), "req-scoped", "addVerificationEvidence", [
+  mutationSpec("add-evidence", mcp("add_verification_evidence", "Adds one Verification Evidence row to a requirement — type, reference, the criteria it covers, notes — which is what makes a `verified` status defensible. A local path in the reference is written relative to the project root, optionally with `:line` or `:line-line`. Writes the requirement block."), "req-scoped", "addVerificationEvidence", [
     opt("--type <type>", "type"),
     opt("--reference <reference>", "reference"),
     opt("--covers <covers>", "covers"),

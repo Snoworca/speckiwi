@@ -330,7 +330,7 @@ async function addRequirementUnlocked(root: ProjectRoot, input: AddRequirementIn
         line: 0
       }))
     } as unknown as RequirementRecord);
-    if (unresolved.length > 0) return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved));
+    if (unresolved.length > 0) return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved, root.root));
   }
   const unsafeCell = assertSafeAddRequirementTableCells(resolvedInput);
   if (unsafeCell) return unsafeCell;
@@ -476,7 +476,7 @@ async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteS
   if (String(stepRecord.status ?? "").trim().toLowerCase() === "verified") {
     const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, stepRecord);
     if (unresolved.length > 0) {
-      return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved)) as MutationResult<AddRequirementOutput>;
+      return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved, root.root)) as MutationResult<AddRequirementOutput>;
     }
   }
 

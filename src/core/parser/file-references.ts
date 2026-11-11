@@ -54,6 +54,18 @@ export function relatedDocsPath(destination: string): string | undefined {
 
 /** A trailing line designation, in either the dash-range or the colon-column spelling. */
 const LINE_SUFFIX = /:\d+(?:[-:]\d+)?$/;
+
+/**
+ * `reference` without a trailing `:N`, `:N:M` or `:N-M`. The one rule for what a line designation is:
+ * Trace Link and Verification Evidence references both pass through it, because two copies of it
+ * drifted — the evidence copy never learned `:N-M`, so `Foo.java:44-46` was looked up as a file of
+ * that name and refused as missing. Whether the lines exist is not judged here or anywhere (FR-NODE-206
+ * AC-5), so a reversed, zero or out-of-range span leaves the same file a single line would.
+ * @req FR-NODE-293 AC-1 AC-2 AC-4
+ */
+export function withoutLineDesignation(reference: string): string {
+  return reference.replace(LINE_SUFFIX, "");
+}
 /** A reference that names a file: one token, an extension, no whitespace. */
 const REPOSITORY_PATH = /^[A-Za-z0-9_.@/-]+\.[A-Za-z0-9]+$/;
 
@@ -68,15 +80,14 @@ const REPOSITORY_PATH = /^[A-Za-z0-9_.@/-]+\.[A-Za-z0-9]+$/;
  * it also holds a task id, a requirement id and a sentence, so a candidate has to look like a file
  * before it is resolved as one — an extension is what separates `read.ts` from `T-PH001-02`.
  *
- * The line suffix goes before the path does, following what release readiness does with the
- * Verification Evidence reference — a different field, so a precedent rather than a second reader of
- * this one — because what this reports is whether the path resolves and not whether the line still
- * holds what the row describes. Resolution is exact from the workspace root and never by basename:
+ * The line suffix goes before the path does, by the same rule release readiness applies to the
+ * Verification Evidence reference, because what this reports is whether the path resolves and not
+ * whether the line still holds what the row describes. Resolution is exact from the workspace root and never by basename:
  * falling back to a basename search silently resolved twenty designations at a path no branch has
  * ever held onto a different file and scored them fresh.
  */
 export function traceReferencePath(part: string): string | undefined {
-  const candidate = part.trim().replace(/#.*$/, "").replace(LINE_SUFFIX, "");
+  const candidate = withoutLineDesignation(part.trim().replace(/#.*$/, ""));
   return REPOSITORY_PATH.test(candidate) ? candidate : undefined;
 }
 
