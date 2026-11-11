@@ -1,5 +1,5 @@
 import { renderHeadingLine } from "../parser/heading-render.js";
-import { TYPE_PREFIX, type EvidenceRow, type RequirementStatus, type RequirementType, type TraceLink } from "../types.js";
+import { TYPE_PREFIX, type ChangeNoteRow, type EvidenceRow, type RequirementStatus, type RequirementType, type TraceLink } from "../types.js";
 import { todayStamp } from "../date-stamp.js";
 import { isExpiredCriterionText } from "../parser/ac-parser.js";
 import type { MutationResult } from "../types.js";
@@ -31,7 +31,8 @@ export interface RenderRequirementInput {
   rationale?: string;
   implementationNotes?: string;
   research?: string;
-  changeNotes?: string;
+  /** The Change Notes rows; absent, the one default `Created | add-requirement` row. @req FR-NODE-305 AC-1 */
+  changeNotes?: readonly ChangeNoteRow[] | undefined;
   evidence?: Array<Partial<EvidenceRow>>;
   trace?: Array<Partial<TraceLink>>;
 }
@@ -47,6 +48,11 @@ export function refuseExpiredMarker<T = void>(label: string, texts: readonly str
     "USAGE",
     `${label} is written in the expired-criterion grammar; expire a criterion with expire_acceptance_criterion instead`
   ) as MutationResult<T>;
+}
+
+/** The rows a new block's Change Notes holds: the given ones, or the one default creation row. */
+export function defaultChangeNotes(rows: readonly ChangeNoteRow[] | undefined): readonly ChangeNoteRow[] {
+  return rows ?? [{ date: todayStamp(), change: "Created", reason: "add-requirement" }];
 }
 
 function linesOrDash(value?: string): string[] {
@@ -128,7 +134,7 @@ export function renderRequirementBlock(input: RenderRequirementInput): string[] 
     "",
     "| Date | Change | Reason |",
     "| --- | --- | --- |",
-    input.changeNotes ? `| ${input.changeNotes} |` : `| ${todayStamp()} | Created | add-requirement |`
+    ...defaultChangeNotes(input.changeNotes).map((row) => `| ${row.date} | ${row.change} | ${row.reason} |`)
   ];
 }
 

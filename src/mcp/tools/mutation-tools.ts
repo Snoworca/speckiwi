@@ -588,7 +588,7 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
       if (typeof optional.rationale === "string") Object.assign(addInput, { rationale: optional.rationale });
       if (typeof optional.implementationNotes === "string") Object.assign(addInput, { implementationNotes: optional.implementationNotes });
       if (typeof optional.research === "string") Object.assign(addInput, { research: optional.research });
-      if (typeof optional.changeNotes === "string") Object.assign(addInput, { changeNotes: optional.changeNotes });
+      if (optional.changeNotes !== undefined) Object.assign(addInput, { changeNotes: optional.changeNotes });
       return resultToMcp(await addRequirement(await root(deps, input), addInput));
     },
     { kind: "workspace" }

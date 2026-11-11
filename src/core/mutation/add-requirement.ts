@@ -14,25 +14,34 @@ import type { Diagnostic, MutationResult, ParsedWorkspace, Priority, ProjectRoot
 import { mutationFail, mutationOk } from "./guards.js";
 import { getWorkMode } from "./work-mode.js";
 import { mutationEnvelopeFromPlan } from "./envelope.js";
-import { DEFAULT_REQUIREMENT_STABILITY, prefixForType, refuseExpiredMarker, renderRequirementBlock, traceRowCells, type RenderRequirementInput } from "./render-requirement.js";
+import { DEFAULT_REQUIREMENT_STABILITY, defaultChangeNotes, prefixForType, refuseExpiredMarker, renderRequirementBlock, traceRowCells, type RenderRequirementInput } from "./render-requirement.js";
 import { refuseDiscardedTraceTargets, refuseDiscardedTraceTargetsBeforeLock } from "./add-trace.js";
-import { normalizeSeedRows } from "./seed-rows.js";
+import { normalizeSeedRows, type ChangeNotesSurface } from "./seed-rows.js";
 import { assertOpensNoBlockBoundary, assertPromotableBlock, assertRequirementTitle } from "./block-prose.js";
-import { assertSafeMarkdownTableCell, assertSafeMarkdownTableCells } from "./table-cell.js";
+import { assertSafeMarkdownTableCells } from "./table-cell.js";
 import { checkIndexRollupsWritableAt, syncIndexRollupsAfterWrite } from "./sync-index.js";
 import { allocateRequirementIdFromStatusCache } from "../status-cache.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal } from "../workflow/release-readiness.js";
-import { todayStamp } from "../date-stamp.js";
 
-export interface AddRequirementInput extends Omit<RenderRequirementInput, "id" | "type" | "target"> {
+export interface AddRequirementInput extends Omit<RenderRequirementInput, "id" | "type" | "target" | "changeNotes"> {
   type: RequirementType;
   scope: string;
   target?: string;
+  /**
+   * `[{change, reason, date?}]` rows, or the string `date | change | reason`; any other value is refused
+   * by the seed-row normalizer with both forms named. @req FR-NODE-305
+   */
+  changeNotes?: unknown;
+  /** The surface that handed in `changeNotes`; the CLI takes only the string form. Default `mcp`. */
+  changeNotesSurface?: ChangeNotesSurface;
   dryRun?: boolean;
   ignoreLock?: boolean;
   skipLock?: boolean;
 }
+
+/** The input once the seed-row normalizer has read its rows, Change Notes included. */
+type NormalizedAddRequirementInput = Omit<AddRequirementInput, "changeNotes"> & Pick<RenderRequirementInput, "changeNotes">;
 
 export interface AddRequirementOutput {
   requirementId: string;
@@ -42,7 +51,7 @@ export interface AddRequirementOutput {
   record: RequirementRecord;
 }
 
-type ResolvedAddRequirementInput = AddRequirementInput & { target: string };
+type ResolvedAddRequirementInput = NormalizedAddRequirementInput & { target: string };
 
 export function generateNextRequirementId(workspace: ParsedWorkspace, type: RequirementType, scopePrefix: string): string {
   const prefix = prefixForType(type);
@@ -91,7 +100,7 @@ function assertProseOpensNoSection(input: ResolvedAddRequirementInput): Mutation
   return assertRequirementTitle<AddRequirementOutput>("title", input.title);
 }
 
-function canBeVerified(input: AddRequirementInput): boolean {
+function canBeVerified(input: NormalizedAddRequirementInput): boolean {
   if (input.status !== "verified") return true;
   const acCount = input.acceptanceCriteria.length;
   const checked = new Set(input.checkedAcceptanceCriteria ?? []);
@@ -142,22 +151,20 @@ function generatedIdConflictFailure(id: string, filePath: string): MutationResul
   return mutationFail("STALE_PATCH", message, [staleDiagnostic], { staleGuard: { filePath, retry: "rerun the command" } }) as MutationResult<AddRequirementOutput>;
 }
 
-function assertSafeChangeNotes(input: AddRequirementInput): MutationResult<AddRequirementOutput> | undefined {
-  if (!input.changeNotes) return undefined;
-  const newlineFailure = assertSafeMarkdownTableCell<AddRequirementOutput>("Change Notes", input.changeNotes.replaceAll("|", ""));
-  if (newlineFailure) return newlineFailure;
-  const cells = input.changeNotes.split("|").map((cell) => cell.trim());
-  if (cells.length !== 3 || cells.some((cell) => !cell)) {
-    return mutationFail("MUTATION_DENIED", "Change Notes must contain date, change, and reason cells") as MutationResult<AddRequirementOutput>;
+/** Each Change Notes row the normalizer read, cell by cell, through the shared table-cell guard. */
+function assertSafeChangeNotes(input: NormalizedAddRequirementInput): MutationResult<AddRequirementOutput> | undefined {
+  for (const [index, row] of (input.changeNotes ?? []).entries()) {
+    const failure = assertSafeMarkdownTableCells<AddRequirementOutput>({
+      [`Change Notes row ${index + 1} date`]: row.date,
+      [`Change Notes row ${index + 1} change`]: row.change,
+      [`Change Notes row ${index + 1} reason`]: row.reason
+    });
+    if (failure) return failure;
   }
-  return assertSafeMarkdownTableCells<AddRequirementOutput>({
-    "Change Notes date": cells[0] ?? "",
-    "Change Notes change": cells[1] ?? "",
-    "Change Notes reason": cells[2] ?? ""
-  });
+  return undefined;
 }
 
-function assertKnownStabilityInput(input: AddRequirementInput): MutationResult<AddRequirementOutput> | undefined {
+function assertKnownStabilityInput(input: NormalizedAddRequirementInput): MutationResult<AddRequirementOutput> | undefined {
   if (input.stability === undefined) return undefined;
   if (!isKnownStability(input.stability)) return mutationFail("USAGE", "Invalid stability");
   if (!isCanonicalStability(input.stability)) return mutationFail("MUTATION_DENIED", `Legacy stability is not valid for new requirements: ${input.stability}`);
@@ -217,7 +224,6 @@ async function resolveScopeDocumentPath(root: ProjectRoot, document: string): Pr
 
 function buildOutputRecord(input: ResolvedAddRequirementInput, id: string, filePath: string): RequirementRecord {
   const checked = new Set(input.checkedAcceptanceCriteria ?? []);
-  const changeNoteCells = input.changeNotes?.split("|").map((cell) => cell.trim());
   const record: RequirementRecord = {
     id,
     title: input.title,
@@ -258,9 +264,7 @@ function buildOutputRecord(input: ResolvedAddRequirementInput, id: string, fileP
       relation: row.relation ?? "related_to",
       notes: row.notes ?? "-"
     })),
-    changeNotes: changeNoteCells
-      ? [{ date: changeNoteCells[0] ?? "", change: changeNoteCells[1] ?? "", reason: changeNoteCells[2] ?? "" }]
-      : [{ date: todayStamp(), change: "Created", reason: "add-requirement" }],
+    changeNotes: defaultChangeNotes(input.changeNotes).map((row) => ({ date: row.date, change: row.change, reason: row.reason })),
     tags: input.tags ?? [],
     requirement: input.statement
   };
@@ -276,13 +280,13 @@ export async function addRequirement(root: ProjectRoot, input: AddRequirementInp
   // below and everything after it see the rows that will be written.
   const rows = normalizeSeedRows(input);
   if (!rows.ok) return mutationFail("USAGE", rows.message);
-  const normalizedInput: AddRequirementInput = { ...input, evidence: rows.evidence, trace: rows.trace };
+  const normalizedInput: NormalizedAddRequirementInput = { ...input, evidence: rows.evidence, trace: rows.trace, changeNotes: rows.changeNotes };
   const discardedRefusal = await refuseDiscardedTraceTargetsBeforeLock<AddRequirementOutput>(root, rows.trace.map(traceRowCells));
   if (discardedRefusal) return discardedRefusal;
   return withSrsMutationLock(root, { operation: "add_requirement", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addRequirementUnlocked(root, normalizedInput));
 }
 
-async function addRequirementUnlocked(root: ProjectRoot, input: AddRequirementInput): Promise<MutationResult<AddRequirementOutput>> {
+async function addRequirementUnlocked(root: ProjectRoot, input: NormalizedAddRequirementInput): Promise<MutationResult<AddRequirementOutput>> {
   if (!isRequirementType(input.type)) return mutationFail("USAGE", "Invalid requirement type");
   // @req FR-NODE-198 — the enum is checked at the entry and not at a use site. `input.status ??
   // "planned"` is re-evaluated everywhere the value is spent — the record's `status`, the metadata

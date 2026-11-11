@@ -36,6 +36,7 @@ import { writeHuman, writeJson } from "../formatters.js";
 import { parseDate } from "../option-parsers.js";
 import { runAgentCli } from "../agent-cli-runner.js";
 import { markMutationCommands } from "../input-json.js";
+import { CHANGE_NOTE_STRING_EXAMPLE } from "../../core/mutation/seed-rows.js";
 
 /** @req IR-CLI-106 AC-1 — one description for the flag on `init` and on `upgrade`. */
 const PROJECT_INSTALL_HELP =
@@ -627,7 +628,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .option("--rationale <text>")
     .option("--implementation-notes <text>")
     .option("--research <text>")
-    .option("--change-notes <text>")
+    .option("--change-notes <text>", `change note as the string "date | change | reason" with a YYYY-MM-DD date, e.g. ${CHANGE_NOTE_STRING_EXAMPLE}`)
     .option("--evidence <row>", "evidence as type|reference|covers|notes; repeatable", pushOption, [])
     .option("--trace <row>", "trace as type|reference|relation|notes; repeatable", pushOption, [])
     .option("--dry-run")
@@ -658,6 +659,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
         implementationNotes: options.implementationNotes,
         research: options.research,
         changeNotes: options.changeNotes,
+        changeNotesSurface: "cli",
         evidence: parseEvidenceOptions(collect(options.evidence)),
         trace: parseTraceOptions(collect(options.trace)),
         dryRun: Boolean(options.dryRun),

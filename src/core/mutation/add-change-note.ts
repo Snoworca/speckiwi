@@ -5,7 +5,7 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { loadRecordWithWorkspace, planSectionRowsInsert } from "./internal.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
-import { todayStamp } from "../date-stamp.js";
+import { isDateStamp, todayStamp } from "../date-stamp.js";
 
 // @req FR-NODE-061
 /**
@@ -44,6 +44,8 @@ export async function addChangeNote(
 ): Promise<MutationResult<AddChangeNoteOutput>> {
   // @req FR-NODE-205 AC-7 — the one default for every surface: the shared local-date helper.
   const dated = { ...input, date: input.date ?? todayStamp() };
+  // @req FR-NODE-305 AC-4 — the core holds the date rule too, so every caller is refused the same dates.
+  if (!isDateStamp(dated.date)) return mutationFail("USAGE", "date must use YYYY-MM-DD");
   return withSrsMutationLock(root, { operation: "add_change_note", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () =>
     addChangeNoteUnlocked(root, dated)
   );

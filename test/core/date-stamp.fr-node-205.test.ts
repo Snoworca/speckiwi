@@ -14,6 +14,7 @@ import { appendSectionNote } from "../../src/core/mutation/append-section-note.j
 import { claimStep } from "../../src/core/mutation/claim-step.js";
 import { editRequirementTableRows } from "../../src/core/mutation/edit-requirement.js";
 import { renderRequirementBlock } from "../../src/core/mutation/render-requirement.js";
+import { normalizeSeedRows } from "../../src/core/mutation/seed-rows.js";
 import { repairRulesReferences } from "../../src/core/mutation/repair-rules-references.js";
 import { retarget } from "../../src/core/mutation/retarget.js";
 import { expireAcceptanceCriterion } from "../../src/core/mutation/expire-ac.js";
@@ -554,24 +555,14 @@ const CALLER_SITE_DECLARATIONS: readonly StampSite[] = [
     args: [{ task: "probe-task" }]
   },
   {
-    file: "src/core/mutation/add-requirement.ts",
+    // FR-NODE-305: an undated changeNotes row of add_requirement is dated by the seed-row normalizer.
+    // add_requirement's own default row is rendered by render-requirement.ts, whose row is above.
+    file: "src/core/mutation/seed-rows.ts",
     destination: "returned-envelope",
-    // The Change Note date of the record the mutation returns. Which module supplies the date of the
-    // block that lands on disk is NOT asserted here — see the requirement's Research notes.
     pattern: String.raw`"changeNotes":\[\{"date":"(\d{4}-\d{2}-\d{2})"`,
-    fn: addRequirement as (...args: never[]) => unknown,
+    fn: normalizeSeedRows as (...args: never[]) => unknown,
     seed: "none",
-    args: [
-      ROOT_SLOT,
-      {
-        type: "functional",
-        scope: "ARCH",
-        target: "v1.0.0",
-        title: "Probe requirement",
-        statement: "The system shall be probed.",
-        acceptanceCriteria: ["probed"]
-      }
-    ]
+    args: [{ changeNotes: [{ change: "Probe", reason: "probe" }] }]
   },
   {
     file: "src/core/mutation/edit-requirement.ts",
@@ -621,7 +612,7 @@ const PRODUCTION_EXPORTS: Readonly<Record<string, unknown>> = {
   "src/core/mutation/update-step-state.ts": updateStepState,
   "src/core/mutation/render-requirement.ts": renderRequirementBlock,
   "src/core/bootstrap/templates.ts": renderSdsDesignTemplate,
-  "src/core/mutation/add-requirement.ts": addRequirement,
+  "src/core/mutation/seed-rows.ts": normalizeSeedRows,
   "src/core/mutation/edit-requirement.ts": editRequirementTableRows,
   "src/core/roadmap/load-roadmap.ts": readRoadmap
 };
@@ -1052,12 +1043,13 @@ describe("FR-NODE-205 — every stamp site is EXECUTED, not merely scanned", () 
   it("AC-5: add_requirement's disk block carries the same injected local date as its envelope", async () => {
     // The paired half for the other envelope row. The envelope probe alone would stay green if the
     // block that lands on disk drifted to a different day, which is the failure this requirement is
-    // about. Which MODULE renders that block is left to prose and is not asserted.
-    const site = CALLER_SITES.find((row) => row.file === "src/core/mutation/add-requirement.ts");
-    expect(site).toBeDefined();
-    const { rootPath, args, fn, pattern } = await stageSite(site!);
-    const returned = await inKstSplitWindow(() => fn(...args));
-    expect(matcherFor(pattern).exec(classifyReturn(returned).text)?.[1]).toBe(KST_DATE);
+    // about. Which MODULE renders that block is left to prose and is not asserted. add_requirement
+    // produces no stamp of its own since FR-NODE-305 (render-requirement.ts and seed-rows.ts do, each
+    // with its own row above), so it is called here directly.
+    const rootPath = await copyFixtureWorkspace("mutation-target");
+    const probe = { type: "functional", scope: "ARCH", target: "v1.0.0", title: "Probe requirement", statement: "The system shall be probed.", acceptanceCriteria: ["probed"] } as const;
+    const returned = await inKstSplitWindow(async () => addRequirement(await resolveProjectRoot(rootPath), { ...probe, acceptanceCriteria: [...probe.acceptanceCriteria] }));
+    expect(matcherFor(String.raw`"changeNotes":\[\{"date":"(\d{4}-\d{2}-\d{2})"`).exec(classifyReturn(returned).text)?.[1]).toBe(KST_DATE);
     const after = await readSrsFiles(rootPath);
     const onDisk = /### FR-ARCH-\d+ — Probe requirement[\s\S]*?\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Created\s*\|/.exec(after);
     expect(onDisk?.[1]).toBe(KST_DATE);
@@ -1085,10 +1077,11 @@ const REPO_DIR = path.resolve(__dirname, "..", "..");
 /** A raw UTC day slice: `new Date().toISOString().slice(0, 10)`. */
 const UTC_SLICE_MARKER = /toISOString\(\)\s*\.\s*slice\(\s*0\s*,\s*10\s*\)/;
 /**
- * A site that reaches the stamp through the shared helper: either it imports the module (so an
- * aliased import still counts) or it names one of the two exported functions.
+ * A site that reaches the stamp through the shared helper: either it imports one of the two
+ * stamp functions from the module (so an aliased import still counts) or it names one of them. An
+ * import of the date rule alone (`isDateStamp`, FR-NODE-305) checks a stamp and produces none.
  */
-const HELPER_MARKER = /date-stamp\.js"|\b(?:todayStamp|toDateStamp)\s*\(/;
+const HELPER_MARKER = /import\s*\{[^}]*\b(?:todayStamp|toDateStamp)\b[^}]*\}\s*from\s*"[^"]*date-stamp\.js"|\b(?:todayStamp|toDateStamp)\s*\(/;
 
 /** The module every other site delegates to. It produces stamps but is not itself a stamp site. */
 const HELPER_FILE = "src/core/date-stamp.ts";
@@ -1136,6 +1129,8 @@ describe("FR-NODE-205 — the census over every date-stamp site in src", () => {
     expect(HELPER_MARKER.test('import { todayStamp as t } from "../date-stamp.js";')).toBe(true);
     expect(HELPER_MARKER.test("const d = toDateStamp(instant);")).toBe(true);
     expect(HELPER_MARKER.test("const d = new Date().toISOString();")).toBe(false);
+    expect(HELPER_MARKER.test('import { isDateStamp } from "../core/date-stamp.js";')).toBe(false);
+    expect(HELPER_MARKER.test('import { isDateStamp, todayStamp } from "../date-stamp.js";')).toBe(true);
   });
 
   it("AC-4: the scan actually reaches src — an empty or tiny sweep is not a pass", async () => {

@@ -32,6 +32,7 @@ import { registerResources } from "./resources.js";
 import { MCP_READ_DIAGNOSTICS_LIMIT } from "./read-diagnostics.js";
 import { optionScopeText, ORCHESTRATE_TOOL_BINDINGS } from "../cli/commands/orchestrate.js";
 import { ROADMAP_BINDINGS } from "../cli/commands/roadmap.js";
+import { CHANGE_NOTES_FORMS } from "../core/mutation/seed-rows.js";
 
 // IR-CLI-045 / REL-MCP-004: MCP 서버 기동 표면은 root 파라미터를 노출하지 않는다 (cwd discovery 전용).
 export interface McpServerOptions {
@@ -403,7 +404,10 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     rationale: z.string().optional(),
     implementationNotes: z.string().optional(),
     research: z.string().optional(),
-    changeNotes: z.string().optional(),
+    // @req FR-NODE-305 AC-1 AC-3 AC-5 — the rows of add_change_note, or the older three-cell string; items
+    // are unknown, and one bare row object is admitted, so a malformed value reaches the normalizer,
+    // which names changeNotes and both forms instead of a bare schema error.
+    changeNotes: z.union([z.string(), z.array(z.unknown()), z.record(z.string(), z.unknown())]).describe(CHANGE_NOTES_FORMS).optional(),
     evidence: z.array(z.record(z.string(), z.unknown())).optional(),
     trace: z.array(z.record(z.string(), z.unknown())).optional(),
     dryRun: z.boolean().optional(),

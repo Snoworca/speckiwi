@@ -22,3 +22,11 @@ export function toDateStamp(instant: Date): string {
 export function todayStamp(): string {
   return toDateStamp(new Date());
 }
+
+/**
+ * Whether `value` is a `YYYY-MM-DD` stamp: the one date rule of a written Change Notes row, which
+ * `add_change_note` and `add_requirement`'s `changeNotes` both follow. @req FR-NODE-305 AC-4
+ */
+export function isDateStamp(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
