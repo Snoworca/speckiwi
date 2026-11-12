@@ -73,7 +73,7 @@ description: "PRD 로 제품 target 의 SRS 를 한 번 저작하고 그 요구 
 
 | gate_id | reason | 발생 위치 |
 |---|---|---|
-| `run-root-preflight-mismatch` | MCP workspace root ↔ run git root 불일치 또는 조회 실패 | §2.1 |
+| `run-root-preflight-mismatch` | MCP workspace root ↔ run git root 불일치 또는 조회 실패 — 복구: 거절의 `recovery` 와 `_shared/kiwi/worktree-lane.md` §1 | §2.1 |
 | `child-pipeline-needs-user-or-failed` | 호스트가 wave 마다 부른 `/kiwi-sds`(`--sds`), 또는 개선 위임이 부른 `/kiwi-review-fix-loop` 가 `NEEDS_USER` / `FAILED` 반환, `--sds` 면 wave SDS 들의 `@req` 합집합이 노드의 요구 집합과 다름(`parallel-waves.md` PW-2), 또는 워커 매니페스트의 `review_outcome` 이 중단이거나 kept finding 이 남음 | §5 / §5.5.5 |
 | `wave-verify-kept-finding` | 웨이브 종료 검증이 kept finding 을 남긴 채 끝남, 또는 cap 소진(`fail-cap`). `fail-residual` 은 이 행이 아니라 **별도 행** `wave-verify-fail-residual` 이다 | §5.5 |
 | `wave-verify-cross-wave-fix-required` | 이전 wave 의 **요구사항**을 바꿔야 하고, carry-forward 경로가 양쪽 다 불가능함 — `complete` 는 취소 불가 (§0.5 / §5.5.7) | §5.5 |

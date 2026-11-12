@@ -67,7 +67,7 @@ wave 의 실행 절차 — (`--sds` 면) SDS 작성, stage 계산, 워커 dispat
 
 | gate_id | reason | location |
 |---|---|---|
-| `run-root-preflight-mismatch` | MCP `workspaceRoot` 가 git toplevel 과 다르거나 조회 실패 | Preflight P.1 |
+| `run-root-preflight-mismatch` | MCP `workspaceRoot` 가 git toplevel 과 다르거나 조회 실패 — 복구: 거절의 `recovery` 와 `_shared/kiwi/worktree-lane.md` §1 | Preflight P.1 |
 | `invalid-run-scope-option` | 명시된 `--run-id` 가 `^[A-Za-z0-9._-]{1,48}$` 또는 `git check-ref-format --allow-onelevel` 을 통과하지 못하거나, 명시된 `--work` 가 `^[a-z0-9][a-z0-9.-]{2,39}$` 를 통과하지 못함 | Preflight P.2 |
 | `terminal-review-loop-missing` | §4.5 가 정한 조건이 충족되지 않은 채 통과 판정이 기록됨 | §4.5 / 각 경계 close-out |
 | `unsafe-option-refused` | `--skip-regression` 또는 `--reviewer-off` 요청, 그리고 `--no-review-loop` · `--skip-review-loop` — 종료 hop 은 끌 수 없고, 적용 여부는 커밋 창이 정한다. 조용히 무시하지 않고 이름을 들어 **거부**한다 | Preflight P.2 |

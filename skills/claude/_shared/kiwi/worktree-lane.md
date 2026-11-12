@@ -19,6 +19,8 @@
 
 이것이 제약이 아니라 자산인 이유: MCP 표면에는 레인을 가리킬 방법이 아예 없으므로, 레인이 MCP 핸들을 들고 있어도 그것으로 자기 워크트리를 건드릴 수 없다.
 
+**워크트리를 run root 로 쓰는 run 은 그 워크트리에서 시작한 세션이 연다.** 그 워크트리의 SRS 쓰기와 그 워크트리를 run root 로 하는 run 은 그 워크트리에서 시작한 에이전트 세션이 하고, 워크트리를 만든 세션은 그 워크트리의 SRS 를 쓰지 않는다. 여는 절차: (1) 그 워크트리를 작업 디렉터리로 새 에이전트 세션을 연다, (2) 그 세션에서 `mcp_workspace_info` 의 `workspaceRoot` 가 그 워크트리인지 확인한다, (3) 그 세션에서 run 을 시작한다. 메인 트리 세션에서 그 워크트리를 git root 로 넘기면 `orchestrate preflight` 가 `run-root-preflight-mismatch`(`roots-differ`)로 거절하고 `recovery` 에 같은 절차를 싣는다.
+
 ---
 
 ## 2. 만들기 — 기본 HEAD 를 믿지 않는다

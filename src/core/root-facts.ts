@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { realpathSync } from "node:fs";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
@@ -80,6 +81,15 @@ export async function gitTrackedPaths(root: string, paths: readonly string[]): P
   const answer = await git(root, ["ls-files", "-z", "--", ...paths.map((entry) => path.relative(root, entry))], environmentWithoutRepositoryLocation());
   if (answer.code !== 0) return [];
   return answer.stdout.split("\0").filter((entry) => entry.length > 0);
+}
+
+/**
+ * A path as the MCP server names its own root: the native realpath, or the resolved path when it
+ * cannot be resolved. Shared so that a message telling the caller to compare against
+ * `mcp_workspace_info` names the same text the server reports. @req IR-CLI-119 AC-1
+ */
+export async function realOrResolved(target: string): Promise<string> {
+  return realpath(target).catch(() => path.resolve(target));
 }
 
 /**

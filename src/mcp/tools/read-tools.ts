@@ -228,10 +228,9 @@ const ORCHESTRATE_WORKSPACE_METADATA: Readonly<Record<string, {
 /**
  * The SRS query tools that answer from a per-call checkout, named because the requirement names them.
  *
- * Reading is the whole of it. A write is not here and cannot be: a Requirement ID is allocated from a
- * counter file that `.gitignore` keeps out of git, and the SRS mutation lock is per-root as well, so
- * two roots would mint colliding ids while excluding neither. That is also why the two
- * requirement-id repair readers are absent — both allocate an id, whether or not they write it.
+ * Reading is the whole of it. A write is not here and cannot be; FR-MCP-074 states why. The two
+ * requirement-id repair readers are absent as well, because both allocate an id, whether or not they
+ * write it.
  * @req FR-MCP-064 AC-1
  */
 export const SRS_READ_WORKSPACE_SCOPED: readonly string[] = [

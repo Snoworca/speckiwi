@@ -106,7 +106,7 @@ const UNSUPPORTED_RECOVERY =
 export const WRITE_TOOL_WORKSPACE_ROOT_REFUSAL = Object.freeze({
   reason: "workspace-root-unsupported-for-tool" as const,
   message:
-    "This tool writes only in the checkout this MCP server was started in and does not take a per-call workspace root: the Requirement ID counter and the SRS mutation lock are kept per checkout, so one session writing into two checkouts would allocate Requirement IDs from two counters that neither lock excludes, and a write that omitted the argument would land in this checkout unnoticed.",
+    "This tool writes only in the checkout this MCP server was started in and does not take a per-call workspace root: a write that omitted the argument would land in this checkout unnoticed, and an orchestrator lane sharing this server could write its own worktree's SRS, which the lane contract forbids.",
   recovery:
     "To write in a worktree, start a new agent session with that worktree as its working directory, so that its MCP server binds there; an orchestrator lane records the mutation with --defer-srs-mutation and the host applies it with orchestrate_replay_apply. " +
     "Requirement IDs that two branches allocated alike collide between branches at merge, where the duplicate Requirement ID repair workflow resolves them. " +

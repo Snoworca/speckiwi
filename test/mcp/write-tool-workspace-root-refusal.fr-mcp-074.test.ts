@@ -17,7 +17,10 @@ interface Refusal {
   mcpWorkspace: { workspaceRoot: string; rootSource: string };
 }
 
-const REASON = /Requirement ID counter and the SRS mutation lock are kept per checkout/;
+/** The two risks a per-call root adds over a session started in the worktree (FR-MCP-074 AC-1, 5.5.1). */
+const REASON = /a write that omitted the argument would land in this checkout unnoticed, and an orchestrator lane sharing this server could write its own worktree.s SRS/;
+/** Per-checkout counters and locks hold for a session started in the worktree too, so they are no reason. */
+const NOT_A_REASON = /two counters|kept per checkout|neither lock/;
 
 async function specDigest(root: string): Promise<string> {
   const hash = createHash("sha256");
@@ -63,10 +66,10 @@ describe("FR-MCP-074 — write tools refuse workspaceRoot with the reason and th
     expect([await specDigest(host), await specDigest(worktree)]).toEqual(before);
     expect(answer.error.message).toMatch(REASON);
     expect(answer.error.message).toMatch(/writes only in the checkout this MCP server was started in/);
-    // The reason is what a per-call root adds over a session started in the worktree, which keeps
-    // its own counter too: one session drawing on two counters, and a forgotten argument.
-    expect(answer.error.message).toMatch(/one session writing into two checkouts would allocate Requirement IDs from two counters that neither lock excludes/);
-    expect(answer.error.message).toMatch(/a write that omitted the argument would land in this checkout unnoticed/);
+    // The reason is what a per-call root adds over a session started in the worktree, which keeps its
+    // own counter and lock too and collides at merge the same way: a forgotten argument, and a lane
+    // sharing the server reaching its own worktree.
+    expect(answer.error.message).not.toMatch(NOT_A_REASON);
     expect(answer.recovery.message).toMatch(/start a new agent session with that worktree as its working directory/);
     expect(answer.recovery.message).toMatch(/--defer-srs-mutation[^.]*orchestrate_replay_apply/);
     expect(answer.recovery.message).toMatch(/resolved only from the MCP server process working directory/);
@@ -100,9 +103,9 @@ describe("FR-MCP-074 — write tools refuse workspaceRoot with the reason and th
 
   it("AC-5: the instruction block's refusal item gives the reason and the session procedure", () => {
     const item = renderAgentInstructionSnippet().split("\n").find((line) => line.startsWith("4. Every other tool refuses `workspaceRoot`")) ?? "";
-    expect(item).toMatch(/Requirement ID counter and the SRS mutation lock are kept per checkout/);
+    expect(item).toMatch(/a write that omitted the argument would land in that checkout unnoticed and an orchestrator lane sharing the server could write its own worktree.s SRS/);
     expect(item).toMatch(/to write in a worktree, start an agent session in that worktree/);
-    expect(item).toMatch(/one session writing into two checkouts would allocate IDs from two counters that neither lock excludes/);
+    expect(item).not.toMatch(NOT_A_REASON);
     expect(item).toMatch(/repair IDs that collide between branches at merge/);
   });
 });

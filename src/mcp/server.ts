@@ -1,7 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { access, realpath } from "node:fs/promises";
+import { access } from "node:fs/promises";
+import { realOrResolved } from "../core/root-facts.js";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
@@ -696,10 +697,6 @@ export interface McpStartupSearchBounds {
 
 /** Bound to the directory that holds the SRS index, or unbound with the directory that was checked. */
 export type McpStartupDecision = { bound: true; root: string } | { bound: false; checkedCwd: string; initHint: boolean };
-
-async function realOrResolved(target: string): Promise<string> {
-  return realpath(target).catch(() => path.resolve(target));
-}
 
 /**
  * @req IR-CLI-045 AC-5 AC-6 @req REL-MCP-002 AC-2 @req FR-MCP-067 — searches upward from `start` for

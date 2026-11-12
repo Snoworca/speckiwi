@@ -33,6 +33,8 @@ stays put and reaches into the lane with `--root`. The direction is host → lan
 That is an asset rather than a restriction: the MCP surface has no way to address a lane at all, so a
 lane holding an MCP handle still cannot touch its own worktree through it.
 
+**A run rooted in a worktree is opened by a session started there.** The SRS writes of a worktree and a run whose run root is that worktree are made by an agent session started in that worktree; the session that created the worktree does not write that worktree's SRS. To open it: (1) start a new agent session whose working directory is the worktree, (2) confirm in that session that `mcp_workspace_info` reports the worktree as `workspaceRoot`, (3) start the run in that session. Passing the worktree as the git root from a main-tree session makes `orchestrate preflight` refuse with `run-root-preflight-mismatch` (`roots-differ`) and carry the same steps in its `recovery`.
+
 ---
 
 ## 2. Creating one — never trust the default head

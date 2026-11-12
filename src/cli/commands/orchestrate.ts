@@ -23,8 +23,8 @@ import type { WaveDependencies, WaveInput } from "../../core/orchestrator/confli
 import { buildLanesLockBody, freezeLock, serializeLock, type WaveSdsDigest } from "../../core/orchestrator/freeze.js";
 import { HandoffPinError, pinHandoff } from "../../core/orchestrator/pinning.js";
 import { normaliseRoot, preflightRunRoot } from "../../core/orchestrator/preflight.js";
-import { gitCommonDirOf, gitToplevelOf, realpathProbe, registeredWorktreesOf } from "../../core/root-facts.js";
-import { preflightRunRootForRole, type FrozenLanePlan } from "../../core/orchestrator/worktree-topology.js";
+import { gitCommonDirOf, gitToplevelOf, realOrResolved, realpathProbe, registeredWorktreesOf } from "../../core/root-facts.js";
+import { classifyRoot, preflightRunRootForRole, type FrozenLanePlan } from "../../core/orchestrator/worktree-topology.js";
 import {
   acquireArtifactLock,
   releaseArtifactLock,
@@ -618,6 +618,22 @@ async function readJsonLinesFile(absolutePath: string, label: string): Promise<A
 }
 
 /**
+ * How a run whose run root is another checkout of this repository — a linked worktree or, from a
+ * session in a worktree, the main tree — is opened: from a session started there, since the MCP root is
+ * fixed for a session (FR-NODE-186 AC-8 passes such a host). The path goes through the server's own
+ * `realOrResolved`, so it is the text `mcp_workspace_info` reports there and compares as text.
+ * @req IR-CLI-119 AC-1
+ */
+async function checkoutSessionRecovery(gitRoot: string): Promise<string> {
+  const checkout = await realOrResolved(gitRoot);
+  return (
+    `${checkout} is another checkout of this repository, and a run's root is the checkout its session's MCP server was started in. ` +
+    `Start a new agent session with ${checkout} as its working directory, confirm from mcp_workspace_info that its workspaceRoot is ${checkout}, and start the run there ` +
+    "(kiwi skills: _shared/kiwi/worktree-lane.md §1)."
+  );
+}
+
+/**
  * @req IR-CLI-093 — the role-aware run-root verdict, decided by the topology gate.
  *
  * Both extra facts — the git common directory and the registered worktree list — are read from git
@@ -672,8 +688,16 @@ async function roleAwarePreflight(
       gitToplevel: (target: string) => toplevels.get(target)
     });
     if (!legacy.ok) {
+      // @req IR-CLI-119 AC-1 AC-2 — only a worktree this repository registers is pointed to; a foreign
+      // repository, an unregistered worktree or a path in no repository gets no direction.
+      const checkoutOfThisRepository = legacy.reason === "roots-differ" && classifyRoot(mcpRoot, gitRoot, probes) === "linked-worktree";
       return refuse("run-root-preflight-mismatch", [
-        { reason: legacy.reason, gitToplevel: legacy.gitToplevel, ...legacy.comparison }
+        {
+          reason: legacy.reason,
+          gitToplevel: legacy.gitToplevel,
+          ...legacy.comparison,
+          ...(checkoutOfThisRepository ? { recovery: await checkoutSessionRecovery(gitRoot) } : {})
+        }
       ]);
     }
     const role_ = preflightRunRootForRole(request, probes);
