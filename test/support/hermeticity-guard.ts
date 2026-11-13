@@ -1,5 +1,4 @@
 import { appendFileSync, mkdirSync } from "node:fs";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach } from "vitest";
@@ -8,6 +7,7 @@ import {
   type SentinelBaseline,
   auditRepoAgainstBaseline,
   cleanupAddedPaths,
+  guardJournalDir,
   loadBaseline
 } from "./repo-hermeticity.js";
 
@@ -40,6 +40,18 @@ export function auditRepoAfterTest(
   return { audit, removed, detail: `Repo working-tree pollution after ${label}: ${parts.join("; ")}.` };
 }
 
+/**
+ * Appends one pollution line to the guard's journal and returns the log's path. The thrown error names the
+ * offender, but a truncated console tail can lose it, so this is the copy that survives the run.
+ */
+export function recordPollution(detail: string): string {
+  const journal = guardJournalDir();
+  const log = path.join(journal, "pollution.log");
+  mkdirSync(journal, { recursive: true });
+  appendFileSync(log, `${new Date().toISOString()} ${detail}\n`, "utf8");
+  return log;
+}
+
 // Suite-wide hermeticity guard: after every test, fail loudly (and name the offending test)
 // if it left SpecKiwi init/skill artifacts in the repo working tree. Artifacts the test
 // created are removed so only the first offender fails rather than cascading onto innocent
@@ -57,9 +69,7 @@ afterEach((context) => {
   // The journal is the copy that survives. It is written outside the repository so the guard
   // cannot become a source of pollution itself.
   try {
-    const journal = path.join(tmpdir(), "speckiwi-hermeticity");
-    mkdirSync(journal, { recursive: true });
-    appendFileSync(path.join(journal, "pollution.log"), `${new Date().toISOString()} ${result.detail}\n`, "utf8");
+    recordPollution(result.detail);
   } catch {
     /* best effort — the thrown error below is the signal that matters */
   }
@@ -68,6 +78,6 @@ afterEach((context) => {
     `${result.detail} This test wrote SpecKiwi init/skill output into the repository root — ` +
       "operate on an isolated temp root (mkdtemp) or pass --root/an explicit projectRoot instead. " +
       `(removed: ${result.removed.length === 0 ? "nothing" : result.removed.join(", ")}) ` +
-      `A copy of this line is appended to ${path.join(tmpdir(), "speckiwi-hermeticity", "pollution.log")}.`
+      `A copy of this line is appended to ${path.join(guardJournalDir(), "pollution.log")}.`
   );
 });

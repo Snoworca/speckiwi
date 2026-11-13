@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 /**
@@ -170,6 +171,19 @@ export function auditRepoAgainstBaseline(
   }
 
   return { added, modified };
+}
+
+/** The guard's own records: the baseline the global setup writes and the pollution log workers append to. */
+export const GUARD_JOURNAL_DIR_NAME = "speckiwi-hermeticity";
+
+/**
+ * Where the guard keeps its records: beside the baseline the global setup handed over, which sits directly
+ * under the OS temporary directory. Workers run with TEMP moved into the run's own root (REL-NODE-012), which
+ * the teardown removes, so a worker that wrote under its own tmpdir() would lose the record. @req REL-NODE-012
+ */
+export function guardJournalDir(envVar = "SPECKIWI_HERMETICITY_BASELINE"): string {
+  const baseline = process.env[envVar];
+  return baseline ? path.dirname(baseline) : path.join(tmpdir(), GUARD_JOURNAL_DIR_NAME);
 }
 
 /**
