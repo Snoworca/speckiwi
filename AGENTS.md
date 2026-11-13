@@ -14,7 +14,7 @@ This file does not track the active target: read it with MCP `get_active_target`
 - **5.1.0** (next): `kiwi-prd` records the user's request in a PRD file under `docs/prd/`: the user's words verbatim, at least one intent item, and in-scope and exclusion items that each quote their source (FR-FLOW-204). When `kiwi-srs`, `kiwi-orchestrator`, `kiwi-wave-master`, `kiwi-tdd` or `kiwi-step` gets no PRD path and its input is not a PRD, it calls `kiwi-prd` first, and no SRS is changed until the user approves the PRD; only `--auto` may go on with a PRD marked unapproved. `kiwi-srs` then judges the SRS against the PRD: an in-scope item that no requirement accepts, or that one contradicts, fails; an ungrounded expansion is dropped or left to the user; filling a hole, resolving a contradiction or fixing a defect in the request is accepted with its basis recorded. The loop ends pass or fail instead of on severity labels, and ends `NEEDS_USER` while a residual or an unpassed round cap remains (FR-FLOW-205). `kiwi-review-fix-loop` adds at most 3 clean-code rounds that never block its pass; they are skipped when the user confirms a request for speed (under `--auto` without asking), or when the run has no regression test command (FR-FLOW-206).
 - **5.2.0**: tool improvements — ranked search (BM25, Korean-aware), scope rename (renumbering only to repair SRS-W070), smaller MCP and CLI read diagnostics, PRD tools, acceptance-criterion expiry, target rename and requirement retarget (IR-CLI-112). SRS root merge was withdrawn: the team that asked for it merged by script.
 
-When a tool lacks a capability the work needs, record the gap as SRS work under the next tool-improvement target (currently 5.5.1) before relying on a manual workaround.
+When a tool lacks a capability the work needs, record the gap as SRS work under the next tool-improvement target (currently 5.5.2) before relying on a manual workaround.
 
 ## Verification intensity policy
 
@@ -29,7 +29,7 @@ Code, contracts, SRS acceptance criteria and safety boundaries get the full bar:
 - Stop on evidence, not round count: recorded CRITICAL and HIGH catches came from mutation testing and adversarial execution, not from extra uniform review rounds (research 19).
 
 # SpecKiwi SRS workflow v1.11
-Written by speckiwi 5.5.0.
+Written by speckiwi 5.5.1.
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
 
