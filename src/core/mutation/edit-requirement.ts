@@ -50,6 +50,14 @@ const SETTABLE_ROW_COLUMNS: Record<RequirementTableSection, readonly string[]> =
   change_notes: ["date", "change", "reason"]
 };
 
+/**
+ * The keys each table takes, said before a call is refused for a header spelling such as `Notes`;
+ * built from the table the refusal reads. @req FR-NODE-093 AC-6
+ */
+export const SETTABLE_ROW_COLUMNS_RULE = `The \`values\` keys are lowercase: ${Object.entries(SETTABLE_ROW_COLUMNS)
+  .map(([section, columns]) => `${section} takes ${columns.join(", ")}`)
+  .join("; ")}.`;
+
 export interface RequirementTableRowOperation {
   kind: "update" | "delete";
   rowId?: string;

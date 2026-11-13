@@ -6,7 +6,9 @@ import { main } from "../../../src/cli/index.js";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
 import * as rootFacts from "../../../src/core/root-facts.js";
 import { createMcpServer } from "../../../src/mcp/server.js";
-import { cleanupFixtures, gitWorkspaceRepo, rawGit } from "../../mcp/support/workspace-root-fixture.js";
+import { findTestFiles, listTestFiles } from "../../../src/core/testing/test-citations.js";
+import { rawGitStdin } from "../orchestrator/support/git-fixture.js";
+import { cleanupFixtures, gitWorkspaceRepo, linkedWorktree, rawGit } from "../../mcp/support/workspace-root-fixture.js";
 
 // @req FR-NODE-292 — the test-file search leaves out what the workspace repository's git ignore rules
 // exclude, keeps what git tracks, what is not added yet and what an `!` rule re-includes, and says how
@@ -100,15 +102,21 @@ describe("FR-NODE-292 AC-1 — an ignored build output covers nothing", () => {
     expect(value.ignoredTestFileCount).toBe(1);
   });
 
-  it("FR-NODE-292 AC-1: git is asked once for all candidates", async () => {
+  it("FR-NODE-292 AC-1 AC-6: one listing answers, and no candidate is sent to check-ignore", async () => {
     const root = await buildOutputWorkspace("fr-node-292-ac1-once");
     await put(root, "test/a.test.ts", "// FR-ARCH-001 AC-2\n");
     await put(root, "test/b.test.ts", "// FR-ARCH-001 AC-2\n");
     const runner = vi.mocked(rootFacts.git);
     runner.mockClear();
-    await report(root);
-    const asks = runner.mock.calls.filter(([, args]) => args.includes("check-ignore"));
-    expect(asks).toHaveLength(1);
+    const value = await report(root);
+    expect(value.ignoreRules).toBe("git");
+    expect(value.ignoredTestFileCount).toBe(2);
+    const listings = runner.mock.calls.filter(([, args]) => args.includes("ls-files"));
+    expect(listings).toHaveLength(1);
+    expect(listings[0]?.[1]).toEqual(["ls-files", "-z", "--cached", "--others", "--exclude-standard"]);
+    // check-ignore costs candidates times index entries; asked about every candidate it ran past the
+    // runner's 10 s limit at OG scale (36,956 candidates, 42,007 index entries).
+    expect(runner.mock.calls.filter(([, args]) => args.includes("check-ignore"))).toEqual([]);
   });
 });
 
@@ -202,7 +210,7 @@ describe("FR-NODE-292 AC-4 — without git the search counts as before and says 
       expect(citedFiles(value, "AC-1")).toEqual(["bin/test/com/x/AuditRetentionScheduleTest.class", "build/test-results/test/binary/results.bin"]);
       const { code, stdout } = await coverage(root);
       expect(code).toBe(0);
-      expect(stdout.split("\n")[0]).toContain("(ids FR-ARCH-001, 3 test files, git ignore rules not applied)");
+      expect(stdout.split("\n")[0]).toContain("(ids FR-ARCH-001, 3 test files, git ignore rules not applied: unavailable)");
     } finally {
       process.env.PATH = saved;
     }
@@ -271,9 +279,163 @@ describe("FR-NODE-292 AC-5 — the root's own repository answers", () => {
       if (saved === undefined) delete process.env.GIT_DIR;
       else process.env.GIT_DIR = saved;
     }
-    const ask = runner.mock.calls.find(([, args]) => args.includes("check-ignore"));
+    const ask = runner.mock.calls.find(([, args]) => args.includes("ls-files"));
     expect(ask?.[0]).toBe(root);
     expect(ask?.[2], "the runner is given an environment of its own").toBeDefined();
     expect(Object.keys(ask?.[2] ?? {}).filter((name) => /^GIT_(DIR|WORK_TREE|INDEX_FILE|COMMON_DIR|OBJECT_DIRECTORY)$/i.test(name))).toEqual([]);
+  });
+});
+
+/**
+ * What `git check-ignore` keeps today, asked about the candidates it can judge: the search of this
+ * requirement before 5.5.2, kept as the oracle the listing must match. Candidates inside a submodule
+ * are left to the caller, since check-ignore refuses them.
+ */
+async function checkIgnoreKeeps(root: string, candidates: readonly string[]): Promise<string[]> {
+  if (candidates.length === 0) return [];
+  const out = await rawGitStdin(root, ["check-ignore", "-z", "--stdin"], candidates.map((file) => `${file}\0`).join("")).catch((error: { code?: number; stdout?: string }) => {
+    if (error.code === 1) return "";
+    throw error;
+  });
+  const ignored = new Set(out.split("\0").filter((file) => file !== ""));
+  return candidates.filter((file) => !ignored.has(file));
+}
+
+/**
+ * Every case the listing has to judge as check-ignore does, in one repository: tracked under an
+ * ignored path, unadded, `!` re-included, ignored by `.git/info/exclude`, an untracked nested
+ * repository with an outer rule reaching into it, an ignored nested repository, and a submodule.
+ */
+async function equivalenceWorkspace(root: string): Promise<void> {
+  const cite = "// FR-ARCH-001 AC-1\n";
+  await put(root, ".gitignore", "build/\n!**/src/test/**/build/\n*.gen.test.ts\nvendor-ignored/\n");
+  await put(root, "build/tracked/KeptTest.java", cite);
+  await put(root, "src/test/java/build/BuildTest.java", cite);
+  await commit(root, ".gitignore", "build/tracked/KeptTest.java", "src/test/java/build/BuildTest.java");
+  await put(root, path.join(".git", "info", "exclude"), "out/\n");
+  await put(root, "src/test/java/NewTest.java", cite);
+  await put(root, "src/test/java/build/AlsoBuildTest.java", cite);
+  await put(root, "build/untracked/GoneTest.java", BINARY);
+  await put(root, "out/test/OutTest.class", BINARY);
+  await put(root, "test/a.gen.test.ts", cite);
+  await put(root, "test/plain.test.ts", cite);
+  // An untracked nested repository: the listing shows only `nested/`.
+  await put(root, "nested/test/kept.test.ts", cite);
+  await put(root, "nested/test/dropped.gen.test.ts", cite);
+  await rawGit(path.join(root, "nested"), "init", "--initial-branch", "main");
+  // An ignored nested repository: absent from the listing, ignored by check-ignore.
+  await put(root, "vendor-ignored/test/v.test.ts", cite);
+  await rawGit(path.join(root, "vendor-ignored"), "init", "--initial-branch", "main");
+}
+
+describe("FR-NODE-292 AC-2 AC-7 — the listing keeps exactly what check-ignore keeps", () => {
+  it("FR-NODE-292 AC-2 AC-7: tracked, unadded, re-included, excluded, nested-repository and ignored-nested cases match check-ignore", async () => {
+    const root = await workspace("fr-node-292-equivalence");
+    await equivalenceWorkspace(root);
+    const candidates = await listTestFiles(root);
+    const expected = await checkIgnoreKeeps(root, candidates);
+    const search = await findTestFiles(root);
+    expect(search.ignoreRules).toBe("git");
+    expect(search.files).toEqual(expected);
+    expect(search.ignoredCount).toBe(candidates.length - expected.length);
+    // The table the oracle produced, spelled out so a change in git's own answer shows here too.
+    expect(search.files).toEqual([
+      "build/tracked/KeptTest.java",
+      "nested/test/kept.test.ts",
+      "src/test/java/NewTest.java",
+      "src/test/java/build/AlsoBuildTest.java",
+      "src/test/java/build/BuildTest.java",
+      "test/plain.test.ts"
+    ]);
+  });
+
+  it("FR-NODE-292 AC-7: only the candidates inside an untracked nested repository are sent to check-ignore", async () => {
+    const root = await workspace("fr-node-292-nested-ask");
+    await equivalenceWorkspace(root);
+    const runner = vi.mocked(rootFacts.git);
+    runner.mockClear();
+    await findTestFiles(root);
+    const asks = runner.mock.calls.filter(([, args]) => args.includes("check-ignore"));
+    expect(asks).toHaveLength(1);
+    expect((asks[0]?.[3] ?? "").split("\0").filter((file) => file !== "")).toEqual(["nested/test/dropped.gen.test.ts", "nested/test/kept.test.ts"]);
+  });
+
+  it("FR-NODE-292 AC-7: a failing check-ignore for the nested candidates reports the rules as not applied", async () => {
+    const root = await workspace("fr-node-292-nested-fail");
+    await equivalenceWorkspace(root);
+    const runner = vi.mocked(rootFacts.git);
+    const actual = await vi.importActual<typeof rootFacts>("../../../src/core/root-facts.js");
+    runner.mockImplementation(async (cwd, args, env, input, timeoutMs) =>
+      args.includes("check-ignore") ? { code: 128, stdout: "", stderr: "fatal: refused\n" } : actual.git(cwd, args, env, input, timeoutMs)
+    );
+    try {
+      const search = await findTestFiles(root);
+      expect(search.ignoreRules).toBe("none");
+      expect(search.ignoredCount).toBe(0);
+      expect(search.files).toEqual(await listTestFiles(root));
+      expect(search.ignoreRulesReason).toEqual({ kind: "exit", status: 128, stderr: "fatal: refused" });
+    } finally {
+      runner.mockReset();
+      runner.mockImplementation(actual.git);
+    }
+  });
+
+  it("FR-NODE-292 AC-7: a submodule candidate is kept and the rules still apply to every other candidate", async () => {
+    const root = await buildOutputWorkspace("fr-node-292-submodule");
+    await put(root, "sub/test/c.test.ts", "// FR-ARCH-001 AC-1\n");
+    const sub = path.join(root, "sub");
+    await rawGit(sub, "init", "--initial-branch", "main");
+    await rawGit(sub, "config", "user.name", "t");
+    await rawGit(sub, "config", "user.email", "t@example.invalid");
+    await rawGit(sub, "config", "commit.gpgsign", "false");
+    await rawGit(sub, "add", "--", ".");
+    await rawGit(sub, "commit", "-m", "sub");
+    await rawGit(root, "update-index", "--add", "--cacheinfo", `160000,${await rawGit(sub, "rev-parse", "HEAD")},sub`);
+    // check-ignore refuses a path inside a submodule, which used to turn the whole search to none.
+    await expect(rawGitStdin(root, ["check-ignore", "-z", "--stdin"], "sub/test/c.test.ts\0")).rejects.toMatchObject({ code: 128 });
+    const value = await report(root);
+    expect(value.ignoreRules).toBe("git");
+    expect(value.ignoredTestFileCount).toBe(2);
+    expect(citedFiles(value, "AC-1")).toEqual(["sub/test/c.test.ts"]);
+  });
+});
+
+describe("FR-NODE-292 AC-2 — a tracked test whose directory differs from the index only in case stays", () => {
+  // On a case-insensitive filesystem git treats `Tests/b.test.ts` on disk as the tracked
+  // `tests/b.test.ts`; the listing spells it as the index does. A clone of a history holding both
+  // `Tests/` and `tests/` lands this way with a clean status.
+  it("FR-NODE-292 AC-2: keeps a tracked test whose directory was renamed only in case, as check-ignore does", async () => {
+    const root = await workspace("fr-node-292-case");
+    await put(root, "tests/b.test.ts", "// FR-ARCH-001 AC-1\n");
+    await commit(root, "tests/b.test.ts");
+    const { rename } = await import("node:fs/promises");
+    await rename(path.join(root, "tests"), path.join(root, "tests-renaming"));
+    await rename(path.join(root, "tests-renaming"), path.join(root, "Tests"));
+    const candidates = await listTestFiles(root);
+    expect(candidates).toEqual(["Tests/b.test.ts"]);
+    const search = await findTestFiles(root);
+    expect(search.ignoreRules).toBe("git");
+    expect(search.files).toEqual(await checkIgnoreKeeps(root, candidates));
+    expect(search.files).toEqual(["Tests/b.test.ts"]);
+  });
+});
+
+describe("FR-NODE-292 AC-8 — a linked worktree applies the rules as the main work tree does", () => {
+  it("FR-NODE-292 AC-8: a worktree whose .git is a file keeps what check-ignore keeps there", async () => {
+    const host = await workspace("fr-node-292-wt-host");
+    await put(host, ".gitignore", "build/\nbin/\n");
+    await commit(host, ".gitignore");
+    const tree = await linkedWorktree(host, "fr-node-292-wt", "lane");
+    expect(path.resolve(await rawGit(tree, "rev-parse", "--show-toplevel"))).toBe(path.resolve(tree));
+    const cite = "// FR-ARCH-001 AC-1\n";
+    await put(tree, "src/test/java/FooTest.java", cite);
+    await put(tree, "build/test-results/test/binary/results.bin", BINARY);
+    await put(tree, "bin/test/X.class", BINARY);
+    const candidates = await listTestFiles(tree);
+    const search = await findTestFiles(tree);
+    expect(search.ignoreRules).toBe("git");
+    expect(search.files).toEqual(await checkIgnoreKeeps(tree, candidates));
+    expect(search.files).toEqual(["src/test/java/FooTest.java"]);
+    expect(search.ignoredCount).toBe(2);
   });
 });

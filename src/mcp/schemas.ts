@@ -3,6 +3,7 @@ import { isReadOnlyTool, toolSchemas } from "./server.js";
 import { BILINGUAL_SEARCH_EXAMPLE, BILINGUAL_SEARCH_RULE } from "../core/bootstrap/templates.js";
 import { MCP_READ_DIAGNOSTICS_SENTENCE } from "./read-diagnostics.js";
 import { APPENDED_NOTE_DATE_RULE } from "../core/mutation/append-section-note.js";
+import { SETTABLE_ROW_COLUMNS_RULE } from "../core/mutation/edit-requirement.js";
 import {
   ORCHESTRATE_TOOL_BINDINGS,
   ORCHESTRATE_CONTAINER_PATHS,
@@ -379,7 +380,7 @@ export const toolSpecs: readonly ToolSpec[] = [
   // `check` node of the tree, which carries check_sds. The container hosts FR-MCP-066
   // check_test_sufficiency, whose CLI is `coverage --tests`: the `coverage` row already carries
   // list_dirty_edges.
-  readSpec("sds", mcp("check_test_sufficiency", "Reports, for every acceptance criterion of the requirements in a target or an id list, the test lines that cite the requirement id together with that criterion, and for a lite SDS whether each contract's planned test file exists and cites it — the same answer `speckiwi coverage --tests` prints. Test files the repository's git ignore rules exclude are left out and counted in `ignoredTestFileCount`; `ignoreRules: none` says git could not answer and every matching file counted. Gaps are listed; a gap never fails the call. Read-only."), "checkTestSufficiency"),
+  readSpec("sds", mcp("check_test_sufficiency", "Reports, for every acceptance criterion of the requirements in a target or an id list, the test lines that cite the requirement id together with that criterion, and for a lite SDS whether each contract's planned test file exists and cites it — the same answer `speckiwi coverage --tests` prints. Test files the repository's git ignore rules exclude are left out and counted in `ignoredTestFileCount`; `ignoreRules: none` says git could not answer and every matching file counted, and `ignoreRulesReason` says why (`timeout`, `unavailable` or `exit`, with git's status and first stderr line). Gaps are listed; a gap never fails the call. Read-only."), "checkTestSufficiency"),
   readSpec("check", mcp("check_sds", "Parses one lite-profile SDS file under `docs/sds` and returns its structural and reference diagnostics beside a summary of the files, test files, requirement ids, acceptance contracts and dependency chains it declares — the same answer `speckiwi sds check` prints. Run it before marking an SDS agreed. Read-only."), "checkSds", { args: { path: { type: "string" } } }),
   // FR-NODE-240 / FR-NODE-241 / FR-NODE-242 — the `prd` container (no own handler) and its six leaves,
   // one MCP tool each: a check, an item list, an item read, a search, the verdict cursor and coverage.
@@ -493,7 +494,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("edit-requirement-table-rows", mcp("edit_requirement_table_rows", "Updates or deletes rows of one requirement's Verification Evidence, Trace Links or Change Notes table through an explicit operation list; no other table is reachable from here, and appending a row belongs to the `add_*` tools and the status tools rather than to this one. A Change Notes cell is written with `|` as `/` and a line break as a space, which is how a row a pipe split is repaired. Refused while the requirement's Status is `verified`. Writes the requirement block. It answers with the mutation summary, the changed lines in `mutation.operations` and `mutation.preview`, rather than the whole requirement, which `get_requirement` reads."), "req-scoped", "editRequirementTableRows", [
+  mutationSpec("edit-requirement-table-rows", mcp("edit_requirement_table_rows", "Updates or deletes rows of one requirement's Verification Evidence, Trace Links or Change Notes table through an explicit operation list; no other table is reachable from here, and appending a row belongs to the `add_*` tools and the status tools rather than to this one. A Change Notes cell is written with `|` as `/` and a line break as a space, which is how a row a pipe split is repaired. " + SETTABLE_ROW_COLUMNS_RULE + " Refused while the requirement's Status is `verified`. Writes the requirement block. It answers with the mutation summary, the changed lines in `mutation.operations` and `mutation.preview`, rather than the whole requirement, which `get_requirement` reads."), "req-scoped", "editRequirementTableRows", [
     opt("--section <section>", "section"),
     opt("--operations <json>", "operations", { encoding: "json" }),
     DRY_RUN,

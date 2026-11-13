@@ -3,7 +3,7 @@ import { knownRequirements, loadSdsFile, readWorkspaceText } from "../sds/check-
 import type { LiteSdsDocument } from "../sds/lite-sds.js";
 import type { ParsedWorkspace, RequirementRecord } from "../types.js";
 import { resolveTargetSelection } from "../query/summary.js";
-import { DEFAULT_TEST_FILE_GLOBS, findTestFiles, indexTestCitations, type TestCitation } from "./test-citations.js";
+import { DEFAULT_TEST_FILE_GLOBS, findTestFiles, indexTestCitations, type IgnoreRulesReason, type TestCitation } from "./test-citations.js";
 
 // @req FR-NODE-210 AC-2 AC-4 AC-5 @req FR-MCP-066
 //
@@ -56,6 +56,8 @@ export interface TestSufficiencyReport {
   readonly ignoredTestFileCount: number;
   /** `git` when the ignore rules were applied; `none` when git could not answer and every candidate counts. */
   readonly ignoreRules: "git" | "none";
+  /** @req FR-NODE-306 AC-1 — why git did not answer; `null` when the rules were applied. */
+  readonly ignoreRulesReason: IgnoreRulesReason | null;
   readonly requirements: RequirementCoverage[];
   readonly sdsContracts: ContractCoverage[];
   /** Listed apart from `requirements` and never a gap or a pass. */
@@ -174,6 +176,7 @@ export async function checkTestSufficiency(workspace: ParsedWorkspace, scope: Te
     testFileCount: testFiles.length,
     ignoredTestFileCount: search.ignoredCount,
     ignoreRules: search.ignoreRules,
+    ignoreRulesReason: search.ignoreRulesReason,
     requirements,
     sdsContracts,
     expiredCitations,

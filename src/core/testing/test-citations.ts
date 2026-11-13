@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { environmentWithoutRepositoryLocation, git } from "../root-facts.js";
+import { environmentWithoutRepositoryLocation, git, type GitAnswer } from "../root-facts.js";
 
 // @req FR-NODE-210 AC-1 AC-3 @req REL-NODE-007
 //
@@ -223,6 +223,16 @@ export async function listTestFiles(rootPath: string, globs: readonly string[] =
   return walkFiles(rootPath, rootPath, testFileMatcher(globs));
 }
 
+/** Why git did not answer the ignore query. @req FR-NODE-306 AC-1 */
+export interface IgnoreRulesReason {
+  /** `timeout`: stopped at the time limit; `unavailable`: not started or not read; `exit`: a failing status. */
+  readonly kind: "timeout" | "unavailable" | "exit";
+  /** The exit status for `exit`, otherwise `null`. */
+  readonly status: number | null;
+  /** The first line git wrote to standard error, or `null` when it wrote none. */
+  readonly stderr: string | null;
+}
+
 export interface TestFileSearch {
   /** The test files counted, as sorted workspace-relative POSIX paths. */
   readonly files: string[];
@@ -230,24 +240,80 @@ export interface TestFileSearch {
   readonly ignoredCount: number;
   /** `git` when the repository's ignore rules were applied; `none` when git could not answer. */
   readonly ignoreRules: "git" | "none";
+  /** Set exactly when `ignoreRules` is `none`. */
+  readonly ignoreRulesReason: IgnoreRulesReason | null;
+}
+
+function reasonOf(answer: GitAnswer): IgnoreRulesReason {
+  const line = answer.stderr.split(/\r?\n/).find((text) => text.trim() !== "");
+  const stderr = line === undefined ? null : line.trim();
+  if (answer.code === null) return { kind: answer.failure ?? "unavailable", status: null, stderr };
+  return { kind: "exit", status: answer.code, stderr };
+}
+
+/** Every candidate counted, as before the ignore rules existed, with the reason git did not answer. */
+function rulesNotApplied(candidates: string[], answer: GitAnswer): TestFileSearch {
+  return { files: candidates, ignoredCount: 0, ignoreRules: "none", ignoreRulesReason: reasonOf(answer) };
+}
+
+/** The directory prefixes of `file`, nearest the root first: `a/b/c.ts` gives `a`, `a/b`. */
+function directoriesOf(file: string): string[] {
+  const parts = file.split("/");
+  return parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join("/"));
 }
 
 /**
  * The test files under `rootPath` that the repository's git ignore rules do not exclude, so a build
- * output under an ignored `build/` or `bin/` never counts as a test. git is asked once, for every
- * candidate. `check-ignore` never reports a tracked path, so a force-added test stays, and it applies
- * `!` re-includes itself; it exits 1 when nothing is ignored. Any other answer — no repository, no
- * git, a candidate inside a submodule — keeps every candidate and says the rules were not applied.
+ * output under an ignored `build/` or `bin/` never counts as a test.
  *
- * @req FR-NODE-292 AC-1 AC-2 AC-4 AC-5
+ * git lists the files its rules keep — tracked ones, ignored path or not, and untracked ones no rule
+ * excludes, with `!` re-includes applied — and the walk's candidates are kept where the list has them.
+ * That costs one pass over the repository. Asking `check-ignore` about every candidate instead costs
+ * candidates times index entries, and ran past the time limit at 36,956 candidates over 42,007 entries.
+ *
+ * The list shows an untracked nested repository only as `dir/`, so the candidates inside one go to
+ * `check-ignore`, which judges them by the outer rules; a submodule shows as its own path and
+ * `check-ignore` refuses paths inside it, so those candidates are kept, as they always were. Any git
+ * failure keeps every candidate and says why the rules were not applied.
+ *
+ * @req FR-NODE-292 AC-1 AC-2 AC-4 AC-5 AC-6 AC-7 AC-8 @req FR-NODE-306 AC-1
  */
 export async function findTestFiles(rootPath: string, globs: readonly string[] = DEFAULT_TEST_FILE_GLOBS): Promise<TestFileSearch> {
   const candidates = await listTestFiles(rootPath, globs);
-  const answer = await git(rootPath, ["check-ignore", "-z", "--stdin"], environmentWithoutRepositoryLocation(), candidates.map((file) => `${file}\0`).join(""));
-  if (answer.code !== 0 && answer.code !== 1) return { files: candidates, ignoredCount: 0, ignoreRules: "none" };
-  const ignored = new Set(answer.stdout.split("\0").filter((file) => file !== ""));
-  const files = candidates.filter((file) => !ignored.has(file));
-  return { files, ignoredCount: candidates.length - files.length, ignoreRules: "git" };
+  const env = environmentWithoutRepositoryLocation();
+  const listing = await git(rootPath, ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], env);
+  if (listing.code !== 0) return rulesNotApplied(candidates, listing);
+  // The listing spells a tracked path as the index does, the walk as the disk does; where git folds
+  // case (ASCII letters only, as git does), so does the comparison, or a tracked test under a
+  // directory differing only in case drops out.
+  const ignoreCase = (await git(rootPath, ["config", "--get", "--bool", "core.ignorecase"], env)).stdout.trim() === "true";
+  const fold = (relative: string): string => (ignoreCase ? relative.replace(/[A-Z]/g, (letter) => letter.toLowerCase()) : relative);
+  const listed = listing.stdout.split("\0").filter((entry) => entry !== "").map(fold);
+  const kept = new Set(listed);
+  const nestedRepositories = new Set(listed.filter((entry) => entry.endsWith("/")).map((entry) => entry.slice(0, -1)));
+  const keptOutright: string[] = [];
+  const insideNested: string[] = [];
+  for (const file of candidates) {
+    if (kept.has(fold(file))) {
+      keptOutright.push(file);
+      continue;
+    }
+    const enclosing = directoriesOf(fold(file));
+    if (enclosing.some((directory) => nestedRepositories.has(directory))) insideNested.push(file);
+    // A listed file entry that is also a directory of the candidate is a submodule.
+    else if (enclosing.some((directory) => kept.has(directory))) keptOutright.push(file);
+  }
+  let keptNested: string[] = [];
+  if (insideNested.length > 0) {
+    const answer = await git(rootPath, ["check-ignore", "-z", "--stdin"], env, insideNested.map((file) => `${file}\0`).join(""));
+    // check-ignore exits 1 when nothing is ignored: an answer, not a failure.
+    if (answer.code !== 0 && answer.code !== 1) return rulesNotApplied(candidates, answer);
+    const ignored = new Set(answer.stdout.split("\0").filter((file) => file !== ""));
+    keptNested = insideNested.filter((file) => !ignored.has(file));
+  }
+  const keep = new Set([...keptOutright, ...keptNested]);
+  const files = candidates.filter((file) => keep.has(file));
+  return { files, ignoredCount: candidates.length - files.length, ignoreRules: "git", ignoreRulesReason: null };
 }
 
 export interface TestCitation {

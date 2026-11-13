@@ -26,28 +26,42 @@ export class GitUnavailableError extends Error {
   }
 }
 
+/** Why git gave no exit status: stopped at the time limit, or never started or not read to the end. */
+export type GitFailure = "timeout" | "unavailable";
+
 export interface GitAnswer {
   /** The exit status; `null` when git could not be started or was killed. */
   readonly code: number | null;
   readonly stdout: string;
   readonly stderr: string;
+  /** Set only when `code` is `null`. @req FR-NODE-306 AC-3 */
+  readonly failure?: GitFailure;
+}
+
+/**
+ * Node marks a run it stopped at `timeout` as `killed` with no string code; a spawn failure carries a
+ * string code such as `ENOENT`, and so does an output past `maxBuffer`, which Node kills too.
+ */
+function failureOf(error: { killed?: boolean; code?: unknown }): GitFailure {
+  return error.killed === true && typeof error.code !== "string" ? "timeout" : "unavailable";
 }
 
 /**
  * Runs one git command in `root`. A non-zero exit is an answer, not a failure — `merge-base
  * --is-ancestor` reports its verdict that way — so nothing here throws. `env` replaces the inherited
  * environment for this one call; callers that pass none get the process environment, as always.
- * `input`, when given, is written to git's standard input, for the `--stdin` forms.
+ * `input`, when given, is written to git's standard input, for the `--stdin` forms. `timeoutMs`
+ * replaces the time limit only so a test can reach it without waiting it out (REL-NODE-008).
  */
-export function git(root: string, args: readonly string[], env?: NodeJS.ProcessEnv, input?: string): Promise<GitAnswer> {
+export function git(root: string, args: readonly string[], env?: NodeJS.ProcessEnv, input?: string, timeoutMs: number = GIT_TIMEOUT_MS): Promise<GitAnswer> {
   return new Promise((resolve) => {
     const child = execFile(
       "git",
       ["-C", root, ...args],
-      { encoding: "utf8", windowsHide: true, maxBuffer: 64 * 1024 * 1024, timeout: GIT_TIMEOUT_MS, ...(env ? { env } : {}) },
+      { encoding: "utf8", windowsHide: true, maxBuffer: 64 * 1024 * 1024, timeout: timeoutMs, ...(env ? { env } : {}) },
       (error, stdout, stderr) => {
         const code = error === null ? 0 : typeof error.code === "number" ? error.code : null;
-        resolve({ code, stdout, stderr });
+        resolve(code === null && error !== null ? { code, stdout, stderr, failure: failureOf(error) } : { code, stdout, stderr });
       }
     );
     if (input === undefined) return;
