@@ -15,6 +15,7 @@ import { addTraceLink } from "../../core/mutation/add-trace.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
 import { updateStatus } from "../../core/mutation/update-status.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
+import { srsLockRetry } from "../../core/mutation/srs-lock.js";
 import { groundFiles, isGroundingRefusal } from "../../core/orchestrator/grounding.js";
 import { closeWave, deferIssue, openIssue, planIssue, resolveIssue, type IssueRow, type ResolutionSet } from "../../core/orchestrator/issue-ledger.js";
 import { readIssueRow, waveOption } from "../../core/orchestrator/issue-row.js";
@@ -834,7 +835,9 @@ function hostRootDispatch(root: ProjectRoot): ReplayDispatch {
               : null;
     if (outcome === null) return { ok: false, error: `no host-root dispatch for ${tool}` };
     if (outcome.ok) return { ok: true };
-    return { ok: false, error: outcome.error?.message ?? outcome.error?.code ?? "mutation refused" };
+    // @req IR-CLI-120 — the lock refusal travels with its retry guidance, so replay can tell it from any other.
+    const lock = srsLockRetry(outcome);
+    return { ok: false, error: outcome.error?.message ?? outcome.error?.code ?? "mutation refused", ...(lock === undefined ? {} : { lock }) };
   };
 }
 
@@ -2792,6 +2795,22 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
         if (!result.ok && result.inputRefusals !== undefined) {
           const refusals = result.inputRefusals.map((refusal) => `#${refusal.index} ${refusal.tool} — ${refusal.message}`).join("; ");
           throw new OperationalError(`${result.gate}: no call was applied, because these fail their input check: ${refusals}`);
+        }
+        if (!result.ok && result.failure === undefined && result.failedCalls !== undefined) {
+          // @req IR-CLI-120 AC-8 — each call, and the one way on that needs no new option: the record's
+          // own rule that a later applied line supersedes a failed one (FR-NODE-185).
+          const calls = result.failedCalls.map((call) => `#${call.index} ${call.tool} argsHash ${call.argsHash}`).join("; ");
+          const lines = result.failedCalls
+            .map((call) => JSON.stringify({ tool: call.tool, argsHash: call.argsHash, outcome: "applied" }))
+            .join(" ");
+          // The refusal replaces the payload, so it carries what the payload would have: the dry run's count
+          // (IR-CLI-092 AC-7) and each refused call with its reason (IR-CLI-092 AC-4).
+          const done = result.wouldApply === undefined ? `applied ${result.applied}` : `dry run: would apply ${result.wouldApply}`;
+          const refused = result.refused.map((call) => `#${call.index} ${call.tool} (${call.reason})`).join("; ");
+          throw new OperationalError(
+            `${result.gate}: the record holds ${result.failedCalls.length} call(s) as failed, and a replay does not retry them: ${calls} (${done}${refused === "" ? "" : `; refused ${refused}`}). ` +
+              `Find why each failed, apply it at the host root yourself, then append its line to ${options.applied as string} to mark it done: ${lines}`
+          );
         }
         if (!result.ok) {
           throw new OperationalError(

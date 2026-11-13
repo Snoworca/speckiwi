@@ -82,6 +82,37 @@ function unknownLock(operation: string): SrsMutationLockMetadata {
   };
 }
 
+/** The refusal kinds no age recovers: a symlink, an unreadable file, a format another version wrote. */
+const SYMLINK_LOCK = "symlink-lock";
+const UNREADABLE_LOCK = "unreadable-lock";
+const UNKNOWN_LOCK_FORMAT = "unknown-lock-format";
+const UNRECOVERED_LOCK_KINDS: ReadonlySet<string> = new Set([SYMLINK_LOCK, UNREADABLE_LOCK, UNKNOWN_LOCK_FORMAT]);
+
+/** How long a held lock lives, and so the longest a caller ever has to wait for one to clear. */
+export const SRS_LOCK_TTL_MS = DEFAULT_LOCK_TTL_MS;
+
+/** What an `SRS_LOCKED` refusal tells a caller that would wait: whether waiting can clear it, and for how long. */
+export interface SrsLockRetry {
+  /** False for a lock the core never recovers at any age; waiting for it only delays the same refusal. */
+  recoverable: boolean;
+  delayMs: number;
+}
+
+/**
+ * Reads a mutation result as an SRS lock refusal, or answers undefined for any other result. The kinds
+ * the core recovers are this module's to know, so a caller that waits asks here rather than keep its own
+ * list. A refusal is a failure before anything was written (REL-NODE-005 AC-5), which is what makes
+ * dispatching the same call again safe. @req IR-CLI-120 AC-4 AC-6
+ */
+export function srsLockRetry(result: MutationResult<unknown>): SrsLockRetry | undefined {
+  if (result.ok || result.error?.code !== "SRS_LOCKED") return undefined;
+  const kind = (result.error.diagnostics?.[0]?.details as { kind?: unknown } | undefined)?.kind;
+  return {
+    recoverable: !(typeof kind === "string" && UNRECOVERED_LOCK_KINDS.has(kind)),
+    delayMs: result.error.lock?.retry.recommendedDelayMs ?? DEFAULT_LOCK_TTL_MS
+  };
+}
+
 /** A structured SRS_LOCKED refusal; `message` and `recommendedDelayMs` default to the holder's. */
 function lockRefusal(
   metadata: SrsMutationLockMetadata,
@@ -202,9 +233,9 @@ async function readLockFileState(root: ProjectRoot, relativePath: string): Promi
 function blockingRefusal(state: LockFileState, relativePath: string, operation: string, activeKind?: string): MutationResult | undefined {
   switch (state.kind) {
     case "symlink":
-      return lockRefusal(unknownLock(operation), { kind: "symlink-lock" }, { filePath: relativePath });
+      return lockRefusal(unknownLock(operation), { kind: SYMLINK_LOCK }, { filePath: relativePath });
     case "unreadable":
-      return lockRefusal(unknownLock(operation), { kind: "unreadable-lock", error: state.error }, { filePath: relativePath });
+      return lockRefusal(unknownLock(operation), { kind: UNREADABLE_LOCK, error: state.error }, { filePath: relativePath });
     case "torn":
       return state.ageMs > TORN_GRACE_MS
         ? undefined
@@ -214,7 +245,7 @@ function blockingRefusal(state: LockFileState, relativePath: string, operation: 
             recommendedDelayMs: Math.min(TORN_GRACE_MS, Math.max(0, TORN_GRACE_MS - state.ageMs))
           });
     case "unknown-format":
-      return lockRefusal(unknownLock(operation), { kind: "unknown-lock-format", version: state.version }, {
+      return lockRefusal(unknownLock(operation), { kind: UNKNOWN_LOCK_FORMAT, version: state.version }, {
         filePath: relativePath,
         message:
           `SRS mutation lock file ${relativePath} has an unknown format (schemaVersion ${state.version}); another SpecKiwi version may hold the lock. ` +
