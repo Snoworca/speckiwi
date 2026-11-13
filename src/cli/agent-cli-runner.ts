@@ -31,20 +31,30 @@ async function isOnWindowsPath(name: string): Promise<boolean> {
   return false;
 }
 
+/** Ends a child and everything it started, settling once the attempt is over. */
+export type ProcessTreeEnder = (child: ChildProcess) => Promise<void>;
+
 /**
  * Ends the child and everything it started. On Windows the child is cmd.exe and the agent runs under
  * it, so killing cmd alone leaves the agent running — and still holding the call's directory.
+ * `taskkill` enumerates every process first, so on a host running many it takes seconds (measured
+ * 3.3-3.9 s with 1,782 processes), long enough for the agent to finish on its own meanwhile.
  */
-function endProcessTree(child: ChildProcess): void {
-  if (process.platform === "win32" && child.pid !== undefined) {
-    execFile("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true }, () => undefined);
-    return;
-  }
-  child.kill();
-}
+const endProcessTree: ProcessTreeEnder = (child) =>
+  new Promise((resolve) => {
+    if (process.platform === "win32" && child.pid !== undefined) {
+      execFile("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true }, () => resolve());
+      return;
+    }
+    child.kill();
+    resolve();
+  });
 
-/** A runner that gives each call `timeoutMs` before ending it and reporting it as timed out. */
-export function createAgentCliRunner(timeoutMs: number): AgentCliRunner {
+/**
+ * A runner that gives each call `timeoutMs` before ending it and reporting it as timed out.
+ * `endTree` is injected only so a test can stand in for a slow `taskkill` (REL-NODE-008).
+ */
+export function createAgentCliRunner(timeoutMs: number, endTree: ProcessTreeEnder = endProcessTree): AgentCliRunner {
   return async (agent, args) => {
     const onWindows = process.platform === "win32";
     if (onWindows && !(await isOnWindowsPath(agent))) return { found: false, exitCode: 1, stdout: "", stderr: "" };
@@ -59,27 +69,30 @@ export function createAgentCliRunner(timeoutMs: number): AgentCliRunner {
     const file = onWindows ? [agent, ...args].join(" ") : agent;
     const fileArgs = onWindows ? [] : [...args];
     const outcome = await new Promise<AgentCliOutcome>((resolve) => {
-      let timedOut = false;
+      // Set when the deadline fires and never cleared: an agent that then exits 0 on its own, or a
+      // tree end that fails because the agent is already gone, does not turn the call back into an
+      // answer. @req FR-NODE-223 AC-4
+      let ending: Promise<void> | undefined;
       const child = execFile(file, fileArgs, { cwd, encoding: "utf8", windowsHide: true, shell: onWindows }, (error, stdout, stderr) => {
         clearTimeout(deadline);
-        if (error === null) {
-          resolve({ found: true, exitCode: 0, stdout, stderr });
-          return;
-        }
-        const code: unknown = (error as { code?: unknown }).code;
-        // POSIX reports a binary missing from PATH as ENOENT; Windows was settled before the spawn.
-        resolve({
+        const code: unknown = error === null ? 0 : (error as { code?: unknown }).code;
+        const answer: AgentCliOutcome = {
+          // POSIX reports a binary missing from PATH as ENOENT; Windows was settled before the spawn.
           found: code !== "ENOENT",
           exitCode: typeof code === "number" ? code : 1,
           stdout,
-          stderr: stderr || error.message,
-          ...(timedOut ? { timedOut: true } : {})
-        });
+          stderr: error === null ? stderr : stderr || error.message
+        };
+        if (ending === undefined) {
+          resolve(answer);
+          return;
+        }
+        // Returned only once the tree end is over, so a timed-out call leaves no agent running.
+        void ending.then(() => resolve({ ...answer, timedOut: true }));
       });
       // execFile's own `timeout` kills only the direct child, which on Windows is cmd.exe.
       const deadline = setTimeout(() => {
-        timedOut = true;
-        endProcessTree(child);
+        ending = endTree(child).catch(() => undefined);
       }, timeoutMs);
     });
     // Best effort: an empty directory left in the temp folder is harmless, and a cleanup failure must

@@ -178,6 +178,32 @@ describe("FR-NODE-223 AC-4 — a `get` that timed out is not read as \"not regis
     expect((value.warnings ?? []).some((w) => w.includes(CLAUDE_ADD) && /timed out/.test(w))).toBe(true);
     expect(value.onboarding?.mcpConfirmed).toEqual([]);
   });
+
+  // The same for a `get` that exited 0 past its deadline: it is not read as "already registered".
+  it("FR-NODE-223 AC-4: a `get` that timed out runs no `add` and warns, even when it exited 0", async () => {
+    const s = await scenario();
+    const { runner, calls } = fakeRunner((agent, args) =>
+      args[1] === "get" ? { found: true, exitCode: 0, stdout: "", stderr: "", timedOut: true } : { found: true, exitCode: 0, stdout: "", stderr: "" }
+    );
+    const value = await runInit(s.root, defaults(s, runner));
+    expect(calls).toEqual([CLAUDE_GET, CODEX_GET]);
+    expect((value.warnings ?? []).some((w) => w.includes(CLAUDE_ADD) && /timed out/.test(w))).toBe(true);
+    expect(value.onboarding?.mcpConfirmed).toEqual([]);
+  });
+
+  // The runner reports a call as timed out once its deadline fired, even when the agent then exited 0
+  // on its own before its tree was ended; that `add` is not reported as created.
+  it("FR-NODE-223 AC-4: an `add` that timed out is a warning with the exact command, even when it exited 0", async () => {
+    const s = await scenario();
+    const { runner, calls } = fakeRunner((agent, args) =>
+      args[1] === "get" ? { found: true, exitCode: 1, stdout: "", stderr: "" } : { found: true, exitCode: 0, stdout: "", stderr: "", timedOut: true }
+    );
+    const value = await runInit(s.root, defaults(s, runner));
+    expect(calls).toEqual([CLAUDE_GET, CLAUDE_ADD, CODEX_GET, CODEX_ADD]);
+    expect((value.warnings ?? []).some((w) => w.includes(CLAUDE_ADD) && /timed out/.test(w))).toBe(true);
+    expect((value.warnings ?? []).some((w) => w.includes(CODEX_ADD) && /timed out/.test(w))).toBe(true);
+    expect(value.onboarding?.mcpConfirmed).toEqual([]);
+  });
 });
 
 describe("FR-NODE-223 AC-5 — project install is the 4.1.0 onboarding", () => {

@@ -21,7 +21,10 @@ export interface AgentCliOutcome {
   exitCode: number;
   stdout: string;
   stderr: string;
-  /** Killed at the runner's deadline: says nothing about whether the server is registered. */
+  /**
+   * The runner's deadline fired before the call finished, however it then ended: the exit code of a
+   * call that ran past its deadline says nothing about whether the server is registered.
+   */
   timedOut?: boolean;
 }
 
@@ -149,14 +152,14 @@ export async function registerSpeckiwiMcpForUser(
   commands.push(commandLine(agent, get));
   const existing = await runner(agent, get);
   if (!existing.found) return byHand(`the ${agent} CLI was not found on PATH`);
-  // A `get` killed at the deadline proves nothing either way, and an `add` after it would at best fail.
+  // A `get` that ran past the deadline proves nothing either way, and an `add` after it would at best fail.
   if (existing.timedOut) return byHand(`\`${commandLine(agent, get)}\` timed out`);
   if (existing.exitCode === 0) return { status: "skipped", label, commands };
   commands.push(manual);
   const added = await runner(agent, add);
   if (!added.found) return byHand(`the ${agent} CLI was not found on PATH`);
-  if (added.exitCode === 0) return { status: "created", label, commands };
   if (added.timedOut) return byHand(`\`${manual}\` timed out`);
+  if (added.exitCode === 0) return { status: "created", label, commands };
   const detail = added.stderr.trim().split(/\r?\n/)[0] ?? "";
   return byHand(`\`${manual}\` exited ${added.exitCode}${detail ? ` (${detail})` : ""}`);
 }
