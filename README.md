@@ -463,12 +463,12 @@ The server writes SRS only at the root it found at startup. A session whose serv
 | --- | --- |
 | `workflow_*` (all 15) | accepted |
 | `orchestrate_*` | accepted, except `orchestrate_replay_apply` (a deferred SRS change replays only at the host root) and `orchestrate_preflight` (it takes `mcpRoot` and `gitRoot` instead) |
-| The SRS query tools — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_targets`, `list_roadmap_items`, `get_roadmap_item`, `check_roadmap`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds`, `check_test_sufficiency` | accepted; each reads the named checkout and writes nothing |
+| The SRS query tools — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_targets`, `list_roadmap_items`, `get_roadmap_item`, `check_roadmap`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds`, `check_test_sufficiency`, `check_review_round` | accepted; each reads the named checkout and writes nothing |
 | Every tool that writes under `docs/spec` or allocates a Requirement ID — `add_requirement`, `update_status`, `supersede_requirement`, `sync_index`, `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair` and the rest | refused |
 | `mcp_workspace_info` and `get_next_work_order` | refused: the first reports which root answered, and the second assembles a work order rather than reading a checkout's SRS |
 
 - **Refusal is the default.** A tool accepts `workspaceRoot` only when it declares the workspace scope it admits. A new tool that declares none refuses the argument.
-- **An accepted root must be the absolute git top level of a worktree of the same repository** as the server's root. Anything else is refused with a `workspace-root-*` reason before the tool runs, so a path that does not exist is never created. An SRS query is also refused when the named checkout has no `docs/spec/00.index.md`.
+- **An accepted root must be the absolute git top level of a worktree of the same repository** as the server's root. Anything else is refused with a `workspace-root-*` reason before the tool runs, so a path that does not exist is never created. Every tool in the SRS query row except `check_review_round` is also refused when the named checkout has no `docs/spec/00.index.md`; `check_review_round` reads the run state under `.kiwi/sessions` rather than the SRS, so a checkout without the index is accepted.
 - **A path argument under `docs/spec` is refused on such a call.** Only tools that take no caller-supplied path are exempt. So `check_test_sufficiency` refuses a step SDS path there (a step `design.md`, written under `--sds`); check a step with `speckiwi coverage --tests` inside its worktree instead.
 
 **Confirm which root answered before any target-scoped read or mutation.** Every result carries `mcpWorkspace`, with `workspaceRoot`, `rootSource`, `indexPath` and `packageVersion`. `rootSource` is `server-cwd-discovery`, `per-call-workspace-root` or `unbound`:
@@ -1463,12 +1463,12 @@ Kiwi 스킬은 모든 읽기와 모든 SRS 변경에 MCP 도구를 씁니다. �
 | --- | --- |
 | `workflow_*` (15개 전부) | 받습니다 |
 | `orchestrate_*` | 받습니다. 단, `orchestrate_replay_apply`(미뤄 둔 SRS 변경은 호스트 루트에서만 재생합니다)와 `orchestrate_preflight`(대신 `mcpRoot`와 `gitRoot`를 받습니다)는 예외입니다 |
-| SRS 조회 도구 — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_targets`, `list_roadmap_items`, `get_roadmap_item`, `check_roadmap`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds`, `check_test_sufficiency` | 받습니다. 각 도구는 지정한 체크아웃을 읽기만 하고 아무것도 쓰지 않습니다 |
+| SRS 조회 도구 — `list_requirements`, `search_requirements`, `get_requirement`, `validate_spec`, `summarize_target`, `get_active_target`, `list_targets`, `list_roadmap_items`, `get_roadmap_item`, `check_roadmap`, `list_completed_work`, `validate_step`, `get_work_mode`, `check_vibe_gate`, `list_dirty_edges`, `list_compat_edges`, `list_steps`, `check_sds`, `check_test_sufficiency`, `check_review_round` | 받습니다. 각 도구는 지정한 체크아웃을 읽기만 하고 아무것도 쓰지 않습니다 |
 | `docs/spec` 아래에 쓰거나 요구사항 ID를 할당하는 모든 도구: `add_requirement`, `update_status`, `supersede_requirement`, `sync_index`, `diagnose_requirement_id_collisions`, `plan_requirement_id_collision_repair` 등 | 거부합니다 |
 | `mcp_workspace_info`와 `get_next_work_order` | 거부합니다. 앞의 도구는 어느 루트가 응답했는지 보고하고, 뒤의 도구는 체크아웃의 SRS를 읽는 대신 작업 지시를 조립하기 때문입니다 |
 
 - **기본은 거부입니다.** 도구는 자신이 허용하는 작업 공간 범위를 선언했을 때만 `workspaceRoot`를 받습니다. 아무것도 선언하지 않은 새 도구는 이 인수를 거부합니다.
-- **받아들이는 루트는 서버의 루트와 같은 저장소에 속한 worktree의 git 최상위 절대 경로여야 합니다.** 그 밖의 값은 도구가 실행되기 전에 `workspace-root-*` 사유와 함께 거부되므로, 존재하지 않는 경로가 새로 만들어지는 일은 없습니다. 지정한 체크아웃에 `docs/spec/00.index.md`가 없으면 SRS 조회도 거부됩니다.
+- **받아들이는 루트는 서버의 루트와 같은 저장소에 속한 worktree의 git 최상위 절대 경로여야 합니다.** 그 밖의 값은 도구가 실행되기 전에 `workspace-root-*` 사유와 함께 거부되므로, 존재하지 않는 경로가 새로 만들어지는 일은 없습니다. 지정한 체크아웃에 `docs/spec/00.index.md`가 없으면 SRS 조회 도구 행의 도구 가운데 `check_review_round`를 뺀 나머지도 거부됩니다. `check_review_round`는 SRS가 아니라 `.kiwi/sessions` 아래의 실행 상태를 읽으므로, 인덱스가 없는 체크아웃도 받아들입니다.
 - **이런 호출에서는 `docs/spec` 아래를 가리키는 경로 인수를 거부합니다.** 호출자에게서 경로를 받지 않는 도구만 예외입니다. 그래서 `check_test_sufficiency`는 이런 호출에서 step SDS 경로(`--sds`로 쓴 step `design.md`)를 거부합니다. step은 그 worktree 안에서 `speckiwi coverage --tests`로 확인하십시오.
 
 **대상 단위의 조회나 변경을 하기 전에는 어느 루트가 응답했는지 확인하십시오.** 모든 결과에는 `workspaceRoot`, `rootSource`, `indexPath`, `packageVersion`을 담은 `mcpWorkspace`가 들어 있습니다. `rootSource`는 `server-cwd-discovery`, `per-call-workspace-root`, `unbound` 중 하나입니다.

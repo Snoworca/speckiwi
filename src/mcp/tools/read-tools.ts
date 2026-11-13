@@ -292,6 +292,15 @@ const SDS_READ_WORKSPACE_METADATA: Readonly<Record<string, McpToolMetadata>> = O
   check_test_sufficiency: Object.freeze({ readOnlyHint: true, workspaceScope: "srs-read-only" as const })
 });
 
+/**
+ * The review-round check reads a run state under `.kiwi/sessions` and git objects, not the SRS, so it
+ * takes the per-call root the way the workflow_* readers of the same state do: no SRS index is required,
+ * and `runId` is one path segment rather than a path. @req IR-MCP-013 AC-3
+ */
+const REVIEW_READ_WORKSPACE_METADATA: Readonly<Record<string, McpToolMetadata>> = Object.freeze({
+  check_review_round: Object.freeze({ readOnlyHint: true, workspaceScope: "worktree-local" as const, callerPathKeys: Object.freeze([]) })
+});
+
 function stringList(value: unknown): string[] | undefined {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : undefined;
 }
@@ -300,7 +309,8 @@ function stringList(value: unknown): string[] | undefined {
 const WORKSPACE_SCOPED_METADATA: Readonly<Record<string, McpToolMetadata>> = Object.freeze({
   ...ORCHESTRATE_WORKSPACE_METADATA,
   ...SRS_READ_WORKSPACE_METADATA,
-  ...SDS_READ_WORKSPACE_METADATA
+  ...SDS_READ_WORKSPACE_METADATA,
+  ...REVIEW_READ_WORKSPACE_METADATA
 });
 
 /** The metadata an SDS reader is registered with; a name outside the set throws, as for the SRS queries. */
@@ -502,13 +512,13 @@ export function registerReadTools(server: McpServerHandle, deps: McpDependencies
     });
     return result.ok ? mcpSuccess(result.value) : resultToMcp(result);
   }, sdsReadMetadata("check_test_sufficiency"));
-  // FR-NODE-274 — check_review_round answers from the same core as `speckiwi review-round check`. It
-  // declares no workspace scope, so the gate refuses a per-call workspaceRoot (AC-8).
-  server.registerTool("check_review_round", async (input) => {
-    const root = await projectRoot(deps);
+  // FR-NODE-274 — check_review_round answers from the same core as `speckiwi review-round check`, in the
+  // checkout a per-call workspaceRoot names (IR-MCP-013 AC-1).
+  server.registerTool("check_review_round", async (input, context) => {
+    const root = await projectRoot(deps, context);
     const result = await checkReviewRound(typeof input.runId === "string" ? input.runId : "", workspaceReviewRoundSources(root.root));
     return result.ok ? mcpSuccess(result.value) : resultToMcp(result);
-  }, { readOnlyHint: true });
+  }, REVIEW_READ_WORKSPACE_METADATA.check_review_round);
   // FR-MCP-042 — list_steps returns the Kahn topological order of docs/spec/steps/state.md with
   // cycle detection and advisory-only diagnostics.
   server.registerTool("list_steps", async (input, context) =>

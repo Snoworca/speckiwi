@@ -67,6 +67,13 @@ const CALLER_PATH_TOOLS = ["check_sds", "check_test_sufficiency"] as const;
 const LATER_NO_PATH_TOOLS = ["list_targets", "list_roadmap_items", "get_roadmap_item", "check_roadmap"] as const;
 const NO_PATH_TOOLS = [...THIRTEEN, ...LATER_NO_PATH_TOOLS] as const;
 const SRS_QUERY_TOOLS = [...NO_PATH_TOOLS, ...CALLER_PATH_TOOLS] as const;
+/**
+ * The run-state reader opened in 5.5.2 by IR-MCP-013. It joins AC-1's set and AC-7's no-path declaration,
+ * but its subject is a review-round run state rather than the SRS, so it has no row in the SRS divergence
+ * fixture below; IR-MCP-013's own suite proves it answers from the named checkout.
+ */
+const RUN_STATE_TOOLS = ["check_review_round"] as const;
+const AC1_TOOLS = [...SRS_QUERY_TOOLS, ...RUN_STATE_TOOLS] as const;
 
 /** The tools AC-5 names as staying closed, each for a reason the requirement records. */
 const STAY_CLOSED = [
@@ -478,21 +485,21 @@ afterAll(async () => {
 
 describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace root", { timeout: 180_000 }, () => {
   // @req FR-MCP-064 AC-1
-  it("opens exactly the fifteen it names outside the workflow_* and orchestrate_* families", () => {
+  it("opens exactly the twenty it names outside the workflow_* and orchestrate_* families", () => {
     expect(unclassified).toEqual([]);
     const opened = accepting
       .filter((name) => !name.startsWith("workflow_") && !name.startsWith("orchestrate_"))
       .sort();
     // Both directions: a sixteenth tool quietly gaining the argument reddens here, and so does a
     // name in the requirement being dropped from the implementation.
-    expect(opened).toEqual([...SRS_QUERY_TOOLS].sort());
-    expect(refusing.filter((name) => (SRS_QUERY_TOOLS as readonly string[]).includes(name))).toEqual([]);
+    expect(opened).toEqual([...AC1_TOOLS].sort());
+    expect(refusing.filter((name) => (AC1_TOOLS as readonly string[]).includes(name))).toEqual([]);
   });
 
   // @req FR-MCP-064 AC-1 — the schema and the gate come from one declaration, so neither can move alone.
-  it("advertises the argument on each of the fifteen and hands each handler the call context", () => {
+  it("advertises the argument on each of the twenty and hands each handler the call context", () => {
     const registered = registrations(host);
-    for (const tool of SRS_QUERY_TOOLS) {
+    for (const tool of AC1_TOOLS) {
       expect(Object.prototype.hasOwnProperty.call(toolSchemas[tool] ?? {}, WORKSPACE_ROOT_KEY), `${tool} must advertise ${WORKSPACE_ROOT_KEY}`).toBe(true);
       expect(listed.find((candidate) => candidate.name === tool)?.inputSchema.properties, `${tool} must advertise it over tools/list`).toHaveProperty(WORKSPACE_ROOT_KEY);
     }
@@ -667,10 +674,10 @@ describe("FR-MCP-064 — the SRS query tools answer from a per-call workspace ro
       .filter(([, record]) => Array.isArray(record.metadata?.callerPathKeys))
       .map(([name]) => name)
       .sort();
-    expect(declaring).toEqual([...NO_PATH_TOOLS].sort());
+    expect(declaring).toEqual([...NO_PATH_TOOLS, ...RUN_STATE_TOOLS].sort());
     // AC-7: the two SDS readers take caller paths, so they declare nothing and every argument is scanned.
     for (const tool of CALLER_PATH_TOOLS) expect(declaring, `${tool} must not declare a path exemption`).not.toContain(tool);
-    for (const tool of NO_PATH_TOOLS) {
+    for (const tool of [...NO_PATH_TOOLS, ...RUN_STATE_TOOLS]) {
       expect(registered.get(tool)?.metadata?.callerPathKeys, `${tool} takes no caller-supplied path`).toEqual([]);
     }
   });

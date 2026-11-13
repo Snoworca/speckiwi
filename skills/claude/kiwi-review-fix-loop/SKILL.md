@@ -617,7 +617,7 @@ GIT_INDEX_FILE=<tmp> git write-tree
 
 수렴 가드는 finding-hash 일치가 아니라 **새로 해소된 차단 kept 가 0 인 라운드가 2회 연속**이면 종료하며, 차단 kept finding 이 남은 채 수렴 가드로 끝난 실행은 통과가 아니라 `NEEDS_USER` 로 끝난다. 앞 회차 수정이 만든 차단의 과반 멈춤(FR-FLOW-229 AC-6)은 연속 횟수와 별개로 매 회차 검사하며, 먼저 걸린 쪽이 실행을 끝낸다.
 
-**회차 검사.** 회차가 끝날 때마다 읽기 전용 검사 `check_review_round`(CLI `speckiwi review-round check`)를 부르고, 범위·앞 회차 수정의 과반·통과·상한이나 예산 멈춤에 대해 그 검사가 돌려준 판정(`PASS` · `NEEDS_USER` · `CONTINUE`)을 따른다. 검사가 범위 실패를 보고하면 그 회차는 통과로 세지 않고, 빠진 파일을 넣어 그 회차 리뷰를 다시 한다.
+**회차 검사.** 회차가 끝날 때마다 읽기 전용 검사 `check_review_round`(CLI `speckiwi review-round check`)를 부르고, 범위·앞 회차 수정의 과반·통과·상한이나 예산 멈춤에 대해 그 검사가 돌려준 판정(`PASS` · `NEEDS_USER` · `CONTINUE`)을 따른다. 검사가 범위 실패를 보고하면 그 회차는 통과로 세지 않고, 빠진 파일을 넣어 그 회차 리뷰를 다시 한다. 워커 워크트리 같은 linked worktree 에서 돌면 회차 검사도 그 워크트리를 읽는다 — MCP `check_review_round` 에 `workspaceRoot` = 그 워크트리 절대 경로를 주고, CLI 면 그 워크트리를 cwd 로 부른다.
 
 **통과.** 차단 kept finding 이 0 이고 리뷰 커버리지 대조(FR-FLOW-171)가 통과하고 residual 이 남지 않았을 때(FR-FLOW-203 AC-11) 실행이 통과하며, 기록 finding 은 통과를 막지 않는다.
 

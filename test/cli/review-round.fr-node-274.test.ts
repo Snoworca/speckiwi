@@ -136,12 +136,9 @@ describe("FR-NODE-274 — the review-round check over a real repository", () => 
     expect(isReadOnlyTool("check_review_round")).toBe(true);
   });
 
-  // @req FR-NODE-274 AC-8
-  it("does not accept a workspaceRoot argument", async () => {
-    const root = await copyFixtureWorkspace("valid-basic");
-    expect(acceptsPerCallWorkspaceRoot("check_review_round")).toBe(false);
-    const refused = (await createMcpServer({ root }).callTool("check_review_round", { runId: RUN, workspaceRoot: root })) as Answer;
-    expect(refused.ok).toBe(false);
-    expect(JSON.stringify(refused)).toContain("workspaceRoot");
+  // @req FR-NODE-274 AC-8 — the per-call root itself is IR-MCP-013's, proven over a lane worktree in
+  // test/mcp/review-round-workspace-root.ir-mcp-013.test.ts; here only that the tool takes it.
+  it("accepts the per-call workspaceRoot", () => {
+    expect(acceptsPerCallWorkspaceRoot("check_review_round")).toBe(true);
   });
 });
