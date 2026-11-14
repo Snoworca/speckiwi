@@ -4,28 +4,30 @@ import { replaceAcceptanceCriteria } from "../../../src/core/mutation/edit-requi
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
 import { acFixture, scopeText } from "../ac-expiry-fixture.js";
 
-// FR-NODE-041 AC-4 (the length limit) and AC-5 (the verified guard) of edit_acceptance_criteria.
+// FR-NODE-041 AC-4 (the text rules, which hold no length limit) and AC-5 (the verified guard) of
+// edit_acceptance_criteria.
 
 const ID = "FR-ARCH-001";
 const LIVE = ["- [x] AC-1: first", "- [ ] AC-2: second"];
 
-describe("FR-NODE-041 AC-4 — the length limit is 16384 UTF-16 code units", () => {
+describe("FR-NODE-041 AC-4 — empty or control-character text is refused, long text is not", () => {
   // @req FR-NODE-041 AC-4
-  it("accepts a criterion of exactly 16384 units, the size of the longest a real SRS carried and more", async () => {
+  it("writes a criterion of 30000 units, longer than the old 16384 limit", async () => {
     const rootPath = await acFixture({ acLines: LIVE });
-    const text = "z".repeat(16384);
+    const text = "z".repeat(30000);
     const result = await editAcceptanceCriteria(await resolveProjectRoot(rootPath), { id: ID, acId: "AC-2", text });
     expect(result.ok, JSON.stringify(result.error)).toBe(true);
     expect(await scopeText(rootPath)).toContain(`- [ ] AC-2: ${text}\n`);
   });
 
   // @req FR-NODE-041 AC-4
-  it("refuses 16385 units with USAGE and writes nothing", async () => {
+  it("refuses empty text, a newline, a carriage return and a control character with USAGE and writes nothing", async () => {
     const rootPath = await acFixture({ acLines: LIVE });
     const before = await scopeText(rootPath);
-    const result = await editAcceptanceCriteria(await resolveProjectRoot(rootPath), { id: ID, acId: "AC-2", text: "z".repeat(16385) });
-    expect(result.error?.code).toBe("USAGE");
-    expect(result.error?.message).toContain("16384");
+    for (const text of ["", "one\ntwo", "one\rtwo", `bell${String.fromCharCode(7)}`]) {
+      const result = await editAcceptanceCriteria(await resolveProjectRoot(rootPath), { id: ID, acId: "AC-2", text });
+      expect(result.error?.code, JSON.stringify(text)).toBe("USAGE");
+    }
     expect(await scopeText(rootPath)).toBe(before);
   });
 });

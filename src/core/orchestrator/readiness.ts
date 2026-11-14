@@ -533,7 +533,9 @@ export function scopeRequirementDiagnostics(
 
   return diagnostics.filter((item) => {
     if (item.severity === "error") return true;
-    if (item.severity !== "warning" || item.code === "SRS-W015") return false;
+    // @req FR-NODE-307 AC-8 — a criterion over the length threshold is a hygiene warning that blocks
+    // neither a write nor a dispatch, like the Completed Work Log SRS-W015.
+    if (item.severity !== "warning" || item.code === "SRS-W015" || item.code === "SRS-W083") return false;
     if (options.preserveWarningCodes?.has(item.code)) return true;
     const owners = [...diagnosticRequirementIds(item, records)];
     if (owners.length > 0) return owners.some((owner) => relevantIds.has(owner));

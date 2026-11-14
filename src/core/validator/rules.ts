@@ -20,6 +20,7 @@ import { successorProblem } from "../parser/ac-parser.js";
 import { judgeDiscardedTraceTargets } from "../discarded-trace-target.js";
 import { REQUIREMENT_ID_SOURCE } from "../testing/test-citations.js";
 import { isDependsOnRelation, isRequirementDependency, requirementDependencyIds } from "../requirement-dependency.js";
+import { LONG_CRITERION_THRESHOLD } from "./criterion-length.js";
 import { registerValidationRule } from "./rule-registry.js";
 import { collectSsotLiteralDrift, type SsotLiteralFinding, type SsotTextSpan } from "./ssot-literal-drift.js";
 import {
@@ -838,6 +839,19 @@ export function registerDefaultRules(): void {
         }
       }
       diagnostics.push(...acceptanceCriterionNumberDiagnostics(record, workspace.records));
+      // @req FR-NODE-307 AC-3 AC-4 — a live criterion over the threshold is reported, never refused;
+      // an expired criterion is history and is not.
+      for (const criterion of record.acceptanceCriteria) {
+        if (criterion.text.length <= LONG_CRITERION_THRESHOLD) continue;
+        diagnostics.push(
+          diagnostic(
+            "SRS-W083",
+            "warning",
+            `${record.id} ${criterion.id} is ${criterion.text.length} characters, over the ${LONG_CRITERION_THRESHOLD}-character threshold; split it into atomic conditions (SRS-MD Rules §21.3 item 2) with edit_acceptance_criterion and append_acceptance_criterion, and move design prose to Implementation Notes`,
+            { filePath: record.filePath, ...(typeof criterion.line === "number" ? { line: criterion.line } : {}), requirementId: record.id }
+          )
+        );
+      }
       const recordFile = workspace.files.find((entry) => entry.relativePath === record.filePath || entry.path === record.filePath);
       diagnostics.push(...dependencyTraceDiagnostics(record, ids, recordFile?.lines ?? []));
       // @req FR-NODE-248 AC-2 — an existing range row, written before the writer refused it.

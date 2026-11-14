@@ -888,6 +888,16 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
       "Create the file the reference names before promoting the requirement to verified, or correct the reference: a test row names the test file as a path relative to the project root, optionally with :line or :line-line and the test title after #, and a command belongs in notes. The verified transition refuses the same reference."
   },
   {
+    code: "SRS-W083",
+    severity: "warning",
+    title: "Acceptance criterion is longer than the threshold",
+    messageTemplate: "{requirementId} {acId} is {length} characters, over the {threshold}-character threshold",
+    sourceRule: "FR-NODE-307",
+    since: "v5.5.2",
+    remediation:
+      "Split the criterion into atomic conditions, one expected result each (SRS-MD Rules §21.3 item 2): reword it with edit_acceptance_criterion and add the rest with append_acceptance_criterion, and move design prose to Implementation Notes. The warning never blocks a write."
+  },
+  {
     code: "SRS-E077",
     severity: "error",
     title: "MCP server unbound",

@@ -1012,6 +1012,7 @@ Acceptance Criteria must be written as a task list.
 4. A non-functional requirement includes a measurable criterion.
 5. In the `verified` status, every AC must be `- [x]`.
 6. Deleting an AC in order to meet the `verified` conditions is forbidden. When the criterion has changed, record the reason in `Change Notes`. Expiring an AC for that purpose is forbidden as well: expire a criterion only when it no longer describes intended behaviour.
+7. A live AC longer than 4,000 characters is reported as `SRS-W083`: it usually carries design prose or several conditions. Split it into atomic conditions with `edit_acceptance_criterion` and `append_acceptance_criterion`, and move design prose to Implementation Notes. The warning never blocks a write, and no write route refuses an AC for its length.
 
 ### 21.4 Functional Requirement AC Example
 
@@ -1747,6 +1748,7 @@ Validation items:
 | `SRS-W080` | warning | depends_on Trace Link row names no requirement |
 | `SRS-W081` | warning | Trace Link row points at a discarded requirement |
 | `SRS-W082` | warning | Verification Evidence reference does not resolve yet |
+| `SRS-W083` | warning | Acceptance criterion is longer than the threshold |
 
 This table lists every code `validate-spec` can emit, and only those. A code the runtime cannot produce is not listed, because a listed code reads as an enforced check.
 

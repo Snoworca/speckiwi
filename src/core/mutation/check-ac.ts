@@ -61,24 +61,19 @@ async function setAcceptanceCriteriaCheckedUnlocked(root: ProjectRoot, input: Se
 // Replaces the prose text of a single targeted acceptance criterion, preserving its
 // checked/unchecked state and its `AC-N:` id prefix, and leaving sibling criteria and every
 // other section (Requirement statement, Trace Links, …) byte-for-byte intact. `text` is
-// written verbatim onto the AC line, so it is rejected (USAGE, no write) when empty, over the
-// maximum length, or carrying a newline / control character that would corrupt the row (FND-005).
+// written verbatim onto the AC line, so it is rejected (USAGE, no write) when empty or carrying
+// a newline / control character that would corrupt the row (FND-005).
 
 // eslint-disable-next-line no-control-regex
 const AC_UNSAFE_TEXT_RE = /[\x00-\x1F\x7F]/;
-/**
- * @req FR-NODE-041 AC-4 — the one length limit for a criterion written by edit or append, sized to
- * accept the longest criterion a real SRS carried (8,642 characters in OG SEC-SEC-045).
- */
-const MAX_AC_TEXT_LENGTH = 16384;
 
 /**
- * @req FR-NODE-041 AC-4 · FR-MCP-072 AC-3 — the text rules a criterion written verbatim onto its
- * line must pass; edit and append share them.
+ * @req FR-NODE-041 AC-4 · FR-MCP-072 AC-3 · FR-NODE-307 AC-2 — the text rules a criterion written
+ * verbatim onto its line must pass; edit and append share them. Length is not one of them: every
+ * criterion write route takes the same text, and a long criterion is the SRS-W083 warning.
  */
 function refuseUnsafeCriterionText(text: string): MutationResult | undefined {
   if (typeof text !== "string" || text.length === 0) return mutationFail("USAGE", "text is required");
-  if (text.length > MAX_AC_TEXT_LENGTH) return mutationFail("USAGE", `text exceeds ${MAX_AC_TEXT_LENGTH} UTF-16 code units`);
   if (AC_UNSAFE_TEXT_RE.test(text)) return mutationFail("USAGE", "text contains forbidden newline or control characters");
   return refuseExpiredMarker("text", [text]);
 }

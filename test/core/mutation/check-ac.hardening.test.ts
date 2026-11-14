@@ -45,20 +45,18 @@ describe("FR-NODE-041 FND-005 — edit_acceptance_criteria rejects unsafe text a
     });
   }
 
-  it("rejects text exceeding the maximum length with USAGE and leaves the document unchanged", async () => {
+  it("does not refuse text for its length (FR-NODE-041 AC-4, FR-NODE-307 AC-2)", async () => {
     const rootPath = await copyFixtureWorkspace("mutation-target");
     const root = await resolveProjectRoot(rootPath);
-    const before = await readArch(rootPath);
 
     const result = await editAcceptanceCriteria(root, {
       id: "FR-ARCH-001",
       acId: "AC-1",
-      // One unit over the FR-NODE-041 AC-4 limit of 16384; the old 5000 now fits under it.
+      // One unit over the 16384 limit FR-NODE-307 removed.
       text: "x".repeat(16385)
     });
 
-    expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("USAGE");
-    expect(await readArch(rootPath)).toBe(before);
+    expect(result.ok, JSON.stringify(result.error)).toBe(true);
+    expect(await readArch(rootPath)).toContain(`AC-1: ${"x".repeat(16385)}\n`);
   });
 });

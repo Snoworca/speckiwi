@@ -373,19 +373,15 @@ describe("FR-MCP-072 / FR-NODE-041 — single-criterion tools", () => {
   });
 
   for (const op of ["edit", "append"] as const) {
-    it(`${op}: 16384 code units accepted and read back whole; 16385 refused with USAGE and no write`, async () => {
-      const { root, specPath } = await workspace([NO_SECTIONS("FR-ARCH-001"), NO_SECTIONS("FR-ARCH-002")]);
+    // FR-NODE-307 removed the 16384 limit: text past it is written and read back whole.
+    it(`${op}: 16385 code units accepted and read back whole`, async () => {
+      const { root } = await workspace([NO_SECTIONS("FR-ARCH-001"), NO_SECTIONS("FR-ARCH-002")]);
       const call = (text: string) =>
         op === "edit" ? editAcceptanceCriteria(root, { id: "FR-ARCH-001", acId: "AC-2", text }) : appendAcceptanceCriterion(root, { id: "FR-ARCH-001", text });
-      const before = await readFile(specPath, "utf8");
-      const over = await call("y".repeat(16385));
-      expect(over.ok).toBe(false);
-      expect(over.error?.code).toBe("USAGE");
-      expect(await readFile(specPath, "utf8")).toBe(before);
-      const exact = await call("x".repeat(16384));
-      expect(exact.ok, exact.error?.message).toBe(true);
+      const over = await call("x".repeat(16385));
+      expect(over.ok, over.error?.message).toBe(true);
       const record = (await records(root)).get("FR-ARCH-001") as RequirementRecord;
-      expect(record.acceptanceCriteria.some((c) => c.text === "x".repeat(16384))).toBe(true);
+      expect(record.acceptanceCriteria.some((c) => c.text === "x".repeat(16385))).toBe(true);
       expect(await errors(root)).toEqual([]);
     });
   }

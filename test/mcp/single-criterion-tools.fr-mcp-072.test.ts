@@ -133,19 +133,19 @@ describe("FR-MCP-072 AC-3 — the verified guard, the text rules and the lock", 
   });
 
   // @req FR-MCP-072 AC-3
-  it("both apply the FR-NODE-041 text rules: over-long, newline and control characters are refused", async () => {
+  it("both apply the FR-NODE-041 text rules: empty text, newline and control characters are refused, length is not", async () => {
     const root = await acFixture({ acLines: LIVE });
     const before = await scopeText(root);
     const handle = createMcpServer({ root });
-    for (const text of ["x".repeat(16385), "one\ntwo", `nul${String.fromCharCode(0)}`, ""]) {
+    for (const text of ["one\ntwo", `nul${String.fromCharCode(0)}`, ""]) {
       const edit = (await handle.callTool("edit_acceptance_criterion", { id: ID, acId: "AC-1", text })) as Answer;
       const append = (await handle.callTool("append_acceptance_criterion", { id: ID, text })) as Answer;
       expect(edit.error?.code, `edit ${text.length}`).toBe("USAGE");
       expect(append.error?.code, `append ${text.length}`).toBe("USAGE");
     }
     expect(await scopeText(root)).toBe(before);
-    // The limit admits the longest criterion a real SRS carried (8,642 characters in OG SEC-SEC-045).
-    const long = "y".repeat(16384);
+    // No length limit (FR-NODE-307): longer than the 16384 the tools once refused.
+    const long = "y".repeat(26994);
     expect(((await handle.callTool("append_acceptance_criterion", { id: ID, text: long })) as Answer).ok).toBe(true);
     expect(await scopeText(root)).toContain(`- [ ] AC-4: ${long}\n`);
   });
