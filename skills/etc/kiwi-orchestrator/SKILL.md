@@ -1150,6 +1150,7 @@ recovery class **externally-visible**. Phase 3.c, `--sds` 일 때만. wave 마�
 recovery class **idempotent-by-key**. Phase 3.c′. 새 스냅샷 위의 순수 재계산이다. 버그 입력의 R-ORCH 면 재현 테스트 파일이 정확히 한 wave 의 `files[]` 에 있는지도 보고, 아니면 `bug-repro-test-unresolved` 로 멈춘다(`--auto` 에서도).
 readiness 는 MCP `orchestrate_readiness_check` 에 `target`·`snapshot`·`req` 를 주어 파생하고, MCP 가 없으면 CLI `speckiwi orchestrate readiness check --target <t> --snapshot <path> --req <id> --json` 이며 `--target` 은 제품 target 이다. `--req` 에는 노드의 요구 집합을 그대로 준다 — 빈 목록은 target 전수 훑기가 아니라 오류다. 이 도구가 올리는 게이트는 `requirement-not-ready` 하나이고, 스냅샷이 담지 않은 id 도 그 게이트로 온다.
 스냅샷 파일은 제품 target 의 `list_requirements` 응답과 `summarize_target` 응답을 한 JSON 문서로 합친 것이며, 레코드는 요약 투영이 아니라 전체 투영으로 받는다 — 기본 투영은 요구마다의 수용 기준과 검증 증거를 빼고 답하므로 그 응답으로 만든 문서는 게이트에 닿지 못한 채 스냅샷 해석 오류로 끝난다.
+`list_requirements` 는 `includeAllDiagnostics: true` 와 함께 부른다 — 기본 응답은 진단을 20개까지만 담으므로, 진단이 그보다 많은 SRS 에서 만든 스냅샷은 게이트가 `diagnostics-truncated` 로 거절한다. 응답에 `diagnosticsTruncation` 이 있으면 그 키도 스냅샷 최상위에 그대로 옮긴다.
 머리줄은 최상위 키 이름이고, 이어지는 두 줄은 판별자 값마다 그 문서가 함께 실어야 하는 것을 적는다 — `target` 은 제품 target 이며 마지막 칸에 적힌 이름들이 그대로 최상위 키다. 판별자가 없거나 그 줄의 키를 빠뜨린 문서는 게이트가 아니라 스냅샷 해석 오류로 끝난다. 빈 줄 뒤의 마지막 줄은 그 전체 투영의 이름과, 그것을 지정하는 MCP 인자 이름과 CLI 플래그다.
 
 ```

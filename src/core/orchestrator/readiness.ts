@@ -77,6 +77,13 @@ export interface SpecTargetSummary {
   readonly diagnosticsSummary: { readonly errors: number; readonly warnings: number };
 }
 
+/** How many diagnostics a bounded read left out, as `list_requirements` reports it. */
+export interface SnapshotDiagnosticsTruncation {
+  readonly total: number;
+  readonly returned: number;
+  readonly limit: number;
+}
+
 /**
  * A raw, read-only snapshot. It deliberately carries no readiness booleans: only this module
  * derives those, from the records themselves.
@@ -86,6 +93,8 @@ export interface RequirementSnapshot {
   readonly records: readonly SpecRequirementRecord[];
   readonly summary: SpecTargetSummary;
   readonly diagnostics: readonly ReadinessDiagnostic[];
+  /** @req FR-NODE-308 AC-1 — present when the diagnostics list is not the whole list. */
+  readonly diagnosticsTruncation?: SnapshotDiagnosticsTruncation;
 }
 
 export interface DerivedRequirementReadiness {
@@ -120,6 +129,7 @@ export type SnapshotPayload =
     readonly target: string;
     readonly records: readonly unknown[];
     readonly diagnostics: readonly unknown[];
+    readonly diagnosticsTruncation?: Record<string, unknown>;
     readonly summary: Record<string, unknown>;
   };
 
@@ -284,6 +294,19 @@ function parseSummary(value: unknown): SpecTargetSummary {
   };
 }
 
+/** @req FR-NODE-308 AC-1 — the bounded-read descriptor, carried so readiness can name the truncation. */
+function parseTruncation(value: unknown, what: string): { diagnosticsTruncation?: SnapshotDiagnosticsTruncation } {
+  if (value === undefined || value === null) return {};
+  const raw = objectOf(value, what);
+  return {
+    diagnosticsTruncation: {
+      total: integerOf(raw.total, `${what}.total`),
+      returned: integerOf(raw.returned, `${what}.returned`),
+      limit: integerOf(raw.limit, `${what}.limit`)
+    }
+  };
+}
+
 /**
  * The one entry point that turns a transport payload into a snapshot. Both shapes normalise to the
  * identical `RequirementSnapshot`, which is what makes the MCP and CLI readings provably the same
@@ -297,6 +320,7 @@ export function parseRequirementSnapshot(payload: SnapshotPayload): RequirementS
       target,
       records: arrayOf(list.records, "speckiwi list --json records").map(parseRecord),
       diagnostics: arrayOf(list.diagnostics ?? [], "speckiwi list --json diagnostics").map(parseDiagnostic),
+      ...parseTruncation(list.diagnosticsTruncation, "speckiwi list --json diagnosticsTruncation"),
       summary: parseSummary(payload.summary)
     };
   }
@@ -305,6 +329,7 @@ export function parseRequirementSnapshot(payload: SnapshotPayload): RequirementS
       target,
       records: arrayOf(payload.records, "MCP list_requirements records").map(parseRecord),
       diagnostics: arrayOf(payload.diagnostics ?? [], "MCP diagnostics").map(parseDiagnostic),
+      ...parseTruncation(payload.diagnosticsTruncation, "MCP diagnosticsTruncation"),
       summary: parseSummary(payload.summary)
     };
   }
@@ -368,8 +393,14 @@ function summaryContradictions(snapshot: RequirementSnapshot, target: string): s
           .map((record) => record.id)
       )
     ],
-    ["diagnosticsSummary.errors", summary.diagnosticsSummary.errors === errors],
-    ["diagnosticsSummary.warnings", summary.diagnosticsSummary.warnings === warnings]
+    // @req FR-NODE-308 AC-2 — a list the snapshot marks as truncated cannot match the summary's
+    // counts; the truncation is its own cause, so these two are not compared.
+    ...(snapshot.diagnosticsTruncation
+      ? []
+      : ([
+        ["diagnosticsSummary.errors", summary.diagnosticsSummary.errors === errors],
+        ["diagnosticsSummary.warnings", summary.diagnosticsSummary.warnings === warnings]
+      ] as Array<[string, boolean]>))
   ];
   return checks.filter(([, agrees]) => !agrees).map(([field]) => field);
 }
@@ -566,9 +597,13 @@ export function deriveCanonicalRequirementReadiness(
  * only four false flags was read as "verified is not ready", when the snapshot was what failed.
  */
 export interface SnapshotInvalidCause {
-  readonly cause: "summary-contradicts-records" | "error-diagnostic" | "unowned-warning" | "requirement-warning";
+  readonly cause: "summary-contradicts-records" | "diagnostics-truncated" | "error-diagnostic" | "unowned-warning" | "requirement-warning";
   /** The summary fields that disagree with the records. */
   readonly fields?: readonly string[];
+  /** `diagnostics-truncated`: how many diagnostics exist, how many the snapshot holds, and the bound. */
+  readonly total?: number;
+  readonly returned?: number;
+  readonly limit?: number;
   readonly code?: string;
   readonly count?: number;
   /** The message of the first diagnostic of this code. */
@@ -602,7 +637,17 @@ function judgeSnapshot(
     for (const id of owners) owned.set(id, [...(owned.get(id) ?? []), item]);
   }
   const fields = summaryContradictions(snapshot, target);
+  const truncation = snapshot.diagnosticsTruncation;
   const global: SnapshotInvalidCause[] = [
+    // @req FR-NODE-308 AC-1 — a bounded list may have dropped a diagnostic a requirement in scope
+    // owns, so the snapshot is not judged; the cause says how to get the whole list.
+    ...(truncation
+      ? [{
+        cause: "diagnostics-truncated" as const,
+        ...truncation,
+        message: `The snapshot holds ${truncation.returned} of ${truncation.total} diagnostics (bounded to ${truncation.limit}); rebuild it from list_requirements with includeAllDiagnostics: true.`
+      }]
+      : []),
     ...(fields.length > 0 ? [{ cause: "summary-contradicts-records" as const, fields }] : []),
     ...causesByCode("error-diagnostic", snapshot.diagnostics.filter((item) => item.severity === "error")),
     ...causesByCode("unowned-warning", unowned)
