@@ -92,6 +92,16 @@ export interface WorkflowMutationOutput {
   diagnosticDelta?: WorkflowDiagnosticDelta;
   /** The journal's existing lines' diagnostics, as counts. @req FR-NODE-300 */
   existingLineDiagnostics?: DiagnosticCounts;
+  /** The journal line an append matched when it was confirmed without writing. @req FR-NODE-309 AC-4 */
+  duplicateOf?: WorkflowDuplicateLine;
+}
+
+export interface WorkflowDuplicateLine {
+  filePath: string;
+  line: number;
+  byteOffset: number;
+  eventKey: string;
+  journalKey?: string;
 }
 
 export interface WorkflowMutationArtifact {
@@ -242,6 +252,7 @@ function output(input: {
   artifact?: WorkflowMutationArtifact;
   diagnosticDelta?: WorkflowDiagnosticDelta;
   existingLineDiagnostics?: DiagnosticCounts;
+  duplicateOf?: WorkflowDuplicateLine;
 }): WorkflowMutationOutput {
   return {
     kind: input.kind,
@@ -258,7 +269,8 @@ function output(input: {
     ...(input.operations ? { operations: input.operations } : {}),
     ...(input.artifact ? { artifact: input.artifact } : {}),
     ...(input.diagnosticDelta ? { diagnosticDelta: input.diagnosticDelta } : {}),
-    ...(input.existingLineDiagnostics ? { existingLineDiagnostics: input.existingLineDiagnostics } : {})
+    ...(input.existingLineDiagnostics ? { existingLineDiagnostics: input.existingLineDiagnostics } : {}),
+    ...(input.duplicateOf ? { duplicateOf: input.duplicateOf } : {})
   };
 }
 
@@ -433,6 +445,27 @@ async function runLockedJsonlMutation(
   return failure;
 }
 
+function nonBlankString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+/** Why a pipeline event cannot be keyed by run, or null when it can. @req FR-NODE-309 AC-2 */
+function pipelineRunIdRefusal(event: WorkflowJsonlEvent, runId: string): string | null {
+  if (!nonBlankString(runId)) return "Workflow pipeline append requires a non-blank runId";
+  if (Object.hasOwn(event, "run_id") && !nonBlankString(event.run_id)) return "Workflow pipeline event run_id must be a non-blank string when present";
+  return null;
+}
+
+/** A line missing skill or run_id names no run, so it is never the duplicate of an event. @req FR-NODE-309 AC-3 */
+function keyedByRun(event: WorkflowJsonlEvent): boolean {
+  return nonBlankString(event.skill) && nonBlankString(event.run_id);
+}
+
+function duplicateLine(filePath: string, entry: WorkflowJsonlEntry): WorkflowDuplicateLine {
+  const journalKey = entry.event.journal_key;
+  return { filePath, line: entry.line, byteOffset: entry.byteOffset, eventKey: entry.eventKey, ...(typeof journalKey === "string" ? { journalKey } : {}) };
+}
+
 async function applyJsonlAppendMutation(root: ProjectRoot, input: WorkflowMutationInput, identity: WorkflowJournalIdentity): Promise<MutationResult<WorkflowMutationOutput>> {
   const filePath = input.jsonlPath;
   if (!filePath || !input.event) {
@@ -446,7 +479,14 @@ async function applyJsonlAppendMutation(root: ProjectRoot, input: WorkflowMutati
       return failWithEnvelope(input, filePath, identity, diagnostics, "Workflow CORRECTION requires a valid correction target", null);
     }
   }
+  const pipeline = input.kind === "pipeline_event_append";
+  if (pipeline) {
+    const refusal = pipelineRunIdRefusal(input.event, input.runId);
+    if (refusal) return failWithEnvelope(input, filePath, identity, [usageDiagnostic(input.kind, refusal)], refusal, null);
+  }
   const event: WorkflowJsonlEvent = {
+    // @req FR-NODE-309 AC-1 — an event without run_id is keyed, and written, by the call's runId.
+    ...(pipeline ? { run_id: input.runId } : {}),
     ...input.event,
     workflow_run_id: input.runId,
     journal_key: identity.journalKey,
@@ -465,10 +505,11 @@ async function applyJsonlAppendMutation(root: ProjectRoot, input: WorkflowMutati
     return failWithEnvelope(input, filePath, identity, diagnostics, "Workflow artifact snapshot is stale", pendingRepair, staleGuard);
   }
   const incomingEventKey = `${String(event.skill ?? "")}|${String(event.run_id ?? "")}`;
-  if (parsed.entries.some((entry) => entry.eventKey === incomingEventKey)) {
+  const duplicate = parsed.entries.find((entry) => entry.eventKey === incomingEventKey && (!pipeline || keyedByRun(entry.event)));
+  if (duplicate) {
     const completedOperations = [`confirm:${input.kind}`];
     // @req FR-NODE-300 AC-2 — a confirmed duplicate reports the journal's lines as counts too.
-    const value = output({ kind: input.kind, written: false, identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [], existingLineDiagnostics: workflowJsonl.countDiagnostics(parsed.diagnostics) });
+    const value = output({ kind: input.kind, written: false, identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [], existingLineDiagnostics: workflowJsonl.countDiagnostics(parsed.diagnostics), duplicateOf: duplicateLine(filePath, duplicate) });
     return withMutationEnvelope({ ...mutationOk(value, []), diagnosticsSummary: summarizeDiagnostics(parsed.diagnostics) }, envelope({ kind: input.kind, filePath, dryRun: input.dryRun ?? false, written: false, operations: [], identity, journalState: "confirmed", completedOperations, pendingOperations: [], pendingRepair: null, targetRecord: targetRecord(input), staleGuards: [] }));
   }
   const appended = await workflowJsonl.appendWorkflowJsonl(root, filePath, event, {
