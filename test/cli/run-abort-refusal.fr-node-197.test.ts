@@ -36,7 +36,7 @@ interface Project {
 }
 
 /**
- * A scratch git repository, because `run abort` resolves the run lock through the git common dir.
+ * A scratch git repository, because `run abort` resolves the run lock through the worktree's git dir.
  * The journal is preloaded with stamped lines: an unstamped one is an error-severity diagnostic, so
  * the append would refuse for the wrong reason and every case here would describe something else.
  */

@@ -15,5 +15,5 @@ import { pathToFileURL } from "node:url";
 const [, , modulePath, commonDir, owner] = process.argv;
 const runLock = await import(pathToFileURL(modulePath).href);
 
-const lock = await runLock.acquire({ commonDir, owner });
+const lock = await runLock.acquire({ gitDir: commonDir, owner });
 process.stdout.write(`${JSON.stringify({ pid: process.pid, lockPath: lock.lockPath, holder: lock.holder })}\n`);

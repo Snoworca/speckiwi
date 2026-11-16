@@ -17,7 +17,9 @@ import type {
  * The orchestrator run lock.
  *
  * @req FR-NODE-102 — proven across operating-system processes and linked worktrees.
- * @req FR-NODE-131 — keyed on the git common dir, never an individual worktree root.
+ * @req FR-NODE-311 — keyed on the worktree's own git dir: one run per run root (worktree), so linked
+ * worktrees of one repository run side by side. In the main checkout that dir is the common dir, and
+ * the path is the one the common-dir key gave.
  * @req FR-NODE-207 — held until the lease it wrote expires, not until its writer's process stops.
  */
 
@@ -38,7 +40,7 @@ const RUN_LOCK_FENCE_NAMESPACE = "speckiwi-orchestrator-run";
  * between no process owns it.
  *
  * Too short is silent and unbounded: a live run's lease lapses mid-run, a second run takes the same
- * repository, and neither is told — the defect this replaced. Too long is visible and costs one
+ * worktree, and neither is told — the defect this replaced. Too long is visible and costs one
  * command: `orchestrate run status` names the holder and `orchestrate run unlock` removes another
  * process's lease outright (FR-NODE-197 AC-4/AC-7). So the error is taken on the long side, and
  * half a day is where that stops — long enough to outlast a run somebody starts and stays with,
@@ -53,7 +55,7 @@ export const RUN_LOCK_GATE = "orchestrator-run-lock-held";
 export const RUN_LOCK_LIVE_SESSION_GATE = "run-lock-held-by-live-session";
 
 export interface RunLock {
-  readonly commonDir: string;
+  readonly gitDir: string;
   readonly lockPath: string;
   readonly token: string;
   readonly owner: string;
@@ -75,7 +77,7 @@ export interface RunLockHolder {
 }
 
 export interface AcquireRunLockInput {
-  readonly commonDir: string;
+  readonly gitDir: string;
   readonly owner: string;
 }
 
@@ -153,19 +155,39 @@ export async function resolveGitCommonDir(cwd: string): Promise<string> {
   return realpath(path.resolve(reported));
 }
 
-/** Pure: the one lock path a repository has, derived from its common dir and nothing else. */
-export function runLockPath(commonDir: string): string {
-  if (typeof commonDir !== "string" || commonDir.length === 0 || !path.isAbsolute(commonDir)) {
-    throw new Error("The orchestrator run lock path requires an absolute git common dir");
+/**
+ * Resolves the git dir the run lock is keyed on: this worktree's own (`git rev-parse --git-dir`), which in
+ * the main checkout is the common dir and in a linked worktree is `<common dir>/worktrees/<name>`.
+ * @req FR-NODE-311 AC-1, AC-3
+ */
+export async function resolveRunLockGitDir(cwd: string): Promise<string> {
+  if (typeof cwd !== "string" || cwd.length === 0 || !path.isAbsolute(cwd)) {
+    throw new Error("Resolving the run lock's git dir requires an absolute working directory");
   }
-  return path.join(path.resolve(commonDir), "speckiwi", "orchestrator-run.lock");
+  const { stdout } = await execFileAsync("git", ["rev-parse", "--path-format=absolute", "--git-dir"], {
+    cwd,
+    encoding: "utf8",
+    windowsHide: true,
+    maxBuffer: 1024 * 1024
+  });
+  const reported = stdout.trim();
+  if (reported.length === 0) throw new Error(`git reported no git dir for ${cwd}`);
+  return realpath(path.resolve(reported));
+}
+
+/** Pure: the one lock path a worktree has, derived from its git dir and nothing else. */
+export function runLockPath(gitDir: string): string {
+  if (typeof gitDir !== "string" || gitDir.length === 0 || !path.isAbsolute(gitDir)) {
+    throw new Error("The orchestrator run lock path requires an absolute git dir");
+  }
+  return path.join(path.resolve(gitDir), "speckiwi", "orchestrator-run.lock");
 }
 
 export async function acquire(input: AcquireRunLockInput): Promise<RunLock> {
   const owner = typeof input?.owner === "string" ? input.owner.trim() : "";
   if (!owner) throw new Error("Acquiring the orchestrator run lock requires an owner");
-  const commonDir = await realpath(path.resolve(input.commonDir));
-  const lockPath = runLockPath(commonDir);
+  const gitDir = await realpath(path.resolve(input.gitDir));
+  const lockPath = runLockPath(gitDir);
   const locks = await exclusiveLockModule();
   const result = await locks.acquireExclusiveLock({
     fenceNamespace: RUN_LOCK_FENCE_NAMESPACE,
@@ -176,7 +198,7 @@ export async function acquire(input: AcquireRunLockInput): Promise<RunLock> {
   if (!result.ok) throw new RunLockHeldError(lockPath, result.holder?.owner ?? null);
   capabilities.set(result.capability.token, result.capability);
   return Object.freeze({
-    commonDir,
+    gitDir,
     lockPath,
     token: result.capability.token,
     owner,
@@ -232,14 +254,14 @@ export interface RunLockState {
   readonly heldByThisProcess: boolean;
 }
 
-/** The fence's pipe name for this repository's run lock. */
-export async function runLockFenceName(commonDir: string): Promise<string> {
-  return (await exclusiveLockModule()).exclusiveLockFenceName(RUN_LOCK_FENCE_NAMESPACE, runLockPath(path.resolve(commonDir)));
+/** The fence's pipe name for this worktree's run lock. */
+export async function runLockFenceName(gitDir: string): Promise<string> {
+  return (await exclusiveLockModule()).exclusiveLockFenceName(RUN_LOCK_FENCE_NAMESPACE, runLockPath(path.resolve(gitDir)));
 }
 
 /** Whether a live process holds the run lock's Windows fence. Takes nothing. @req FR-NODE-221 */
-export async function probeRunLockFence(commonDir: string): Promise<RunLockFence> {
-  return (await exclusiveLockModule()).probeExclusiveLockFence(RUN_LOCK_FENCE_NAMESPACE, runLockPath(path.resolve(commonDir)));
+export async function probeRunLockFence(gitDir: string): Promise<RunLockFence> {
+  return (await exclusiveLockModule()).probeExclusiveLockFence(RUN_LOCK_FENCE_NAMESPACE, runLockPath(path.resolve(gitDir)));
 }
 
 function ownCapability(lockPath: string): ExclusiveLockCapability | undefined {
@@ -260,8 +282,8 @@ function stateFrom(lockPath: string, inspection: ExclusiveLockInspection, fence:
 }
 
 /** Reads the run lock's sentinel and asks its fence. Pid and host are reported, never judged. @req IR-CLI-105 */
-export async function inspectRunLock(commonDir: string): Promise<RunLockState> {
-  const lockPath = runLockPath(path.resolve(commonDir));
+export async function inspectRunLock(gitDir: string): Promise<RunLockState> {
+  const lockPath = runLockPath(path.resolve(gitDir));
   const locks = await exclusiveLockModule();
   const inspection = await locks.inspectExclusiveLock(lockPath);
   return stateFrom(lockPath, inspection, await locks.probeExclusiveLockFence(RUN_LOCK_FENCE_NAMESPACE, lockPath));
@@ -276,8 +298,8 @@ export function acquisitionRefused(state: RunLockState): boolean {
 }
 
 /** The state a release by this caller is refused on, or null when the caller may release. @req FR-NODE-221 */
-export async function foreignReleaseBlocker(commonDir: string): Promise<RunLockState | null> {
-  const state = await inspectRunLock(commonDir);
+export async function foreignReleaseBlocker(gitDir: string): Promise<RunLockState | null> {
+  const state = await inspectRunLock(gitDir);
   return !state.heldByThisProcess && state.fence === "held" ? state : null;
 }
 
@@ -301,12 +323,12 @@ export interface RunLockReleaseSeams {
  * Between that re-read and the `rm` a successor can still publish, but only over a sentinel that was
  * reclaimable; that window is narrowed to that case, not closed.
  */
-export async function releaseHeldRunLock(commonDir: string, seams: RunLockReleaseSeams = {}): Promise<RunLockRelease> {
-  const lockPath = runLockPath(path.resolve(commonDir));
+export async function releaseHeldRunLock(gitDir: string, seams: RunLockReleaseSeams = {}): Promise<RunLockRelease> {
+  const lockPath = runLockPath(path.resolve(gitDir));
   const locks = await exclusiveLockModule();
   const capability = ownCapability(lockPath);
   if (capability) {
-    const holder = await readHolder(commonDir).catch(() => null);
+    const holder = await readHolder(gitDir).catch(() => null);
     const result = await locks.releaseExclusiveLock(capability);
     if (!result.ok) return { ok: false, reason: "cleanup-failed", diagnostic: result.cleanupDiagnostic };
     capabilities.delete(capability.token);
@@ -357,8 +379,8 @@ function runLockHolder(holder: ExclusiveLockHolder): RunLockHolder {
  * deciding whether a lease is its own must therefore treat null as "unknown holder" rather than as
  * "no holder", because the two are indistinguishable here. @req FR-NODE-204 AC-4
  */
-export async function readHolder(commonDir: string): Promise<RunLockHolder | null> {
+export async function readHolder(gitDir: string): Promise<RunLockHolder | null> {
   const holder: ExclusiveLockHolder | null = await (await exclusiveLockModule())
-    .readExclusiveLockHolder(runLockPath(path.resolve(commonDir)));
+    .readExclusiveLockHolder(runLockPath(path.resolve(gitDir)));
   return holder ? runLockHolder(holder) : null;
 }

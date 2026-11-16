@@ -6,6 +6,7 @@ import {
   acquire,
   release,
   resolveGitCommonDir,
+  resolveRunLockGitDir,
   runLockPath,
   type RunLock
 } from "../../../src/core/orchestrator/run-lock.js";
@@ -64,7 +65,7 @@ async function repositoryWithCommonDir(prefix: string): Promise<{ root: string; 
 }
 
 async function acquireTracked(commonDir: string, owner: string): Promise<RunLock> {
-  const lock = await acquire({ commonDir, owner });
+  const lock = await acquire({ gitDir: commonDir, owner });
   held.push(lock);
   return lock;
 }
@@ -84,7 +85,7 @@ describe("FR-NODE-102 run-lock harvest proven across processes and worktrees", {
     expect(line.slice("ACQUIRED ".length)).toBe(runLockPath(repository.commonDir));
     expect(contender.child.pid).not.toBe(process.pid);
 
-    await expect(acquire({ commonDir: repository.commonDir, owner: "parent-orchestrator" }))
+    await expect(acquire({ gitDir: repository.commonDir, owner: "parent-orchestrator" }))
       .rejects.toMatchObject({ gate: "orchestrator-run-lock-held" });
 
     contender.child.kill();
@@ -104,41 +105,47 @@ describe("FR-NODE-102 run-lock harvest proven across processes and worktrees", {
     held.splice(held.indexOf(lock), 1);
   });
 
-  it("AC-2: exactly one of two worktrees over one .git acquires the run lock", async () => {
+  // FR-NODE-311 moved the key from the common dir to each worktree's git dir: two worktrees over one
+  // .git each admit one run, and two contenders inside one worktree still exclude each other.
+  it("AC-2: each of two worktrees over one .git admits exactly one of its two contenders", async () => {
     const repository = await repositoryWithCommonDir("run-lock-worktrees");
     const secondWorktree = path.join(await tempDir("run-lock-linked"), "linked");
     await rawGit(repository.root, "worktree", "add", "-b", "linked", secondWorktree);
 
-    const first = await resolveGitCommonDir(repository.root);
-    const second = await resolveGitCommonDir(secondWorktree);
+    const first = await resolveRunLockGitDir(repository.root);
+    const second = await resolveRunLockGitDir(secondWorktree);
     const attempts = await Promise.allSettled([
-      acquire({ commonDir: first, owner: "worktree-a" }),
-      acquire({ commonDir: second, owner: "worktree-b" })
+      acquire({ gitDir: first, owner: "worktree-a-1" }),
+      acquire({ gitDir: first, owner: "worktree-a-2" }),
+      acquire({ gitDir: second, owner: "worktree-b-1" }),
+      acquire({ gitDir: second, owner: "worktree-b-2" })
     ]);
 
-    const winners = attempts.filter((attempt) => attempt.status === "fulfilled");
+    const winners = attempts.filter((attempt) => attempt.status === "fulfilled").map((attempt) => (attempt as PromiseFulfilledResult<RunLock>).value);
     const losers = attempts.filter((attempt) => attempt.status === "rejected");
-    expect(winners).toHaveLength(1);
-    expect(losers).toHaveLength(1);
-    expect((losers[0] as PromiseRejectedResult).reason).toMatchObject({ gate: "orchestrator-run-lock-held" });
+    expect(winners).toHaveLength(2);
+    expect(new Set(winners.map((lock) => lock.lockPath)).size).toBe(2);
+    expect(losers).toHaveLength(2);
+    for (const loser of losers) expect((loser as PromiseRejectedResult).reason).toMatchObject({ gate: "orchestrator-run-lock-held" });
 
-    await release((winners[0] as PromiseFulfilledResult<RunLock>).value);
+    for (const lock of winners) await release(lock);
   });
 
-  it("AC-3: two worktrees over one .git resolve to one identical lock path", async () => {
+  it("AC-3: the main checkout's lock path is under the common dir and a linked worktree's under its own git dir", async () => {
     const repository = await repositoryWithCommonDir("run-lock-keying");
     const secondWorktree = path.join(await tempDir("run-lock-keying-linked"), "linked");
     await rawGit(repository.root, "worktree", "add", "-b", "keying", secondWorktree);
 
-    const first = await resolveGitCommonDir(repository.root);
-    const second = await resolveGitCommonDir(secondWorktree);
-    expect(second).toBe(first);
-    expect(runLockPath(second)).toBe(runLockPath(first));
+    const first = await resolveRunLockGitDir(repository.root);
+    const second = await resolveRunLockGitDir(secondWorktree);
+    expect(first).toBe(repository.commonDir);
+    expect(runLockPath(first)).toBe(path.join(repository.commonDir, "speckiwi", "orchestrator-run.lock"));
+    const normalized = (value: string) => value.replaceAll("\\", "/").toLowerCase();
+    expect(normalized(second).startsWith(normalized(path.join(repository.commonDir, "worktrees")))).toBe(true);
 
-    // The lock path must not carry either worktree's own root, which is what `06:161` measured as
-    // the defect: a per-ProjectRoot key gives N worktrees N locks and no mutual exclusion at all.
-    const lockPath = runLockPath(first).replaceAll("\\", "/").toLowerCase();
-    expect(lockPath).not.toContain(secondWorktree.replaceAll("\\", "/").toLowerCase());
-    expect(lockPath.startsWith(first.replaceAll("\\", "/").toLowerCase())).toBe(true);
+    // Neither lock path carries a worktree's own top level, so a checkout's files never hold the lease
+    // and `git worktree remove` takes a linked worktree's lease with its git dir.
+    expect(normalized(runLockPath(second))).not.toContain(normalized(secondWorktree));
+    expect(runLockPath(second)).not.toBe(runLockPath(first));
   });
 });

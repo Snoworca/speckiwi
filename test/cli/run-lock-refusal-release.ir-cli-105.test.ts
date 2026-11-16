@@ -97,7 +97,7 @@ function expectReleaseOffer(violation: Record<string, unknown>): void {
   expect(text).toContain("orchestrate_run_lock");
   expect(text).toContain('action: \\"unlock\\"');
   expect(text, "the condition").toMatch(/only (if|when) the holding run has been abandoned/);
-  expect(text, "the warning").toMatch(/two runs share the repository/);
+  expect(text, "the warning").toMatch(/two runs share this checkout/);
   expect(text, "abort cannot be filled for a foreign lease").not.toMatch(/run abort|--run-id/);
 }
 
@@ -171,7 +171,7 @@ describe("IR-CLI-105 refusals name the lease, the fence and the right release st
     expect(report.releaseIfAbandoned).toBeUndefined();
     expect(String(report.guidance)).toMatch(/no fence/);
     expect(String(report.guidance)).toContain("speckiwi orchestrate run unlock --json");
-    expect(String(report.guidance)).toMatch(/two runs share the repository/);
+    expect(String(report.guidance)).toMatch(/two runs share this checkout/);
     expect(runLockReport({ ...state, fence: "free" }).releaseIfAbandoned).toBeDefined();
   });
 

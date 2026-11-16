@@ -46,7 +46,7 @@ import {
   inspectRunLock,
   readHolder,
   releaseHeldRunLock,
-  resolveGitCommonDir,
+  resolveRunLockGitDir,
   RUN_LOCK_GATE,
   RunLockHeldError,
   reportedFence,
@@ -316,7 +316,7 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   { tool: "orchestrate_route_freeze", description: "Commits the run to one routing rung and records the gate ballot behind it. Writes the route lock together with the resume card's frozen route entry and invariant digest, so a later byte change to the lock surfaces as drift on resume; re-freezing over a different probe rewrites both rather than refusing.", path: ["route", "freeze"], kind: "mutation", options: [o("--probe", "probe"), o("--gate", "gate"), o("--out", "out"), o("--auto", "auto", "boolean"), DRY_RUN_OPTION] },
   { tool: "orchestrate_route_show", description: "Reads the frozen routing lock and reports the rung this run is committed to. Read-only.", path: ["route", "show"], kind: "read", options: [o("--lock", "lock")] },
   {
-    tool: "orchestrate_run_lock", description: "Takes, releases or reports the repository-wide orchestrator run lock, keyed on the git common directory so linked worktrees contend for one lock. Writes the lock file under that directory when taking it and removes that file when releasing it; the status action changes nothing at all. While the session that took the lock is alive, only that session can release it (unlock here, or orchestrate_run_abort); any other caller is refused and nothing is removed. A refusal and the status answer name the lease, the fence state and the release step that can work.",
+    tool: "orchestrate_run_lock", description: "Takes, releases or reports this checkout's orchestrator run lock, keyed on the worktree's own git directory so two runs in one worktree contend for one lock while linked worktrees each hold their own. Writes the lock file under that directory when taking it and removes that file when releasing it; the status action changes nothing at all. While the session that took the lock is alive, only that session can release it (unlock here, or orchestrate_run_abort); any other caller is refused and nothing is removed. A refusal and the status answer name the lease, the fence state and the release step that can work.",
     path: ["run", "lock"],
     kind: "mutation",
     // @req IR-MCP-011 — `unlock` takes no owner (it never matches the holder by name, IR-CLI-105)
@@ -324,7 +324,7 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
     options: [onlyFor(o("--owner", "owner"), "lock"), onlyFor(DRY_RUN_OPTION, "lock", "unlock")],
     selector: { dest: "action", index: 1, values: ["lock", "unlock", "status"] }
   },
-  { tool: "orchestrate_run_abort", description: "Ends the current run on purpose and records why, so a later session reads a halted run rather than an abandoned one, and releases the repository-wide run lock once that record lands — a refused record keeps the lock deliberately, because a run that could not record its own end is one nobody should join. Writes an abort event into the run journal.", path: ["run", "abort"], kind: "mutation", options: [o("--reason", "reason", "string", true), RUN_ID_OPTION, JOURNAL_OPTION, DRY_RUN_OPTION] },
+  { tool: "orchestrate_run_abort", description: "Ends the current run on purpose and records why, so a later session reads a halted run rather than an abandoned one, and releases this checkout's run lock once that record lands — a refused record keeps the lock deliberately, because a run that could not record its own end is one nobody should join. Writes an abort event into the run journal.", path: ["run", "abort"], kind: "mutation", options: [o("--reason", "reason", "string", true), RUN_ID_OPTION, JOURNAL_OPTION, DRY_RUN_OPTION] },
   { tool: "orchestrate_journal_append", description: "Appends one event to the run journal, stamped with this tool's writer identity, after validating the journal as it would stand once that line landed: an error-severity diagnostic refuses the append and leaves the file byte-identical, and no argument skips the check. The candidate view holds only the lines matching the run id and the engine it was given. Writes the journal file.", path: ["journal", "append"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), JOURNAL_OPTION, DRY_RUN_OPTION] },
   { tool: "orchestrate_card_write", description: "Replaces the resume card of a run — the frozen block a resumed session compares its world against. Writes the card file.", path: ["card", "write"], kind: "mutation", options: [RUN_ID_OPTION, o("--payload", "payload", "json"), JOURNAL_OPTION, DRY_RUN_OPTION] },
   {
@@ -1292,7 +1292,7 @@ const RELEASE_IF_ABANDONED = Object.freeze({
   cli: "speckiwi orchestrate run unlock --json",
   mcp: 'orchestrate_run_lock with action: "unlock"',
   condition: "use this only if the holding run has been abandoned",
-  warning: "unlocking a live run lets two runs share the repository without either being told"
+  warning: "unlocking a live run lets two runs share this checkout without either being told"
 });
 
 /** A held fence with a readable lease: the session that took it releases it. @req IR-CLI-105 AC-3 */
@@ -1308,7 +1308,7 @@ const THIS_SESSION_HOLDS = 'this session holds the lock: release it here with MC
  * POSIX has no fence, so nothing establishes that no live process holds the lock and the release
  * offer, which says exactly that, is not made. @req IR-CLI-105 AC-2
  */
-const NO_FENCE_TO_ASK = "this platform has no fence to tell whether the holding run is alive; if it has been abandoned, speckiwi orchestrate run unlock --json releases it, and unlocking a live run lets two runs share the repository without either being told";
+const NO_FENCE_TO_ASK = "this platform has no fence to tell whether the holding run is alive; if it has been abandoned, speckiwi orchestrate run unlock --json releases it, and unlocking a live run lets two runs share this checkout without either being told";
 
 /** What the run lock state tells a caller to do, or nothing beyond the release offer. */
 function runLockGuidance(state: RunLockState): string | null {
@@ -2007,23 +2007,23 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
     .option("--owner <owner>", "the run holding the lock", "kiwi-orchestrator")
     .action(async (options) => {
       await mutate(options, async () => {
-        const commonDir = await resolveGitCommonDir(runRoot(command));
+        const gitDir = await resolveRunLockGitDir(runRoot(command));
         if (options.dryRun === true) {
           // @req IR-CLI-105 AC-8 — the acquisition's own decision, not a second rule: an expired lease
           // or a dead legacy holder is reclaimed by both, an unexpired lease refused by both.
-          const state = await inspectRunLock(commonDir);
+          const state = await inspectRunLock(gitDir);
           if (acquisitionRefused(state)) return refuse(RUN_LOCK_GATE, [runLockReport(state)]);
           return { lockPath: state.lockPath };
         }
         try {
-          const lock = await acquire({ commonDir, owner: options.owner as string });
+          const lock = await acquire({ gitDir, owner: options.owner as string });
           // @req FR-NODE-204 AC-1 — the lease this call took, in the shape `run status` reports, so a
           // run that resumes can decide whether the lease on disk is still the one it holds. Without
           // it the response named only the path, which every run shares, and so did `--owner`.
           return { lockPath: lock.lockPath, holder: lock.holder };
         } catch (error) {
           // @req IR-CLI-105 AC-1 — the refusal names the lease and the release step that can work.
-          if (error instanceof RunLockHeldError) return refuse(error.gate, [runLockReport(await inspectRunLock(commonDir))]);
+          if (error instanceof RunLockHeldError) return refuse(error.gate, [runLockReport(await inspectRunLock(gitDir))]);
           throw error;
         }
       });
@@ -2031,27 +2031,27 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
 
   addMutationOptions(run.command("unlock")).action(async (options) => {
     await mutate(options, async () => {
-      const commonDir = await resolveGitCommonDir(runRoot(command));
+      const gitDir = await resolveRunLockGitDir(runRoot(command));
       // @req FR-NODE-197 AC-7 — the holder reported is the one the release itself saw, not one read
       // a moment earlier by a second call. Two reads over one sentinel can disagree, and the answer
       // that matters is what was there when it was removed.
       // @req FR-NODE-221 AC-9 — the dry run refuses exactly where the real call would, and releases nothing.
       if (options.dryRun === true) {
-        const blocker = await foreignReleaseBlocker(commonDir);
+        const blocker = await foreignReleaseBlocker(gitDir);
         if (blocker) return liveSessionRefusal(blocker);
-        return { lockPath: runLockPath(commonDir), heldBy: (await readHolder(commonDir))?.owner ?? null };
+        return { lockPath: runLockPath(gitDir), heldBy: (await readHolder(gitDir))?.owner ?? null };
       }
-      const outcome = await releaseHeldRunLock(commonDir);
+      const outcome = await releaseHeldRunLock(gitDir);
       if (!outcome.ok) return unreleased(outcome);
-      return { lockPath: runLockPath(commonDir), heldBy: outcome.owner };
+      return { lockPath: runLockPath(gitDir), heldBy: outcome.owner };
     });
   });
 
   addCommonOptions(run.command("status")).action(async (options) => {
     await read(orchestrate, options, async () => {
-      const commonDir = await resolveGitCommonDir(runRoot(command));
+      const gitDir = await resolveRunLockGitDir(runRoot(command));
       // @req IR-CLI-105 AC-7 — `holder` keeps its four keys (FR-NODE-204); the lease and fence sit beside it.
-      const state = await inspectRunLock(commonDir);
+      const state = await inspectRunLock(gitDir);
       return {
         lockPath: state.lockPath,
         holder: state.holder,
@@ -2073,10 +2073,10 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
       await mutate(options, async () => {
         const root = projectRoot(command);
         const runId = requireOption(options.runId, "--run-id");
-        const commonDir = await resolveGitCommonDir(root.root);
+        const gitDir = await resolveRunLockGitDir(root.root);
         // @req FR-NODE-221 AC-3, FR-NODE-197 AC-3/AC-4 — refused before the journal is touched while
         // another live process holds the fence; the refusal still says the lock is held and names it.
-        const blocker = await foreignReleaseBlocker(commonDir);
+        const blocker = await foreignReleaseBlocker(gitDir);
         if (blocker) return liveSessionRefusal(blocker, { runLockHeld: true, lockPath: blocker.lockPath });
         // @req FR-NODE-197 AC-3 — a retry after a failed release finds its own abort line (same run, same
         // gate) and only releases; appending again would record the run's end twice.
@@ -2102,11 +2102,11 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           // record itself has left the run in a state another session must not join.
           return refuse(outcome.contended === true ? "journal-artifact-lock-held" : "run-invariant-drift", [
             ...outcome.diagnostics,
-            { runLockHeld: true, lockPath: runLockPath(commonDir) }
+            { runLockHeld: true, lockPath: runLockPath(gitDir) }
           ]);
         }
         if (options.dryRun !== true) {
-          const released = await releaseHeldRunLock(commonDir);
+          const released = await releaseHeldRunLock(gitDir);
           if (!released.ok) return unreleased(released, { runLockHeld: true, journalWritten: outcome.written });
         }
         return { reason: options.reason, journalWritten: outcome.written, ...(alreadyRecorded ? { alreadyRecorded: true } : {}) };

@@ -79,7 +79,7 @@ describe("FR-FLOW-198 AC-1 — kiwi-orchestrator §3.1 maps the lock states to a
     expect(posix, `${relPath}: the POSIX case`).toMatch(/fence 가 없어/);
     expect(posix).toMatch(/보유 run 이 버려진 경우에만/);
     expect(posix).toMatch(/사용자가 그렇다고 답한 뒤에만/);
-    expect(posix).toMatch(/두 run 이 한 저장소를 함께 바꾼다/);
+    expect(posix).toMatch(/두 run 이 한 체크아웃을 함께 바꾼다/);
     const ghost = state(/^- `fence` 가 held 값\(/);
     expect(ghost, `${relPath}: owner null with a held fence is not explained`).toMatch(/`owner`[^\n]*`null`/);
     expect(ghost).toMatch(/몇 초 넘게 이어지면 열린 세션이 lock 을 쥔 것/);

@@ -186,7 +186,7 @@ interface Envelope {
   readonly payload: Record<string, unknown>;
 }
 
-/** A scratch git repository, because the run lock is keyed on the git common dir. */
+/** A scratch git repository, because the run lock is keyed on the worktree's git dir. */
 function repository(): string {
   const root = mkdtempSync(path.join(tmpdir(), "flow170-"));
   scratch.push(root);

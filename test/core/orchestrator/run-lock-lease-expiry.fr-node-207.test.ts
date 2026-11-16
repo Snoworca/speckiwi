@@ -294,7 +294,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
       owner: "expired-run",
       leaseExpiresAt: inThePast()
     });
-    const reclaimed = await acquire({ commonDir: expired.commonDir, owner: "successor-run" });
+    const reclaimed = await acquire({ gitDir: expired.commonDir, owner: "successor-run" });
     held.push(reclaimed);
     await expect(readHolder(expired.commonDir)).resolves.toMatchObject({ owner: "successor-run" });
     await release(reclaimed);
@@ -308,7 +308,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
       owner: "exited-run",
       leaseExpiresAt: inTheFuture()
     });
-    await expect(acquire({ commonDir: unexpired.commonDir, owner: "contender" }))
+    await expect(acquire({ gitDir: unexpired.commonDir, owner: "contender" }))
       .rejects.toMatchObject({ gate: RUN_LOCK_GATE, owner: "exited-run" });
 
     // A lease whose writer named a foreign host is still governed by the expiry it named: the
@@ -321,7 +321,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
       host: "other-host.invalid",
       leaseExpiresAt: inThePast()
     });
-    const acrossHosts = await acquire({ commonDir: foreign.commonDir, owner: "successor-run" });
+    const acrossHosts = await acquire({ gitDir: foreign.commonDir, owner: "successor-run" });
     held.push(acrossHosts);
     await expect(readHolder(foreign.commonDir)).resolves.toMatchObject({ owner: "successor-run" });
     await release(acrossHosts);
@@ -337,7 +337,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
       pid: DEAD_PID,
       owner: "crashed-acquirer:acquire"
     });
-    const pastGuard = await acquire({ commonDir: crashedGuard.commonDir, owner: "successor-run" });
+    const pastGuard = await acquire({ gitDir: crashedGuard.commonDir, owner: "successor-run" });
     held.push(pastGuard);
     await release(pastGuard);
     held.splice(held.indexOf(pastGuard), 1);
@@ -349,13 +349,13 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
       leaseExpiresAt: inTheFuture()
     });
     await expect(
-      acquire({ commonDir: leasedGuard.commonDir, owner: "successor-run" }),
+      acquire({ gitDir: leasedGuard.commonDir, owner: "successor-run" }),
       "a guard carrying a lease would wedge acquisition for its whole length, which is why none is copied onto it"
     ).rejects.toMatchObject({ gate: RUN_LOCK_GATE });
 
     // And a real acquisition writes an expiry rather than leaving the reader to infer one.
     const stamped = await repository("lease-expiry-stamped");
-    const own = await acquire({ commonDir: stamped.commonDir, owner: "stamping-run" });
+    const own = await acquire({ gitDir: stamped.commonDir, owner: "stamping-run" });
     held.push(own);
     const published = JSON.parse(await readFile(runLockPath(stamped.commonDir), "utf8")) as Record<string, unknown>;
     expect(typeof published.lease_expires_at, `the writer stamped no expiry: ${JSON.stringify(published)}`).toBe("string");
@@ -401,7 +401,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
       owner: "exited-run",
       leaseExpiresAt: inTheFuture()
     });
-    await expect(acquire({ commonDir: target.commonDir, owner: "contender" }))
+    await expect(acquire({ gitDir: target.commonDir, owner: "contender" }))
       .rejects.toMatchObject({ gate: RUN_LOCK_GATE });
 
     // Why its own suite stays green regardless: it writes the legacy shape, which the rule it
@@ -464,7 +464,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
       // `Date.parse` answers NaN, every comparison against NaN is false, and nothing would ever
       // reclaim it. Measured on the mutant that drops the validity clause: refused with a dead pid
       // and a sentinel a minute old.
-      const reclaimed = await acquire({ commonDir: target.commonDir, owner: "successor-run" });
+      const reclaimed = await acquire({ gitDir: target.commonDir, owner: "successor-run" });
       held.push(reclaimed);
       await expect(readHolder(target.commonDir)).resolves.toMatchObject({ owner: "successor-run" });
       await release(reclaimed);
@@ -481,7 +481,7 @@ describe("FR-NODE-207 a run lease is held until it expires", { timeout: 180_000 
       });
       const controlPath = runLockPath(readable.commonDir);
       await utimes(controlPath, stale, stale);
-      await expect(acquire({ commonDir: readable.commonDir, owner: "successor-run" }))
+      await expect(acquire({ gitDir: readable.commonDir, owner: "successor-run" }))
         .rejects.toMatchObject({ gate: RUN_LOCK_GATE, owner: "readable-run" });
     });
 

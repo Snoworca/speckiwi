@@ -278,7 +278,7 @@ describe.runIf(WIN32)("FR-NODE-221 a live MCP session's run lock (win32; POSIX h
 describe("FR-NODE-221 the release path", { timeout: 120_000 }, () => {
   it("FR-NODE-221 AC-5 a failed fence release by the holder keeps the sentinel and reports the failure; a retry releases", async () => {
     const { root, commonDir, lockPath } = await repository("fr-node-221-ac5-");
-    const lock = await acquire({ commonDir, owner: "fr-node-221" });
+    const lock = await acquire({ gitDir: commonDir, owner: "fr-node-221" });
     held.push(lock);
     let faulty = true;
     await injectCleanupFaultForTest(lock, async () => {
@@ -301,7 +301,7 @@ describe("FR-NODE-221 the release path", { timeout: 120_000 }, () => {
   it("FR-NODE-197 AC-3 an abort retried after its release failed records the abort once", async () => {
     const { root, commonDir, lockPath } = await repository("fr-node-221-abort-retry-");
     const journal = path.join(root, "kiwi", "waves.jsonl");
-    const lock = await acquire({ commonDir, owner: "fr-node-221" });
+    const lock = await acquire({ gitDir: commonDir, owner: "fr-node-221" });
     held.push(lock);
     let faulty = true;
     await injectCleanupFaultForTest(lock, async () => {
@@ -345,7 +345,7 @@ describe("FR-NODE-221 the release path", { timeout: 120_000 }, () => {
     let refused = 0;
     for (let index = 0; index < 200; index += 1) {
       const [lock] = await Promise.all([
-        acquire({ commonDir, owner: "fr-node-221" }).catch(() => null),
+        acquire({ gitDir: commonDir, owner: "fr-node-221" }).catch(() => null),
         probeRunLockFence(commonDir),
         probeRunLockFence(commonDir)
       ]);

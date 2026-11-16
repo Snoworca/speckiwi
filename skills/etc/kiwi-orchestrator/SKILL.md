@@ -79,7 +79,7 @@ wave 의 실행 절차 — (`--sds` 면) SDS 작성, stage 계산, 워커 dispat
 | `unsafe-option-refused` | `--skip-regression` 또는 `--reviewer-off` 요청, 그리고 `--no-review-loop` · `--skip-review-loop` — 종료 hop 은 끌 수 없고, 적용 여부는 커밋 창이 정한다. 조용히 무시하지 않고 이름을 들어 **거부**한다 | Preflight P.2 |
 | `wt-delegation-refused` | 요청되어 들어온 `kiwi-pipeline --wt` 위임 — cycle 스코프 worktree 를 lane 스코프 안에 중첩하는 위상 | Preflight P.2 |
 | `invalid-loop-option` | `--loops N` 이 정수 1 이상이 아님 | Preflight P.2 |
-| `orchestrator-run-lock-held` | 다른 orchestrator run 이 git common dir 키의 lease 를 보유 | Preflight P.5 |
+| `orchestrator-run-lock-held` | 같은 run root(워크트리)의 다른 orchestrator run 이 lease 를 보유 | Preflight P.5 |
 | `run-lock-held-by-live-session` | P.5 lease 의 해제(`unlock` 과 abort-run 의 기록)가 Windows 에서 그 fence 를 쥔 다른 살아 있는 프로세스 때문에 거절됨 — 보유 세션 자신의 MCP 호출이나 그 세션을 닫는 것으로만 빠져나간다(§3.1) | Preflight P.5 / §15 |
 | `lane-worker-possibly-live` | 워커 워크트리가 `locked` 로 보고되어 그 워커가 살아 있을 수 있음 — 다시 dispatch 하지 않는다(FR-FLOW-118). `--auto` 가 결정하지 않는다 — `NEEDS_USER` | Phase 3.f / 재개 |
 | `journal-artifact-lock-held` | run 저널 아티팩트 락을 다른 writer 가 보유 | append 시점 |
@@ -358,7 +358,7 @@ Phase 6  run 처분 (§15): 통합 브랜치는 그대로 두고 run 리포트�
 
 ### 3.1 Preflight P.5 의 run lock — 취득과 해제를 판정하는 명령
 
-P.5 의 lock 은 git common dir 를 키로 하므로 연결된 워크트리들이 하나의 lease 를 두고 경합한다. 그 취득과 해제와 조회는 MCP `orchestrate_run_lock` 에 `action` 을 `lock` · `unlock` · `status` 중 하나로 주어 수행하고, MCP 가 없으면 CLI `speckiwi orchestrate run lock|unlock|status --json` 으로 같은 판정을 받는다. 이미 다른 run 이 lease 를 들고 있으면 `lock` 이 `orchestrator-run-lock-held` 로 거절하며, 거절 응답이 보유자와 lock 파일 경로를 함께 싣는다. 그 게이트를 내는 것은 세 action 가운데 `lock` 뿐이다. `releaseIfAbandoned` 는 Windows 에서 `fence: "free"` 인 거절만 싣고, fence 를 쥔 살아 있는 프로세스가 없다는 뜻이다 — 거절이 실은 `pid`, `host`, `acquiredAt`, `leaseExpiresAt` 을 보여 주고 그 run 이 버려졌는지 사용자에게 묻는다. `run unlock` 이나 MCP `orchestrate_run_lock` 의 `unlock` 은 사용자가 그렇다고 답한 뒤에만 호출한다 — 그 명령은 보유 run 이 버려진 경우에만 쓴다. 살아 있는 run 의 lock 을 풀면 두 run 이 한 저장소를 함께 바꾼다. `orchestrator-run-lock-held` 는 `--auto` 여도 critical 이다.
+P.5 의 lock 은 이 run root(워크트리)의 lock 이다 — 워크트리 자신의 git dir 를 키로 하므로 같은 체크아웃의 두 run 만 하나의 lease 를 두고 경합하고, 같은 저장소의 다른 워크트리에서 도는 run 은 각자 lease 를 잡는다. 그 취득과 해제와 조회는 MCP `orchestrate_run_lock` 에 `action` 을 `lock` · `unlock` · `status` 중 하나로 주어 수행하고, MCP 가 없으면 CLI `speckiwi orchestrate run lock|unlock|status --json` 으로 같은 판정을 받는다. 이미 다른 run 이 lease 를 들고 있으면 `lock` 이 `orchestrator-run-lock-held` 로 거절하며, 거절 응답이 보유자와 lock 파일 경로를 함께 싣는다. 그 게이트를 내는 것은 세 action 가운데 `lock` 뿐이다. `releaseIfAbandoned` 는 Windows 에서 `fence: "free"` 인 거절만 싣고, fence 를 쥔 살아 있는 프로세스가 없다는 뜻이다 — 거절이 실은 `pid`, `host`, `acquiredAt`, `leaseExpiresAt` 을 보여 주고 그 run 이 버려졌는지 사용자에게 묻는다. `run unlock` 이나 MCP `orchestrate_run_lock` 의 `unlock` 은 사용자가 그렇다고 답한 뒤에만 호출한다 — 그 명령은 보유 run 이 버려진 경우에만 쓴다. 살아 있는 run 의 lock 을 풀면 두 run 이 한 체크아웃을 함께 바꾼다. `orchestrator-run-lock-held` 는 `--auto` 여도 critical 이다.
 
 lock 파일이 디스크에 있는지를 읽어 스스로 내리는 판단은 이 판정을 대신하지 못한다. abort 로 끝나는 run 의 해제는 §15 가 지배한다. abort 가 아닌 종료의 해제도 같은 도구의 `unlock` 이며, 그때 응답의 `heldBy` 는 해제 자신이 본 보유자다. `unlock` 은 Windows 에서 lease 의 fence 를 살아 있는 다른 프로세스가 쥐고 있으면 `run-lock-held-by-live-session` 으로 거절할 수 있으므로 그 lease 를 취득한 이 세션의 MCP 로 부르고, 종료 해제는 이 run 이 취득한 lease 에 대해서만 부른다. `status` 는 아무것도 바꾸지 않는 조회이며, 보유자와 함께 lease 만료 시각 `leaseExpiresAt` 과 fence 상태 `fence` 를 보고한다.
 
@@ -367,7 +367,7 @@ P.5 에서 `lock` 이 성공하면 그 응답이 방금 취득한 lease 의 `hol
 - `fence: "held-by-this-session"`: 답한 MCP 서버, 곧 이 세션이 fence 를 쥐고 있다 — 이 세션의 MCP `orchestrate_run_abort` 나, 위의 run lock 도구에 `action` 을 `unlock` 으로 준 호출로 해제한다.
 - `fence: "held-by-another-session"`: 다른 세션이 쥐고 있다 — 사용자에게 그 세션에서 해제하거나 그 세션을 닫으라고 요청한다.
 - `fence: "held"`: CLI 프로세스의 답이라 이 세션인지 다른 세션인지 가르지 못한다 — 보유자를 모르는 것으로 보고 사용자에게 묻는다. 이 세션이 쥔 것이면 이 세션의 MCP 로 해제하고, 아니면 그 세션에서 해제하거나 그 세션을 닫는다.
-- `fence: "not-applicable"`: POSIX 라 fence 가 없어 살아 있는 보유자를 확인할 수 없다 — 거절이 주는 `run unlock` 명령은 보유 run 이 버려진 경우에만, 사용자가 그렇다고 답한 뒤에만 쓴다. 살아 있는 run 의 lock 을 풀면 두 run 이 한 저장소를 함께 바꾼다.
+- `fence: "not-applicable"`: POSIX 라 fence 가 없어 살아 있는 보유자를 확인할 수 없다 — 거절이 주는 `run unlock` 명령은 보유 run 이 버려진 경우에만, 사용자가 그렇다고 답한 뒤에만 쓴다. 살아 있는 run 의 lock 을 풀면 두 run 이 한 체크아웃을 함께 바꾼다.
 - `fence` 가 held 값(`held-by-this-session`, `held-by-another-session`, `held`)인데 보유자 필드가 모두 `null` 이다(`owner` 도 `null`): lock 파일 없이 fence 만 남은 상태(ghost)다 — 몇 초 넘게 이어지면 열린 세션이 lock 을 쥔 것이므로, 그 세션에서 해제하거나 그 세션을 닫는다.
 - `run-lock-held-by-live-session` 거절: 빠져나가는 길은 보유 세션 자신의 MCP 호출과 그 세션을 닫는 것 둘뿐이다. lock 파일을 손으로 지우지 않고, 다른 프로세스에서 다시 시도하지 않는다.
 
@@ -389,7 +389,7 @@ lock 파일을 직접 저작하지 않는다. `--out` 은 target 마다 준다 �
 
 **1.c′ 에서 아직 일어나지 않은 것**: `add_requirement` · `update_status` · `update_stability` 호출 없음, target 등록 없음, SDS 저작 없음(`--sds` 여도), 라우팅 아티팩트 커밋 없음. run 의 **첫 SRS mutation 은 Phase 2.a** 다.
 
-**1.c′ 까지 이미 일어난 것**: run root 고정(P.1), 회귀 baseline 포착·고정(P.4), git common dir 위의 run lock 보유(P.5), 통합 브랜치 `kiwi/orch/{run_id}/integration` 생성 또는 채택(0.b)과 그 위의 `commit-run-artifacts` 커밋 2건, 그리고 work-mode 를 **읽었고 쓰지 않았음**(P.3).
+**1.c′ 까지 이미 일어난 것**: run root 고정(P.1), 회귀 baseline 포착·고정(P.4), run root 의 run lock 보유(P.5), 통합 브랜치 `kiwi/orch/{run_id}/integration` 생성 또는 채택(0.b)과 그 위의 `commit-run-artifacts` 커밋 2건, 그리고 work-mode 를 **읽었고 쓰지 않았음**(P.3).
 
 ### 4.2 route probe — 12 개 필드
 
@@ -1028,7 +1028,7 @@ recovery class **externally-visible**. Preflight P.6. 런타임이 워크트리 
 ### §V.create-integration-branch
 
 recovery class **externally-visible**. Phase 0.b. `--base-branch` 위에 `kiwi/orch/{run_id}/integration` 을 만들거나 채택하고 `frozen` 에 기록한다.
-복구: `git rev-parse --verify {frozen.integration_branch}` — 있으면 채택, 없으면 `--base-branch` 에서 생성.
+복구: `git rev-parse --verify {frozen.integration_branch}` — 있으면 채택, 없으면 `--base-branch` 에서 생성. 채택은 이 run 의 재개에만 한다. 재개 카드 `kiwi/orchestrator/{run_id}/resume-card.json` 이 `frozen.integration_branch` 를 기록했으면 그 브랜치를 채택한다. 카드에 기록이 없는데 `kiwi/orch/{run_id}/` 아래 브랜치가 이미 있으면, 그 브랜치가 `kiwi/orch/{run_id}/integration` 하나뿐이고, 이 run root 의 저널 `kiwi/waves.jsonl` 에 그 `run_id` 의 짝 없는 `create-integration-branch` intent 가 있고, 그 끝이 `--base-branch` 의 조상일 때(`git merge-base --is-ancestor kiwi/orch/{run_id}/integration <base-branch>` 가 0)만 채택한다 — 브랜치를 만든 뒤 result 를 쓰기 전에 끊긴 이 run 의 것이고, 자기 커밋이 없어 새로 만든 것과 같다. 그 밖의 경우는 같은 `run_id` 로 돈 다른 run 의 것으로 보고 채택하지 않고 `integration-branch-unavailable` 로 멈춘다 — 이어 쓰면 남의 통합 브랜치에 병합하고, 재시도가 남의 `-r2` 브랜치를 조용히 옮긴다. 짝 없는 intent 만으로는 가르지 않는다 — 이 게이트로 멈춘 run 도 그 intent 를 남기고, `--resume` 은 그 run 을 다시 이 검사로 데려온다. 저널의 다른 줄로도 가르지 않는다 — Preflight 가 0.b 전에 이미 쓴다.
 게이트: `integration-branch-unavailable`.
 
 ### §V.commit-run-artifacts
@@ -1303,7 +1303,7 @@ recovery class **externally-visible**. 노드의 `complete` 줄 뒤, `parallel-w
 ### §V.halt
 
 종단. recovery class 를 선언하지 않는다. 중단 사유가 된 게이트를 그대로 보고하고 멈춘다. 저장소 상태를 지명해야 하는 중단은 `halt` 가 아니라 `abort-run` 이다.
-P.5 의 lease 는 해제하지 않는다 — 멈춘 run 은 재개할 수 있고, lease 를 놓으면 다른 run 이 그 아래에서 저장소를 바꿀 수 있다. 보고에는 P.5 lease 가 아직 잡혀 있다고 적고 두 길을 준다. 계속 — `--resume`, 이 세션에서 또는 이 세션을 닫은 뒤. 버림 — 이 세션에서 MCP `orchestrate_run_abort` 에 `reason` 을 멈춘 게이트로, `runId` 를 이 run 의 `run_id` 로 주어 부른다 — abort-run 이 버림을 기록하고 P.5 를 해제한다.
+P.5 의 lease 는 해제하지 않는다 — 멈춘 run 은 재개할 수 있고, lease 를 놓으면 다른 run 이 그 아래에서 이 체크아웃을 바꿀 수 있다. 보고에는 P.5 lease 가 아직 잡혀 있다고 적고 두 길을 준다. 계속 — `--resume`, 이 세션에서 또는 이 세션을 닫은 뒤. 버림 — 이 세션에서 MCP `orchestrate_run_abort` 에 `reason` 을 멈춘 게이트로, `runId` 를 이 run 의 `run_id` 로 주어 부른다 — abort-run 이 버림을 기록하고 P.5 를 해제한다.
 
 ## 18 워크트리 절차 — 만들고, 그 안에서 일하고, 되돌려준다
 

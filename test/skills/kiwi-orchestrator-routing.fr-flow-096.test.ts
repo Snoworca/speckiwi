@@ -88,7 +88,7 @@ describe("FR-FLOW-096 — route classification at Phase 1.c'", () => {
       const position = section(variant.body, /^###\s*4\.1\b/m);
       expect(position).toMatch(/run root 고정\(P\.1\)/);
       expect(position).toMatch(/회귀 baseline 포착·고정\(P\.4\)/);
-      expect(position).toMatch(/git common dir 위의 run lock 보유\(P\.5\)/);
+      expect(position).toMatch(/run root 의 run lock 보유\(P\.5\)/);
       expect(tiedTogether(position, /kiwi\/orch\/\{run_id\}\/integration/, [/0\.b/, /commit-run-artifacts/, /2건/], 300)).toBe(true);
       expect(position).toMatch(/work-mode 를 \*\*읽었고 쓰지 않았음\*\*\(P\.3\)/);
     }

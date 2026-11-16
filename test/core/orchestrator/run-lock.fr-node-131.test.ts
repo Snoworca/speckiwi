@@ -8,6 +8,7 @@ import {
   release,
   renew,
   resolveGitCommonDir,
+  resolveRunLockGitDir,
   RUN_LOCK_GATE,
   RunLockHeldError,
   runLockPath,
@@ -40,7 +41,7 @@ async function writeSentinel(commonDir: string, input: { pid: number; owner: str
 }
 
 async function acquireTracked(commonDir: string, owner: string): Promise<RunLock> {
-  const lock = await acquire({ commonDir, owner });
+  const lock = await acquire({ gitDir: commonDir, owner });
   held.push(lock);
   return lock;
 }
@@ -50,25 +51,28 @@ afterAll(async () => {
   await cleanupFixtures();
 });
 
-describe("FR-NODE-131 orchestrator run lock keyed on the git common dir", { timeout: 120_000 }, () => {
-  it("AC-1: two linked worktrees share one lock path and the second acquisition is refused", async () => {
+describe("FR-NODE-131 orchestrator run lock keyed on the worktree's git dir", { timeout: 120_000 }, () => {
+  it("AC-1: a linked worktree has its own lock path and a second acquisition from it is refused", async () => {
     const main = await repository("e32-worktrees");
     const linked = path.join(await tempDir("e32-linked"), "linked");
     await rawGit(main.root, "worktree", "add", "-b", "e32", linked);
-    const linkedCommonDir = await resolveGitCommonDir(linked);
+    const linkedGitDir = await resolveRunLockGitDir(linked);
 
-    expect(linkedCommonDir).toBe(main.commonDir);
-    expect(runLockPath(linkedCommonDir)).toBe(runLockPath(main.commonDir));
+    expect(await resolveRunLockGitDir(main.root)).toBe(main.commonDir);
+    expect(runLockPath(linkedGitDir)).not.toBe(runLockPath(main.commonDir));
 
-    const first = await acquireTracked(main.commonDir, "run-a");
-    await expect(acquire({ commonDir: linkedCommonDir, owner: "run-b" }))
+    const mainRun = await acquireTracked(main.commonDir, "run-main");
+    const first = await acquireTracked(linkedGitDir, "run-a");
+    await expect(acquire({ gitDir: linkedGitDir, owner: "run-b" }))
       .rejects.toBeInstanceOf(RunLockHeldError);
-    await expect(acquire({ commonDir: linkedCommonDir, owner: "run-b" }))
+    await expect(acquire({ gitDir: linkedGitDir, owner: "run-b" }))
       .rejects.toMatchObject({ gate: RUN_LOCK_GATE, owner: "run-a" });
     expect(RUN_LOCK_GATE).toBe("orchestrator-run-lock-held");
 
     await release(first);
+    await release(mainRun);
     held.splice(held.indexOf(first), 1);
+    held.splice(held.indexOf(mainRun), 1);
   });
 
   it("AC-2: two repositories with distinct common dirs hold the lock concurrently", async () => {
@@ -97,7 +101,7 @@ describe("FR-NODE-131 orchestrator run lock keyed on the git common dir", { time
     const lockPath = await writeSentinel(target.commonDir, { pid: process.pid, owner: "live-owner" });
     const before = await readFile(lockPath, "utf8");
 
-    await expect(acquire({ commonDir: target.commonDir, owner: "contender" }))
+    await expect(acquire({ gitDir: target.commonDir, owner: "contender" }))
       .rejects.toBeInstanceOf(RunLockHeldError);
     expect(await readFile(lockPath, "utf8")).toBe(before);
   });
@@ -123,7 +127,7 @@ describe("FR-NODE-131 orchestrator run lock keyed on the git common dir", { time
     const live = await repository("e32-live-pid");
     const livePath = await writeSentinel(live.commonDir, { pid: process.pid, owner: "live-run" });
     await utimes(livePath, old, old);
-    await expect(acquire({ commonDir: live.commonDir, owner: "contender" }))
+    await expect(acquire({ gitDir: live.commonDir, owner: "contender" }))
       .rejects.toBeInstanceOf(RunLockHeldError);
 
     // A foreign host's liveness cannot be proven locally, so it is never stolen on age alone.
@@ -134,13 +138,13 @@ describe("FR-NODE-131 orchestrator run lock keyed on the git common dir", { time
       host: "other-host.invalid"
     });
     await utimes(foreignPath, old, old);
-    await expect(acquire({ commonDir: foreign.commonDir, owner: "contender" }))
+    await expect(acquire({ gitDir: foreign.commonDir, owner: "contender" }))
       .rejects.toBeInstanceOf(RunLockHeldError);
   });
 
   it("AC-5: release is followed by a successful acquisition, and renew keeps ownership", async () => {
     const target = await repository("e32-release");
-    const first = await acquire({ commonDir: target.commonDir, owner: "run-one" });
+    const first = await acquire({ gitDir: target.commonDir, owner: "run-one" });
     await renew(first);
     await expect(readHolder(target.commonDir)).resolves.toMatchObject({ owner: "run-one" });
     await release(first);
@@ -157,7 +161,7 @@ describe("FR-NODE-131 orchestrator run lock keyed on the git common dir", { time
     const target = await repository("e32-status");
     await expect(readHolder(target.commonDir)).resolves.toBeNull();
 
-    const lock = await acquire({ commonDir: target.commonDir, owner: "status-run" });
+    const lock = await acquire({ gitDir: target.commonDir, owner: "status-run" });
     const holder = await readHolder(target.commonDir);
     expect(holder).toMatchObject({ owner: "status-run", pid: process.pid, host: hostname() });
     expect(typeof holder?.acquiredAt).toBe("string");

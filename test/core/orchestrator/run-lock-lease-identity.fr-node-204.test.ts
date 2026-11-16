@@ -191,7 +191,7 @@ async function tornSentinel(commonDir: string): Promise<string> {
 describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout: 120_000 }, () => {
   it("AC-1: the acquisition names the holder it published, and status reports the same one", async () => {
     const target = await repository("lease-identity-names");
-    const lock = await acquire({ commonDir: target.commonDir, owner: "naming-run" });
+    const lock = await acquire({ gitDir: target.commonDir, owner: "naming-run" });
     held.push(lock);
 
     const named = lock.holder as unknown as Record<string, unknown> | undefined;
@@ -230,7 +230,7 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
 
     // The child is gone, so this acquisition takes the reclaim-then-republish path rather than the
     // publish-onto-nothing path. Both must name what they published.
-    const second = await acquire({ commonDir: target.commonDir, owner: "successor-run" });
+    const second = await acquire({ gitDir: target.commonDir, owner: "successor-run" });
     held.push(second);
     const named = second.holder as unknown as Record<string, unknown> | undefined;
     expect(named, "the reclaiming acquisition returned no holder").toBeDefined();
@@ -249,7 +249,7 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
     expect(isOwnLease(runA.holder, beforeReclaim), "A's own lease is not recognised as A's").toBe(true);
 
     await expireLease(target.commonDir);
-    const runB = await acquire({ commonDir: target.commonDir, owner: "run-b" });
+    const runB = await acquire({ gitDir: target.commonDir, owner: "run-b" });
     held.push(runB);
     const now = (await readHolder(target.commonDir)) as unknown as Record<string, unknown> | null;
 
@@ -269,9 +269,9 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
     // Bounded retry rather than a single pair: zero collisions measured is not zero possible, and a
     // suite that flakes on a clock tick teaches nothing.
     for (let attempt = 0; attempt < 8 && second === null; attempt += 1) {
-      const earlier = await acquire({ commonDir: target.commonDir, owner: "kiwi-orchestrator" });
+      const earlier = await acquire({ gitDir: target.commonDir, owner: "kiwi-orchestrator" });
       await release(earlier);
-      const later = await acquire({ commonDir: target.commonDir, owner: "kiwi-orchestrator" });
+      const later = await acquire({ gitDir: target.commonDir, owner: "kiwi-orchestrator" });
       if (earlier.holder.acquiredAt === later.holder.acquiredAt) {
         await release(later);
         continue;
@@ -296,7 +296,7 @@ describe("FR-NODE-204 a run lock acquisition names the lease it took", { timeout
     const target = await repository("lease-identity-owner");
     const first = await acquireInDeadProcess(target.commonDir, "kiwi-orchestrator");
     await expireLease(target.commonDir);
-    const second = await acquire({ commonDir: target.commonDir, owner: "kiwi-orchestrator" });
+    const second = await acquire({ gitDir: target.commonDir, owner: "kiwi-orchestrator" });
     held.push(second);
 
     expect(first.holder, "neither acquisition named a holder, so there is no owner to collide").toBeTruthy();

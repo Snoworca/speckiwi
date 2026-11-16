@@ -11,7 +11,7 @@ const [, , modulePath, commonDir, owner] = process.argv;
 const runLock = await import(pathToFileURL(modulePath).href);
 
 try {
-  const lock = await runLock.acquire({ commonDir, owner });
+  const lock = await runLock.acquire({ gitDir: commonDir, owner });
   process.stdout.write(`ACQUIRED ${lock.lockPath}\n`);
 } catch (error) {
   process.stdout.write(`REFUSED ${error?.gate ?? "unknown-gate"}\n`);

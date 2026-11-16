@@ -388,6 +388,7 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	e-base --is-ancestor <워커
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ion_branch 에 착지한 뒤에 실행된다. 입력은 frozen.integration_branch 위 그 wave
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	orchestrate resume 은 재개 카드의 frozen.route.rung 을 돌려주고 frozen.rout
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	probe-isolation result 와 카드의 frozen.isolation_profile 을 읽는다 — 이미 있
+frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	r/{run_id}/resume-card.json 이 frozen.integration_branch 를 기록했으면 그 브
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	un-id 가 이를 덮어쓴다. --run-id 는 frozen.integration_branch 에 박히므로 Pref
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	규칙으로 새 route.lock.json 을 쓰고 frozen.route 를 새 lock 으로 옮긴 뒤 invari
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	복구: git rev-parse --verify {frozen.integration_branch} — 있으면 채택,
@@ -1038,6 +1039,7 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	e-base --is-ancestor <워커
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ion_branch 에 착지한 뒤에 실행된다. 입력은 frozen.integration_branch 위 그 wave
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	orchestrate resume 은 재개 카드의 frozen.route.rung 을 돌려주고 frozen.rout
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	probe-isolation result 와 카드의 frozen.isolation_profile 을 읽는다 — 이미 있
+frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	r/{run_id}/resume-card.json 이 frozen.integration_branch 를 기록했으면 그 브
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	un-id 가 이를 덮어쓴다. --run-id 는 frozen.integration_branch 에 박히므로 Pref
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	규칙으로 새 route.lock.json 을 쓰고 frozen.route 를 새 lock 으로 옮긴 뒤 invari
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	복구: git rev-parse --verify {frozen.integration_branch} — 있으면 채택,
@@ -1677,6 +1679,7 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	e-base --is-ancestor <워커
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ion_branch 에 착지한 뒤에 실행된다. 입력은 frozen.integration_branch 위 그 wave
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	orchestrate resume 은 재개 카드의 frozen.route.rung 을 돌려주고 frozen.rout
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	probe-isolation result 와 카드의 frozen.isolation_profile 을 읽는다 — 이미 있
+frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	r/{run_id}/resume-card.json 이 frozen.integration_branch 를 기록했으면 그 브
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	un-id 가 이를 덮어쓴다. --run-id 는 frozen.integration_branch 에 박히므로 Pref
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	규칙으로 새 route.lock.json 을 쓰고 frozen.route 를 새 lock 으로 옮긴 뒤 invari
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	복구: git rev-parse --verify {frozen.integration_branch} — 있으면 채택,
@@ -2311,6 +2314,7 @@ frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	e-base --is-ancestor <워커
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	ion_branch 에 착지한 뒤에 실행된다. 입력은 frozen.integration_branch 위 그 wave
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	orchestrate resume 은 재개 카드의 frozen.route.rung 을 돌려주고 frozen.rout
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	probe-isolation result 와 카드의 frozen.isolation_profile 을 읽는다 — 이미 있
+frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	r/{run_id}/resume-card.json 이 frozen.integration_branch 를 기록했으면 그 브
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	un-id 가 이를 덮어쓴다. --run-id 는 frozen.integration_branch 에 박히므로 Pref
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	규칙으로 새 route.lock.json 을 쓰고 frozen.route 를 새 lock 으로 옮긴 뒤 invari
 frozen	frozen-field-path	kiwi-orchestrator/SKILL.md	복구: git rev-parse --verify {frozen.integration_branch} — 있으면 채택,

@@ -187,9 +187,27 @@ function laneKeyParts(key: string): { wave: number; stage: number; lane: string 
   return { wave: Number.parseInt(match[1] as string, 10), stage: Number.parseInt(match[2] as string, 10), lane: match[3] as string };
 }
 
-/** A branch belongs to lane k when its name's last segment is the lane id. */
-function branchFor(gitFacts: GitFacts, lane: string) {
-  return gitFacts.branches.find((branch) => branch.name === lane || branch.name.endsWith(`/${lane}`)) ?? null;
+/**
+ * The refs a run's own branches live under: `kiwi/orch/<run_id>/`, with the run id as written and as the
+ * unit id spells it (lower case, every character outside `[a-z0-9.-]` replaced by `-`).
+ * @req FR-NODE-311 AC-5
+ */
+function runRefPrefixes(runId: string): string[] {
+  return [...new Set([runId, runId.toLowerCase().replace(/[^a-z0-9.-]/g, "-")])].map((id) => `kiwi/orch/${id}/`);
+}
+
+/**
+ * A ref belongs to lane k of run R when it lives under R's refs and its last segment is the lane id.
+ * Every run names its lanes `lane-wave-1`, `lane-wave-2` …, so the last segment alone attributed another
+ * run's lane — once linked worktrees ran side by side, another run's locked lane refused this run's
+ * resume. @req FR-NODE-311 AC-5
+ */
+function isLaneRef(ref: string, lane: string, prefixes: readonly string[]): boolean {
+  return ref.endsWith(`/${lane}`) && prefixes.some((prefix) => ref.startsWith(prefix));
+}
+
+function branchFor(gitFacts: GitFacts, lane: string, prefixes: readonly string[]) {
+  return gitFacts.branches.find((branch) => isLaneRef(branch.name, lane, prefixes)) ?? null;
 }
 
 /**
@@ -197,8 +215,8 @@ function branchFor(gitFacts: GitFacts, lane: string) {
  * `unknown` is the pre-rename window — an unattributed workspace while some verb of the scope has an
  * unmatched externally-visible intent; everything else is `dead`. The function is TOTAL.
  */
-function liveness(gitFacts: GitFacts, lane: string, interrupted: InterruptedVerb | null): LaneEvidence | "dead" {
-  const attributed = gitFacts.worktrees.find((tree) => tree.branch !== null && (tree.branch === lane || tree.branch.endsWith(`/${lane}`)));
+function liveness(gitFacts: GitFacts, lane: string, prefixes: readonly string[], interrupted: InterruptedVerb | null): LaneEvidence | "dead" {
+  const attributed = gitFacts.worktrees.find((tree) => tree.branch !== null && isLaneRef(tree.branch, lane, prefixes));
   if (attributed?.locked === true) {
     return { reason: "locked-worktree", worktree: attributed.path, ...(attributed.lockReason ? { lockReason: attributed.lockReason } : {}) };
   }
@@ -217,6 +235,7 @@ function classifyLanes(
 ): LaneClass[] {
   const wave = card.position?.wave ?? 0;
   const stage = card.position?.stage ?? 0;
+  const prefixes = runRefPrefixes(view.runId);
 
   // The denominator is the journal, never the card: the card is derived, so including it in its own
   // denominator would make a card naming a lane nothing else knows about self-consistent, and
@@ -243,7 +262,7 @@ function classifyLanes(
     // on the disagreement (FR-NODE-213 AC-6).
     const read = readLaneDisposition(view.lines, { wave, stage, lane });
     const disposition = read.ok && read.disposition !== null;
-    const branch = branchFor(gitFacts, lane);
+    const branch = branchFor(gitFacts, lane, prefixes);
     // @req FR-NODE-160 — a landed worker may leave no lane branch, only a trailered commit on the
     // integration branch, so `ancestorOfIntegration` alone read a landed wave as never dispatched with
     // nothing blocking. Either witness is a landing.
@@ -251,7 +270,7 @@ function classifyLanes(
     const witness = mergeWitnessOf(gitFacts.integrationCommits ?? [], view.runId, { wave, stage, lane });
     const merged = branchLanded || witness !== undefined;
     const integrated = events.some((event) => event.verb === "integrate-lane" && event.event === "result");
-    const live = liveness(gitFacts, lane, interrupted);
+    const live = liveness(gitFacts, lane, prefixes, interrupted);
 
     // First match wins, in §4.6's order.
     if (live !== "dead") return { lane, wave, stage, klass: "lane-possibly-live" as LaneClassName, nextVerb: null, evidence: live };
