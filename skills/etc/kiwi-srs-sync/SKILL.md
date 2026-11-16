@@ -37,7 +37,7 @@ description: "OpenCode/Hermes local-LLM variant for synchronizing implementation
 | §0.7 | **외부 모듈 수정 금지**. cwd 외부 path 가 diff 에 진입 시 즉시 §0.G2 발동 |
 | §0.8 | **시그니처 금지** (project signature-ban instruction). 커밋·SRS·산출물 어디에도 AI 식별 정보 금지 |
 | §0.9 | **speckiwi MCP 우선 + CLI diagnostics/remediation**. MCP 부재 시 HALT. `speckiwi` CLI는 진단/복구 안내에만 사용 |
-| §0.10 | **MCP mutation 권한 SSOT** (7종 허용). `add_requirement` / `append_section_note` / `update_status` / `update_stability` / `add_trace_link` / `add_verification_evidence` / `add_completed_work`. `set_target_goal` / `set_active_target` / `init_project` 는 미허용 (스킬 책임 외) |
+| §0.10 | **MCP mutation 권한 SSOT** (7종 허용). `add_requirement` / `append_acceptance_criterion` / `update_status` / `update_stability` / `add_trace_link` / `add_verification_evidence` / `add_completed_work`. `set_target_goal` / `set_active_target` / `init_project` 는 미허용 (스킬 책임 외) |
 | §0.11 | **4방향 분류 SSOT** (kiwi-srs §3.3 계승). 모든 변경 단위는 `conflict` / `update` / `new-feature` / `new-scope` 중 정확히 1개로 분류. `unclassified` 허용 안 함 (사용자 게이트 발동) |
 | §0.12 | **변경 단위 = 의미 단위**. 단일 파일이 여러 REQ 에 매핑될 수 있고, 단일 변경이 여러 분류축에 걸쳐있으면 분할. id 정규식: `change_unit.id` = `^CU-\d{3}$` |
 | §0.13 | **사용자 확인 의무**. 4방향 분류 모호, conflict 발생, target 외 REQ 영향, draft 상태 REQ 변경 — 모두 User clarification gate 단일 호출 분해 |
@@ -66,7 +66,7 @@ description: "OpenCode/Hermes local-LLM variant for synchronizing implementation
 | 분류 | 정의 | 매핑 액션 |
 |---|---|---|
 | **conflict** | 변경 코드가 기존 REQ 의 AC 또는 dod 와 정면 충돌 (예: AC 가 "X 거부" 인데 코드가 "X 허용") | User clarification gate: (1) REQ AC 갱신 / (2) 코드 rollback / (3) deprecated 처리 |
-| **update** | 기존 REQ 의 AC/Status/Stability 가 변경 코드 반영을 위해 갱신 필요 | `append_section_note` (AC 보강) + `update_status` (implemented/verified) + `update_stability` (필요 시 승급) |
+| **update** | 기존 REQ 의 AC/Status/Stability 가 변경 코드 반영을 위해 갱신 필요 | `append_acceptance_criterion` (AC 보강) + `update_status` (implemented/verified) + `update_stability` (필요 시 승급) |
 | **new-feature** | 기존 target 내에 신규 REQ 추가가 필요 | `add_requirement` (target/scope 동일, 신규 REQ-ID 발급) |
 | **new-scope** | 기존 target 의 어느 scope 에도 안 들어가는 신규 영역 | User clarification gate 3옵션: (1) 신규 scope 생성 — **본 스킬 범위 밖, `$kiwi-srs` 위임** (사용자 확정 후 본 스킬 종료) / (2) 기존 scope 확장 — `add_requirement` 호출 시 기존 scope 명 사용 (본 스킬 내 처리) / (3) 다른 target 으로 이동 — **본 스킬 범위 밖, 사용자가 `set_active_target` 수동 실행 후 본 스킬 재실행** |
 
@@ -140,7 +140,7 @@ description: "OpenCode/Hermes local-LLM variant for synchronizing implementation
   - `proposed-mutations.json` — 기계 형식 mutation 큐
   - `applied-mutations.jsonl` — 실제 적용된 MCP 호출 로그 (mcp_call_log)
   - `rejected_findings.log`
-- **MCP mutation** (사용자 승인 후): `add_requirement` / `append_section_note` / `update_status` / `update_stability` / `add_trace_link` / `add_verification_evidence` / `add_completed_work`
+- **MCP mutation** (사용자 승인 후): `add_requirement` / `append_acceptance_criterion` / `update_status` / `update_stability` / `add_trace_link` / `add_verification_evidence` / `add_completed_work`
 - **Markdown SRS 갱신**: speckiwi MCP 내부 line-patch
 
 **Run-id**: `{YYYY-MM-DD}.{project-slug}.{target-slug}.sync-{ISO-time-short}`. 정규식 SSOT: `^[a-z0-9.-]{4,50}$`. ASCII kebab, ≤50자.

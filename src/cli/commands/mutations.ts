@@ -38,6 +38,7 @@ import { parseDate } from "../option-parsers.js";
 import { runAgentCli } from "../agent-cli-runner.js";
 import { markMutationCommands } from "../input-json.js";
 import { CHANGE_NOTE_STRING_EXAMPLE } from "../../core/mutation/seed-rows.js";
+import { acceptedSectionsText } from "../../core/rules/section-allowlist.js";
 
 /** @req IR-CLI-106 AC-1 — one description for the flag on `init` and on `upgrade`. */
 const PROJECT_INSTALL_HELP =
@@ -305,7 +306,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
   command
     .command("append-note")
     .argument("<id>")
-    .requiredOption("--section <section>", "rationale | research | implementation_notes")
+    .requiredOption("--section <section>", acceptedSectionsText())
     .requiredOption("--text <text>", `append: one note, max 500 UTF-16 code units; ${APPENDED_NOTE_DATE_RULE}; replace: the whole section body, uncapped, written as given`)
     .option("--mode <mode>", "append (default) or replace; any other value is refused. A replace that removes an item needs --confirm-replace; --dry-run shows removedItems and removedLines first")
     .option("--confirm-replace", "let a replace remove the items its dry run reports; refused with append")

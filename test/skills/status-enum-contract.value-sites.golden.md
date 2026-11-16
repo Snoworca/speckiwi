@@ -349,9 +349,9 @@ frozen	-	kiwi-srs-feasibility/SKILL.md	| §0.7 | stable/frozen 승급은 항상 
 frozen	-	kiwi-srs-feasibility/SKILL.md	| 매핑 결과 then.stability = frozen | 본 스킬 권한 외 (frozen 승급 권한
 frozen	-	kiwi-srs-feasibility/SKILL.md	권한 외 (frozen 승급 권한 ⛔). 정책 파일이 frozen 매핑을 정의해도 거부 + ERROR 보고. frozen
 frozen	-	kiwi-srs-sync/SKILL.md	(§9 의 new-scope (1)/(3) 선택 + frozen 차단 등으로 mutation 큐에서 제외된 CU. cu_
+frozen	-	kiwi-srs-sync/SKILL.md	ance_criterion: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mut
 frozen	-	kiwi-srs-sync/SKILL.md	ckward 차단 위반 시도 (§10.1 step 0 — frozen→evolving 등)"}, {gate_id: "exter
-frozen	-	kiwi-srs-sync/SKILL.md	d_section_note: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mut
-frozen	-	kiwi-srs-sync/SKILL.md	new-scope 옵션 (2) 기존 scope 확장 / frozen note skip / blocking_questions
+frozen	-	kiwi-srs-sync/SKILL.md	new-scope 옵션 (2) 기존 scope 확장 / frozen REQ AC skip / blocking_question
 frozen	-	kiwi-srs-sync/SKILL.md	y > 제안 stability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의
 frozen	-	kiwi-srs-sync/SKILL.md	사용자가 별도로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정
 frozen	card-frozen-block	_shared/kiwi/run-ledger.md	iant_digest": "sha256:…over the frozen block…",
@@ -445,7 +445,7 @@ implemented	-	kiwi-srs-from-code/SKILL.md	add_requirement 호출 시 status: "im
 implemented	-	kiwi-srs-from-code/SKILL.md	| 완전 | yes | stable | implemented — add_requirement 호출 시 status
 implemented	-	kiwi-srs-from-code/SKILL.md	| 완전 | 부분/없음 | stable | implemented |
 implemented	-	kiwi-srs-sync/SKILL.md	5. update_status — implemented / verified 전이 (§0번 사전 검증 통과한 것만
-implemented	-	kiwi-srs-sync/SKILL.md	ote (AC 보강) + update_status (implemented/verified) + update_stability
+implemented	-	kiwi-srs-sync/SKILL.md	ion (AC 보강) + update_status (implemented/verified) + update_stability
 implemented	-	kiwi-srs-sync/SKILL.md	us 면 backward 차단 (예: verified → implemented 금지)
 implemented	-	kiwi-srs/SKILL.md	update_status 로 in_progress/implemented 승격
 implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented) 호출 시도 → 차단 + AskUserQuestion
@@ -1019,7 +1019,7 @@ frozen	-	kiwi-srs-feasibility/references/extended-workflow.md	- stable / frozen 
 frozen	-	kiwi-srs-feasibility/references/extended-workflow.md	3. 매칭 결과가 §0.G5 (stable/frozen 승급) 에 해당하면 사용자 승인 플래그
 frozen	-	kiwi-srs-sync/SKILL.md	| frozen-req-mutation | frozen REQ section/status/stability 변경
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	(§9 의 new-scope (1)/(3) 선택 + frozen 차단 등으로 mutation 큐에서 제외된 CU. cu_
-frozen	-	kiwi-srs-sync/references/extended-workflow.md	d_section_note: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mut
+frozen	-	kiwi-srs-sync/references/extended-workflow.md	ance_criterion: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mut
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	y > 제안 stability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	사용자가 별도로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정
 frozen	card-frozen-block	_shared/kiwi/run-ledger.md	iant_digest": "sha256:…over the frozen block…",
@@ -1121,7 +1121,7 @@ implemented	-	kiwi-srs-feasibility/SKILL.md	locked | status ∈ {in_progress, im
 implemented	-	kiwi-srs-from-code/SKILL.md	add_requirement 호출 시 status: "implemented". 그 후 add_verification_eviden
 implemented	-	kiwi-srs-from-code/SKILL.md	| 완전 | yes | stable | implemented — add_requirement 호출 시 status
 implemented	-	kiwi-srs-from-code/SKILL.md	| 완전 | 부분/없음 | stable | implemented |
-implemented	-	kiwi-srs-sync/SKILL.md	ote (AC 보강) + update_status (implemented/verified) + update_stability
+implemented	-	kiwi-srs-sync/SKILL.md	ion (AC 보강) + update_status (implemented/verified) + update_stability
 implemented	-	kiwi-srs-sync/references/extended-workflow.md	5. update_status — implemented / verified 전이 (§0번 사전 검증 통과한 것만
 implemented	-	kiwi-srs-sync/references/extended-workflow.md	us 면 backward 차단 (예: verified → implemented 금지)
 implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented) 호출 시도 → 차단 + Codex clarificat
@@ -1676,7 +1676,7 @@ frozen	-	kiwi-srs-feasibility/references/extended-workflow.md	- stable / frozen 
 frozen	-	kiwi-srs-feasibility/references/extended-workflow.md	3. 매칭 결과가 §0.G5 (stable/frozen 승급) 에 해당하면 사용자 승인 플래그
 frozen	-	kiwi-srs-sync/SKILL.md	| frozen-req-mutation | frozen REQ section/status/stability 변경
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	(§9 의 new-scope (1)/(3) 선택 + frozen 차단 등으로 mutation 큐에서 제외된 CU. cu_
-frozen	-	kiwi-srs-sync/references/extended-workflow.md	d_section_note: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mut
+frozen	-	kiwi-srs-sync/references/extended-workflow.md	ance_criterion: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mut
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	y > 제안 stability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	사용자가 별도로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정
 frozen	card-frozen-block	_shared/kiwi/run-ledger.md	iant_digest": "sha256:…over the frozen block…",
@@ -1775,7 +1775,7 @@ implemented	-	kiwi-srs-feasibility/SKILL.md	locked | status ∈ {in_progress, im
 implemented	-	kiwi-srs-from-code/SKILL.md	add_requirement 호출 시 status: "implemented". 그 후 add_verification_eviden
 implemented	-	kiwi-srs-from-code/SKILL.md	| 완전 | yes | stable | implemented — add_requirement 호출 시 status
 implemented	-	kiwi-srs-from-code/SKILL.md	| 완전 | 부분/없음 | stable | implemented |
-implemented	-	kiwi-srs-sync/SKILL.md	ote (AC 보강) + update_status (implemented/verified) + update_stability
+implemented	-	kiwi-srs-sync/SKILL.md	ion (AC 보강) + update_status (implemented/verified) + update_stability
 implemented	-	kiwi-srs-sync/references/extended-workflow.md	5. update_status — implemented / verified 전이 (§0번 사전 검증 통과한 것만
 implemented	-	kiwi-srs-sync/references/extended-workflow.md	us 면 backward 차단 (예: verified → implemented 금지)
 implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented) 호출 시도 → 차단 + User clarificati
@@ -2328,7 +2328,7 @@ frozen	-	kiwi-srs-feasibility/references/extended-workflow.md	- stable / frozen 
 frozen	-	kiwi-srs-feasibility/references/extended-workflow.md	3. 매칭 결과가 §0.G5 (stable/frozen 승급) 에 해당하면 사용자 승인 플래그
 frozen	-	kiwi-srs-sync/SKILL.md	| frozen-req-mutation | frozen REQ section/status/stability 변경
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	(§9 의 new-scope (1)/(3) 선택 + frozen 차단 등으로 mutation 큐에서 제외된 CU. cu_
-frozen	-	kiwi-srs-sync/references/extended-workflow.md	d_section_note: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mut
+frozen	-	kiwi-srs-sync/references/extended-workflow.md	ance_criterion: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mut
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	y > 제안 stability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의
 frozen	-	kiwi-srs-sync/references/extended-workflow.md	사용자가 별도로 update_stability 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정
 frozen	card-frozen-block	_shared/kiwi/run-ledger.md	iant_digest": "sha256:…over the frozen block…",
@@ -2430,7 +2430,7 @@ implemented	-	kiwi-srs-feasibility/SKILL.md	locked | status ∈ {in_progress, im
 implemented	-	kiwi-srs-from-code/SKILL.md	add_requirement 호출 시 status: "implemented". 그 후 add_verification_eviden
 implemented	-	kiwi-srs-from-code/SKILL.md	| 완전 | yes | stable | implemented — add_requirement 호출 시 status
 implemented	-	kiwi-srs-from-code/SKILL.md	| 완전 | 부분/없음 | stable | implemented |
-implemented	-	kiwi-srs-sync/SKILL.md	ote (AC 보강) + update_status (implemented/verified) + update_stability
+implemented	-	kiwi-srs-sync/SKILL.md	ion (AC 보강) + update_status (implemented/verified) + update_stability
 implemented	-	kiwi-srs-sync/references/extended-workflow.md	5. update_status — implemented / verified 전이 (§0번 사전 검증 통과한 것만
 implemented	-	kiwi-srs-sync/references/extended-workflow.md	us 면 backward 차단 (예: verified → implemented 금지)
 implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented) 호출 시도 → 차단 + Codex clarificat

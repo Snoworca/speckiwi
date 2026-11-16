@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
+import { acceptedSectionsText } from "../core/rules/section-allowlist.js";
 import { TARGET_TYPES } from "../core/target-types.js";
 import { REPORT_PATH_TOKEN_REGEX } from "../core/completed-work/report-paths.js";
 import { createTestMcpServer, WRITE_TOOL_WORKSPACE_ROOT_REFUSAL, type McpDependencies, type McpServerHandle, type McpToolHandler } from "./adapter.js";
@@ -317,7 +318,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   },
   append_section_note: {
     id: z.string(),
-    section: z.string(),
+    // @req FR-MCP-018 AC-1 — a string, not an enum: the headings and field names are taken too.
+    section: z.string().describe(acceptedSectionsText()),
     // No `.max(500)` here. The 500-unit bound applies to `append` only and lives in the mutation
     // core, which is the single place that knows the mode; a second copy of it on this shape
     // rejected a `replace` before the core could allow it, so the core-side fix alone left every

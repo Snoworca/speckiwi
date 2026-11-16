@@ -4428,8 +4428,9 @@ describe("FR-FLOW-154 AC-6 — the kiwi-srs-sync mutation list names a stability
       // order is the contract here: this is the sequence an agent walks. Cheaper than a golden and
       // it is what a rewrite of the list has to get past.
       expect(mutationListSteps(rendering), `${rendering}: the mutation list's steps, in order`).toEqual([
+        // FR-MCP-018 AC-3 (5.5.2): append_acceptance_criterion replaced append_section_note, which refuses the AC table.
         "add_requirement",
-        "append_section_note",
+        "append_acceptance_criterion",
         "add_trace_link",
         "add_verification_evidence",
         "update_status",

@@ -1,6 +1,6 @@
 import { applyPatchPlan } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
-import { resolveSectionHeading, type AllowedSection } from "../rules/section-allowlist.js";
+import { acceptedSectionsText, resolveSectionHeading, type AllowedSection } from "../rules/section-allowlist.js";
 import type { MutationResult, ProjectRoot } from "../types.js";
 import { assertOpensNoBlockBoundary } from "./block-prose.js";
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
@@ -184,13 +184,15 @@ async function appendSectionNoteUnlocked(
 
   const sectionResult = resolveSectionHeading(input.section);
   if (!sectionResult.ok) {
+    // @req FR-MCP-018 AC-3 — every spelling of a structured table gets the same refusal and its tools.
     if (sectionResult.reason === "denied") {
       return mutationFail(
         "MUTATION_DENIED",
-        `section '${input.section}' is denied (structured tables cannot be appended via free text)`
+        `section '${input.section}' is the ${sectionResult.heading} table, which free text cannot reach; use ${sectionResult.tools.join(" or ")}`
       );
     }
-    return mutationFail("USAGE", `unknown section: ${input.section}`);
+    // @req FR-MCP-018 AC-2 — the refusal names what is taken, so nobody reads the source to find it.
+    return mutationFail("USAGE", `unknown section: ${input.section}; section takes ${acceptedSectionsText()}`);
   }
   const heading = sectionResult.heading as "Rationale" | "Research / Analysis" | "Implementation Notes";
 

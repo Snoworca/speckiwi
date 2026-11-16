@@ -31,8 +31,8 @@ This file was split from `SKILL.md` for progressive disclosure. Read it only whe
       "ordinal": 1,
       "cu_id": "CU-001",
       "classification": "update",
-      "tool": "append_section_note",
-      "args": { "id": "FR-X-001", "section": "Acceptance Criteria", "note": "..." },
+      "tool": "append_acceptance_criterion",
+      "args": { "id": "FR-X-001", "text": "..." },
       "args_hash": "sha1...",
       "rationale": "...",
       "blocking_question": null
@@ -78,12 +78,12 @@ Codex clarification gate 4옵션:
 0. (사전 검증) 각 mutation 의 args 를 SRS-MD-Rules 대조:
    - update_status: 기존 status > 제안 status 면 backward 차단 (예: verified → implemented 금지)
    - update_stability: 기존 stability > 제안 stability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에서 허용
-   - append_section_note: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mutation skip + 다른 CU 진행 / (2) 사용자가 별도로 `update_stability` 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정) 후 본 스킬 재실행 / (3) 본 sync run abandon
+   - append_acceptance_criterion: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mutation skip + 다른 CU 진행 / (2) 사용자가 별도로 `update_stability` 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정) 후 본 스킬 재실행 / (3) 본 sync run abandon
    - add_requirement: target/scope 존재 확인, REQ-ID 충돌 확인
    - 위반 발견 시 해당 mutation skip + `rejected_findings.log` 기록 + 사용자 보고
    - **의무**: MCP `validate_spec` 을 dry-run 단계(§5) 말미에 1회 호출하여 사전 검증. 결과는 `proposed-mutations.md §1` 끝에 "validate_spec 결과" 1행으로 명시 (PASS / WARN n건 / ERROR n건). ERROR 잔존 시 §0.G1 의 평가자 FAIL 과 동일하게 mutation 0건으로 종료
 1. add_requirement (new-feature / new-scope=(2)기존 scope 확장만) — 신규 REQ 생성
-2. append_section_note (update) — 기존 REQ AC 보강
+2. append_acceptance_criterion (update) — 기존 REQ AC 보강
 3. add_trace_link — code anchor 등록 (source: Requirement, target: Code, reference: src/x.ts:45-67, relation: implements)
 4. add_verification_evidence — 테스트 통과한 경우 type=test 로 등록. verified 로 쓸 REQ 는 등록 전에 `../../_shared/kiwi/test-sufficiency.md` 확인을 그 REQ 범위(`--ids`)로 먼저 돌리고, 도구가 AC 마다 돌려준 인용을 reference·covers 로 쓴다 — gap 이 남은 REQ 는 verified 로 쓰지 않는다 (`test-sufficiency-gap`). 도구 결과의 `nonTest` 에 `evidenced=false` 인 표식 AC 가 있는 REQ 는 그 AC 를 사용자 확인 항목으로 보고하고 verified 로 쓰지 않는다 (`--auto` 로 풀지 않는다)
 5. update_status — implemented / verified 전이 (§0번 사전 검증 통과한 것만)

@@ -29,13 +29,13 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | §0.7 | **외부 모듈 수정 금지**. cwd 외부 path 가 diff 에 진입 시 즉시 §0.G2 발동 |
 | §0.8 | **시그니처 금지** (CLAUDE.md §6). 커밋·SRS·산출물 어디에도 AI 식별 정보 금지 |
 | §0.9 | **speckiwi MCP 필수**. 정상 target-scoped SRS read/mutation/status/evidence 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 fallback 이 아니다. MCP 부재 시 HALT |
-| §0.10 | **MCP mutation 권한 SSOT** (7종 허용). `add_requirement` / `append_section_note` / `update_status` / `update_stability` / `add_trace_link` / `add_verification_evidence` / `add_completed_work`. `set_target_goal` / `set_active_target` / `init_project` 는 미허용 (스킬 책임 외) |
+| §0.10 | **MCP mutation 권한 SSOT** (7종 허용). `add_requirement` / `append_acceptance_criterion` / `update_status` / `update_stability` / `add_trace_link` / `add_verification_evidence` / `add_completed_work`. `set_target_goal` / `set_active_target` / `init_project` 는 미허용 (스킬 책임 외) |
 | §0.11 | **4방향 분류 SSOT** (kiwi-srs §3.3 계승). 모든 변경 단위는 `conflict` / `update` / `new-feature` / `new-scope` 중 정확히 1개로 분류. `unclassified` 허용 안 함 (사용자 게이트 발동) |
 | §0.12 | **변경 단위 = 의미 단위**. 단일 파일이 여러 REQ 에 매핑될 수 있고, 단일 변경이 여러 분류축에 걸쳐있으면 분할. id 정규식: `change_unit.id` = `^CU-\d{3}$` |
 | §0.13 | **사용자 확인 의무**. 4방향 분류 모호, conflict 발생, target 외 REQ 영향, draft 상태 REQ 변경 — 모두 AskUserQuestion 단일 호출 분해 |
 | §0.14 | **계획·설계 산출물 없음**. 본 스킬은 계획 문서도 SDS 도 만들지 않는다. 산출물은 SRS Markdown + speckiwi MCP graph 양면 SSOT |
 | §0.15 | **검증 서브에이전트 모델 정책 SSOT**. 시니어 분석가·평가자 등 평가·검증은 **단일(single) 검증 서브에이전트**로 수행하며 기본적으로 **현재 세션 모델(current session model)**을 상속한다 (기존 Opus×1+Sonnet×1 이중 모델 평가자 패널을 대체). `--model <name>` (또는 사용자가 지명한 모델) 로 이 검증 서브에이전트의 모델을 override 한다. 3 Sonnet 사전조사·4방향 분류 게이트·dry-run 의무·심각도 게이트는 불변 |
-| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. **`--auto-apply` / `--yes-all` (기존 §0.2) 와의 의미 분리는 SSOT §11.1 참조** — 요약: `--auto-apply` / `--yes-all` 은 dry-run 단계 skip (MCP mutation 즉시 적용), `--auto` 는 모든 사용자 게이트를 격리 서브에이전트 결정으로 자동 진행 (dry-run 게이트 포함). 동시 명시 시 `--auto-apply` 우선 (§11.1). 본 스킬의 `critical_gates[]` 인라인 선언: `[{gate_id: "apply-all-force-apply", reason: "MCP mutation 영속화 비가역 (§0.G1 apply-all + §0.G4 force-apply)"}, {gate_id: "conflict-code-rollback", reason: "코드 rollback 은 비가역 변경 (§0.G3 conflict 옵션 (2))"}, {gate_id: "new-scope-creation", reason: "신규 scope 생성은 본 스킬 범위 밖 (/kiwi-srs 위임, §0.G3 new-scope 옵션 (1))"}, {gate_id: "stability-backward-transition", reason: "Stability backward 차단 위반 시도 (§10.1 step 0 — frozen→evolving 등)"}, {gate_id: "external-module-impact", reason: "cwd 외부 path 진입 (§0.G2)"}, {gate_id: "validate-spec-error", reason: "validate_spec ERROR 잔존 시 mutation 0건 종료 (§10.1 step 0)"}, {gate_id: "test-sufficiency-gap", reason: "verified 전이 직전 테스트 충분성 확인의 채우기 1회 뒤에도 인용 gap 잔존 — 그 REQ 는 verified 로 쓰지 않는다 (§10.1 step 4, _shared/kiwi/test-sufficiency.md)"}]`. critical_gates 매칭 게이트는 `--auto` 무관 사용자 HALT. 그 외 게이트(apply-selected / dry-run-only / abandon / update / new-feature / conflict 옵션 (1) AC 갱신 / new-scope 옵션 (2) 기존 scope 확장 / frozen note skip / blocking_questions clarification 등) 는 `--auto` 활성 시 §2 서브에이전트 결정 적용 |
+| §0.16 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. **`--auto-apply` / `--yes-all` (기존 §0.2) 와의 의미 분리는 SSOT §11.1 참조** — 요약: `--auto-apply` / `--yes-all` 은 dry-run 단계 skip (MCP mutation 즉시 적용), `--auto` 는 모든 사용자 게이트를 격리 서브에이전트 결정으로 자동 진행 (dry-run 게이트 포함). 동시 명시 시 `--auto-apply` 우선 (§11.1). 본 스킬의 `critical_gates[]` 인라인 선언: `[{gate_id: "apply-all-force-apply", reason: "MCP mutation 영속화 비가역 (§0.G1 apply-all + §0.G4 force-apply)"}, {gate_id: "conflict-code-rollback", reason: "코드 rollback 은 비가역 변경 (§0.G3 conflict 옵션 (2))"}, {gate_id: "new-scope-creation", reason: "신규 scope 생성은 본 스킬 범위 밖 (/kiwi-srs 위임, §0.G3 new-scope 옵션 (1))"}, {gate_id: "stability-backward-transition", reason: "Stability backward 차단 위반 시도 (§10.1 step 0 — frozen→evolving 등)"}, {gate_id: "external-module-impact", reason: "cwd 외부 path 진입 (§0.G2)"}, {gate_id: "validate-spec-error", reason: "validate_spec ERROR 잔존 시 mutation 0건 종료 (§10.1 step 0)"}, {gate_id: "test-sufficiency-gap", reason: "verified 전이 직전 테스트 충분성 확인의 채우기 1회 뒤에도 인용 gap 잔존 — 그 REQ 는 verified 로 쓰지 않는다 (§10.1 step 4, _shared/kiwi/test-sufficiency.md)"}]`. critical_gates 매칭 게이트는 `--auto` 무관 사용자 HALT. 그 외 게이트(apply-selected / dry-run-only / abandon / update / new-feature / conflict 옵션 (1) AC 갱신 / new-scope 옵션 (2) 기존 scope 확장 / frozen REQ AC skip / blocking_questions clarification 등) 는 `--auto` 활성 시 §2 서브에이전트 결정 적용 |
 | §0.17 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 
 ### §0.G — 핵심 게이트 결정표
@@ -60,7 +60,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
 | 분류 | 정의 | 매핑 액션 |
 |---|---|---|
 | **conflict** | 변경 코드가 기존 REQ 의 AC 또는 dod 와 정면 충돌 (예: AC 가 "X 거부" 인데 코드가 "X 허용") | AskUserQuestion: (1) REQ AC 갱신 / (2) 코드 rollback / (3) deprecated 처리 |
-| **update** | 기존 REQ 의 AC/Status/Stability 가 변경 코드 반영을 위해 갱신 필요 | `append_section_note` (AC 보강) + `update_status` (implemented/verified) + `update_stability` (필요 시 승급) |
+| **update** | 기존 REQ 의 AC/Status/Stability 가 변경 코드 반영을 위해 갱신 필요 | `append_acceptance_criterion` (AC 보강) + `update_status` (implemented/verified) + `update_stability` (필요 시 승급) |
 | **new-feature** | 기존 target 내에 신규 REQ 추가가 필요 | `add_requirement` (target/scope 동일, 신규 REQ-ID 발급) |
 | **new-scope** | 기존 target 의 어느 scope 에도 안 들어가는 신규 영역 | AskUserQuestion 3옵션: (1) 신규 scope 생성 — **본 스킬 범위 밖, `/kiwi-srs` 위임** (사용자 확정 후 본 스킬 종료) / (2) 기존 scope 확장 — `add_requirement` 호출 시 기존 scope 명 사용 (본 스킬 내 처리) / (3) 다른 target 으로 이동 — **본 스킬 범위 밖, 사용자가 `set_active_target` 수동 실행 후 본 스킬 재실행** |
 
@@ -121,7 +121,7 @@ description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석�
   - `proposed-mutations.json` — 기계 형식 mutation 큐
   - `applied-mutations.jsonl` — 실제 적용된 MCP 호출 로그 (mcp_call_log)
   - `rejected_findings.log`
-- **MCP mutation** (사용자 승인 후): `add_requirement` / `append_section_note` / `update_status` / `update_stability` / `add_trace_link` / `add_verification_evidence` / `add_completed_work`
+- **MCP mutation** (사용자 승인 후): `add_requirement` / `append_acceptance_criterion` / `update_status` / `update_stability` / `add_trace_link` / `add_verification_evidence` / `add_completed_work`
 - **Markdown SRS 갱신**: speckiwi MCP 내부 line-patch
 
 **Run-id**: `{YYYY-MM-DD}.{project-slug}.{target-slug}.sync-{ISO-time-short}`. 정규식 SSOT: `^[a-z0-9.-]{4,50}$`. ASCII kebab, ≤50자.
@@ -458,12 +458,12 @@ AskUserQuestion 4옵션:
 0. (사전 검증) 각 mutation 의 args 를 SRS-MD-Rules 대조:
    - update_status: 기존 status > 제안 status 면 backward 차단 (예: verified → implemented 금지)
    - update_stability: 기존 stability > 제안 stability 면 backward 차단 (frozen → evolving 금지). 단 deprecated 로의 전이는 모든 단계에서 허용
-   - append_section_note: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mutation skip + 다른 CU 진행 / (2) 사용자가 별도로 `update_stability` 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정) 후 본 스킬 재실행 / (3) 본 sync run abandon
+   - append_acceptance_criterion: REQ 의 Stability=frozen 이면 차단 + 사용자 게이트 3옵션: (1) 해당 mutation skip + 다른 CU 진행 / (2) 사용자가 별도로 `update_stability` 강등 (frozen→deprecated 또는 명시적 unfreeze 의사결정) 후 본 스킬 재실행 / (3) 본 sync run abandon
    - add_requirement: target/scope 존재 확인, REQ-ID 충돌 확인
    - 위반 발견 시 해당 mutation skip + `rejected_findings.log` 기록 + 사용자 보고
    - **의무**: MCP `validate_spec` 을 dry-run 단계(§5) 말미에 1회 호출하여 사전 검증. 결과는 `proposed-mutations.md §1` 끝에 "validate_spec 결과" 1행으로 명시 (PASS / WARN n건 / ERROR n건). ERROR 잔존 시 §0.G1 의 평가자 FAIL 과 동일하게 mutation 0건으로 종료
 1. add_requirement (new-feature / new-scope=(2)기존 scope 확장만) — 신규 REQ 생성
-2. append_section_note (update) — 기존 REQ AC 보강
+2. append_acceptance_criterion (update) — 기존 REQ AC 보강
 3. add_trace_link — code anchor 등록 (source: Requirement, target: Code, reference: src/x.ts:45-67, relation: implements)
 4. add_verification_evidence — 테스트 통과한 경우 type=test 로 등록. verified 로 쓸 REQ 는 등록 전에 `_shared/kiwi/test-sufficiency.md` 확인을 그 REQ 범위(`--ids`)로 먼저 돌리고, 도구가 AC 마다 돌려준 인용을 reference·covers 로 쓴다 — gap 이 남은 REQ 는 verified 로 쓰지 않는다 (`test-sufficiency-gap`). 도구 결과의 `nonTest` 에 `evidenced=false` 인 표식 AC 가 있는 REQ 는 그 AC 를 사용자 확인 항목으로 보고하고 verified 로 쓰지 않는다 (`--auto` 로 풀지 않는다)
 5. update_status — implemented / verified 전이 (§0번 사전 검증 통과한 것만)
