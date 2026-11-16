@@ -38,6 +38,8 @@ import {
   diagnoseRequirementIdCollisions,
   planRequirementIdCollisionRepair,
   type RequirementIdCollisionRepairPlanInput,
+  keepReferencesFromInput,
+  referenceEditsFromInput,
   type RequirementOccurrenceIdentity
 } from "../../core/mutation/repair-requirement-id.js";
 import { resultToMcp } from "../errors.js";
@@ -114,16 +116,6 @@ function occurrenceInput(value: unknown): RequirementOccurrenceIdentity | null {
   return { filePath: record.filePath, headingLine: record.headingLine, blockHash: record.blockHash };
 }
 
-function referenceEditsInput(value: unknown): Array<{ filePath: string; line: number; from: string; to: string }> {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((item) => {
-    if (typeof item !== "object" || item === null || Array.isArray(item)) return [];
-    const record = item as Partial<{ filePath: string; line: number; from: string; to: string }>;
-    if (typeof record.filePath !== "string" || typeof record.line !== "number" || typeof record.from !== "string" || typeof record.to !== "string") return [];
-    return [{ filePath: record.filePath, line: record.line, from: record.from, to: record.to }];
-  });
-}
-
 function repairPlanInput(input: Record<string, unknown>): RequirementIdCollisionRepairPlanInput | null {
   const keep = occurrenceInput(input.keep);
   const rename = occurrenceInput(input.rename);
@@ -134,7 +126,8 @@ function repairPlanInput(input: Record<string, unknown>): RequirementIdCollision
     keep,
     rename,
     ...(typeof input.replacementId === "string" ? { replacementId: input.replacementId } : { allocationStrategy: "next_available" as const }),
-    referenceEdits: referenceEditsInput(input.referenceEdits)
+    referenceEdits: referenceEditsFromInput(input.referenceEdits),
+    keepReferences: keepReferencesFromInput(input.keepReferences)
   };
 }
 

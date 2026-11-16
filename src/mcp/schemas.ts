@@ -306,7 +306,7 @@ export const toolSpecs: readonly ToolSpec[] = [
   readSpec("pipeline-next", mcp("workflow_pipeline_next", `A thin alias over the pipeline journal reader. ${derivationSentence({ role: "alias", field: "nextHint", owner: "workflow_pipeline_status" })} Read-only.`), "workflowPipelineNext", { derivation: { role: "alias", field: "nextHint", owner: "workflow_pipeline_status" } }),
   readSpec("pipeline-compact", mcp("workflow_pipeline_compact", "Reports what compacting the pipeline journal would leave behind, as counts rather than as rows: how many entries it holds, how many survive supersession, and how many logically deleted ones were filtered out. Nothing is rewritten. Read-only."), "workflowPipelineCompact"),
   // Container command with no own handler; hosts the collision-repair "plan" tool (CLI in repair.ts).
-  readSpec("pipeline", mcp("plan_requirement_id_collision_repair", "Produces the repair plan for one duplicate Requirement ID: which occurrence keeps the id, which is renamed, what replacement it takes and which references move with it. Nothing is applied here. Read-only."), "planRequirementIdCollisionRepair"),
+  readSpec("pipeline", mcp("plan_requirement_id_collision_repair", "Produces the repair plan for one duplicate Requirement ID: which occurrence keeps the id, which is renamed, what replacement it takes and which references move with it. A reference edit only swaps the duplicate id for the replacement id, on the matches its `occurrence` names (`all` or the n-th; required when `from` matches more than once on its line); lines inside the kept block that no edit names, lines listed in `keepReferences` and lines an edit with `to` equal to `from` confirms stay as they are and come back under `keptReferences`, and a rewritten line that still holds the duplicate id comes back under `remainingReferences`. Nothing is applied here. Read-only."), "planRequirementIdCollisionRepair"),
   // `pipeline status/tail/compact` aliases: CLI-only reads, except `status`/`tail` also host the v3
   // compatibility-check refresh/revoke MCP tools (no dedicated CLI of their own).
   mutationSpec("status", mcp("refresh_compatibility_check", "Recomputes the verdict on an existing checked-compatible edge between two requirements and stamps it clean again. Writes the trace-link row on the holding requirement block."), "req-scoped", "refreshCompatibilityCheck", [DRY_RUN]),
@@ -335,7 +335,7 @@ export const toolSpecs: readonly ToolSpec[] = [
   readSpec("attention", undefined, "attentionQueue"),
   readSpec("commands", undefined, "renderCommandCatalog"),
   // Container command with no own handler; hosts the collision-repair "diagnose" tool (CLI in repair.ts).
-  readSpec("links", mcp("diagnose_requirement_id_collisions", "Finds every duplicate Requirement ID in the workspace and, for each, the occurrences that carry it with their file, heading line and block hash — the three coordinates a repair plan must name. Read-only."), "diagnoseRequirementIdCollisions"),
+  readSpec("links", mcp("diagnose_requirement_id_collisions", "Finds every duplicate Requirement ID in the workspace and, for each, the occurrences that carry it with their file, heading line and block hash — the three coordinates a repair plan must name. The lines inside each occurrence's own block that mention the id come back under `blockReferences`. Read-only."), "diagnoseRequirementIdCollisions"),
   readSpec("check", undefined, "checkLinks"),
   // Container command with no own handler; hosts the v3 list-steps MCP tool. `step validate` (below) is
   // the second `validate` node and carries the validate_step MCP tool.
@@ -737,7 +737,7 @@ export const toolSpecs: readonly ToolSpec[] = [
   mutationSpec("plan", undefined, "workspace", "planVerificationRound"),
   mutationSpec("record", undefined, "workspace", "recordSectionVerified"),
   // Container command with no own handler; hosts the collision-repair "apply" tool (CLI in repair.ts).
-  mutationSpec("work-order", mcp("apply_requirement_id_collision_repair", "Carries out an explicit keep/rename mapping for one duplicate Requirement ID, refusing anything the mapping does not name, and never renumbering, beautifying or bulk-editing. Writes the affected SRS documents and the reference sites the mapping lists."), "workspace", "applyRequirementIdCollisionRepair"),
+  mutationSpec("work-order", mcp("apply_requirement_id_collision_repair", "Carries out an explicit keep/rename mapping for one duplicate Requirement ID, refusing anything the mapping does not name, and never renumbering, beautifying or bulk-editing. Its reference edits and `keepReferences` follow the plan tool's rules, and any other line that names the duplicate id, outside the kept block and the rename's own lines (its heading, Trace Link rows and expired successors), stops it unless an edit or a keep entry covers it. Writes the affected SRS documents and the reference sites the mapping lists."), "workspace", "applyRequirementIdCollisionRepair"),
 
   // ---- orchestrate namespace (registerOrchestrateCommands) ----
   ...orchestrateSpecs(),

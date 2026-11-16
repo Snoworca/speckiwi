@@ -22,26 +22,55 @@ export interface RequirementOccurrenceIdentity {
   blockHash: string;
 }
 
+/**
+ * @req FR-NODE-317 AC-2 — one explicit rewrite of a line. `occurrence` says which matches of `from` it
+ * changes: every one (`"all"`) or the n-th from the start of the line. Without it `from` must match once.
+ */
+export interface RequirementReferenceEdit {
+  filePath: string;
+  line: number;
+  from: string;
+  to: string;
+  occurrence?: "all" | number;
+}
+
+/** @req FR-NODE-317 AC-6 — a line confirmed as naming the kept occurrence, by position only. */
+export interface RequirementKeepReference {
+  filePath: string;
+  line: number;
+}
+
+export interface RequirementReferenceLine {
+  filePath: string;
+  line: number;
+  excerpt: string;
+}
+
 export interface RequirementIdCollisionRepairPlanInput {
   duplicateId: string;
   keep: RequirementOccurrenceIdentity;
   rename: RequirementOccurrenceIdentity;
   replacementId?: string;
   allocationStrategy?: "next_available";
-  referenceEdits?: Array<{ filePath: string; line: number; from: string; to: string }>;
+  referenceEdits?: RequirementReferenceEdit[];
+  keepReferences?: RequirementKeepReference[];
   dryRun?: boolean;
 }
 
 export interface RequirementIdCollisionRepairApplyInput extends RequirementIdCollisionRepairPlanInput {
   ignoreLock?: boolean;
   skipLock?: boolean;
+  /** @req FR-NODE-317 AC-8 — the lines a written plan recorded, checked before an apply from that plan. */
+  expectedLines?: Array<{ filePath: string; line: number; original: string }>;
 }
 
 export interface RequirementIdCollisionGroup {
   duplicateId: string;
   occurrences: RequirementOccurrenceIdentity[];
   candidateReplacementIds: string[];
-  ambiguousReferences: Array<{ filePath: string; line: number; excerpt: string }>;
+  ambiguousReferences: RequirementReferenceLine[];
+  /** @req FR-NODE-317 AC-5 — the lines inside each occurrence's own block, with that block's heading line. */
+  blockReferences: Array<RequirementReferenceLine & { headingLine: number }>;
   repairReady: boolean;
   conflictMarkers: boolean;
   diagnostic: Diagnostic;
@@ -52,10 +81,15 @@ export interface RequirementIdCollisionRepairPlan {
   keep: RequirementOccurrenceIdentity;
   rename: RequirementOccurrenceIdentity;
   replacementId: string;
-  referenceEdits: Array<{ filePath: string; line: number; from: string; to: string }>;
+  referenceEdits: RequirementReferenceEdit[];
+  keepReferences: RequirementKeepReference[];
   touchedFiles: string[];
   operations: Array<{ filePath: string; line: number; original?: string; replacement: string }>;
-  ambiguousReferences: Array<{ filePath: string; line: number; excerpt: string }>;
+  ambiguousReferences: RequirementReferenceLine[];
+  /** @req FR-NODE-317 AC-5 AC-6 */
+  keptReferences: Array<RequirementReferenceLine & { source: "kept-block" | "keepReferences" }>;
+  /** @req FR-NODE-317 AC-7 */
+  remainingReferences: Array<RequirementReferenceLine & { matches: number }>;
   pendingDuplicateGroups: string[];
   written: false;
 }
@@ -68,6 +102,8 @@ export interface RequirementIdCollisionRepairOutput {
   completedOperations: number;
   pendingOperations: number;
   pendingDuplicateGroups: string[];
+  /** @req FR-NODE-317 AC-7 */
+  remainingReferences: Array<RequirementReferenceLine & { matches: number }>;
   pendingRepair?: RequirementIdCollisionRepairPlan;
 }
 
@@ -95,12 +131,17 @@ function toGroups(workspace: ParsedWorkspace, diagnostics: Diagnostic[]): Requir
     });
     const candidate = allocateNextId(workspace, details.duplicateId);
     const ambiguous = findInboundReferences(workspace, details.duplicateId, occurrences);
+    const duplicateId = details.duplicateId;
+    const blockReferences = occurrences.flatMap((occurrence) =>
+      blockLines(workspace, occurrence, duplicateId).map((reference) => ({ ...reference, headingLine: occurrence.headingLine }))
+    );
     return [
       {
         duplicateId: details.duplicateId,
         occurrences,
         candidateReplacementIds: candidate ? [candidate] : [],
         ambiguousReferences: ambiguous,
+        blockReferences,
         repairReady: !conflictMarkers && occurrences.length > 1,
         conflictMarkers,
         diagnostic: item
@@ -170,7 +211,7 @@ function findInboundReferences(
   const references: Array<{ filePath: string; line: number; excerpt: string }> = [];
   for (const file of workspace.files) {
     file.lines.forEach((line, index) => {
-      if (!line.includes(duplicateId)) return;
+      if (!namesId(line, duplicateId)) return;
       const lineNo = index + 1;
       const key = explicitReferenceKey({ filePath: file.relativePath, line: lineNo });
       if (headingKeys.has(key) || explicit.has(key)) return;
@@ -198,35 +239,205 @@ function resolveReplacementId(workspace: ParsedWorkspace, input: RequirementIdCo
   return mutationOk(replacementId);
 }
 
-function validateReferenceEdits(workspace: ParsedWorkspace, input: RequirementIdCollisionRepairPlanInput): MutationResult | undefined {
-  for (const edit of input.referenceEdits ?? []) {
-    // The write is `line.replace(from, to)` and the only other check is that the line contains
-    // `from`. A `to` carrying a newline therefore writes whatever follows it at column zero of a
-    // spec file: measured landing `| Status | verified |` plus an unclosed fence through a repair
-    // that is supposed to renumber an identifier, with no acceptance-criterion, evidence or
-    // stability gate anywhere in its path. A reference edit replaces text inside one line.
-    const oneLine = assertSingleLine<RequirementIdCollisionRepairOutput>(`referenceEdits[${edit.filePath}:${edit.line}].to`, edit.to);
-    if (oneLine) return oneLine;
-    const file = findFile(workspace, edit.filePath);
-    const line = file?.lines[edit.line - 1];
-    if (!file || line === undefined || !line.includes(edit.from)) {
-      const message = `Explicit reference edit is stale for ${edit.filePath}:${edit.line}`;
-      return mutationFail("STALE_PATCH", message, [diagnostic("SRS-E032", "error", message, { filePath: edit.filePath, line: edit.line })], {
-        staleGuard: { filePath: edit.filePath, retry: "rerun repair requirement-id-collisions plan" }
-      });
-    }
-  }
-  return undefined;
+function staleReference(filePath: string, line: number, message: string): MutationResult<never> {
+  return mutationFail("STALE_PATCH", message, [diagnostic("SRS-E032", "error", message, { filePath, line })], {
+    staleGuard: { filePath, retry: "rerun repair requirement-id-collisions plan" }
+  }) as MutationResult<never>;
 }
 
-function ambiguousReferences(workspace: ParsedWorkspace, input: RequirementIdCollisionRepairPlanInput, groupOccurrences: RequirementOccurrenceIdentity[], replacementId: string): Array<{ filePath: string; line: number; excerpt: string }> {
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Where `needle` starts in `line`, left to right, without overlap. @req FR-NODE-317 AC-1 AC-2
+ * The one matching rule of this repair: every test of whether a line names the duplicate id goes
+ * through it, so counting, ambiguity, the kept block, keepReferences, the swap check and the
+ * remaining-match report cannot disagree about one line. A match stands on its own: an id that merely
+ * starts with the needle (one more digit, or an NFR prefix) is another requirement, and counted it let
+ * "all" rewrite that requirement's id. Punctuation around it (`_`, `*`, quotes, brackets) does not
+ * make it another id.
+ */
+function matchStarts(line: string, needle: string): number[] {
+  const startsWord = /^[A-Za-z0-9]/.test(needle);
+  const endsWord = /[A-Za-z0-9]$/.test(needle);
+  const starts: number[] = [];
+  for (let at = line.indexOf(needle); needle.length > 0 && at !== -1; at = line.indexOf(needle, at + 1)) {
+    if (startsWord && /[A-Za-z0-9-]/.test(line[at - 1] ?? "")) continue;
+    if (endsWord && /[A-Za-z0-9]/.test(line[at + needle.length] ?? "")) continue;
+    if (starts.length > 0 && at < starts[starts.length - 1]! + needle.length) continue;
+    starts.push(at);
+  }
+  return starts;
+}
+
+function namesId(line: string, id: string): boolean {
+  return matchStarts(line, id).length > 0;
+}
+
+/** The non-heading lines inside one occurrence's block that name the duplicate id. */
+function blockLines(workspace: ParsedWorkspace, occurrence: RequirementOccurrenceIdentity, duplicateId: string): RequirementReferenceLine[] {
+  const record = findRecord(workspace, occurrence);
+  const file = findFile(workspace, occurrence.filePath);
+  if (!record || !file) return [];
+  const end = record.blockEndLine ?? file.lines.length;
+  const lines: RequirementReferenceLine[] = [];
+  for (let lineNo = occurrence.headingLine + 1; lineNo <= end; lineNo += 1) {
+    const text = file.lines[lineNo - 1] ?? "";
+    if (namesId(text, duplicateId)) lines.push({ filePath: file.relativePath, line: lineNo, excerpt: text.trim().slice(0, 160) });
+  }
+  return lines;
+}
+
+/** The lines the rename rewrites by itself: its heading and its own Trace Link and successor references. */
+function renameOwnLineKeys(workspace: ParsedWorkspace, input: RequirementIdCollisionRepairPlanInput, replacementId: string): Set<string> {
+  return new Set([
+    explicitReferenceKey({ filePath: input.rename.filePath, line: input.rename.headingLine }),
+    ...renamedBlockReferences(workspace, input, replacementId).map((rewrite) => explicitReferenceKey({ filePath: rewrite.file.relativePath, line: rewrite.line }))
+  ]);
+}
+
+interface ReferenceLineRewrite {
+  file: TextFile;
+  line: number;
+  original: string;
+  replacement: string;
+}
+
+interface ResolvedReferences {
+  rewrites: ReferenceLineRewrite[];
+  keptReferences: RequirementIdCollisionRepairPlan["keptReferences"];
+  remainingReferences: RequirementIdCollisionRepairPlan["remainingReferences"];
+  /** Lines a reference edit or a keepReferences entry names: none of them is ambiguous. */
+  explicitKeys: Set<string>;
+}
+
+/**
+ * @req FR-NODE-317 AC-1 AC-2 AC-3 AC-4 AC-6 AC-7 — every reference edit and keep confirmation resolved
+ * against the documents as they stand, or the first reason none of them may be written. A reference
+ * edit only swaps the duplicate id for the replacement id, on the matches it names; edits on one line
+ * become one rewrite of that line, so apply never meets two operations on one original line.
+ */
+function resolveReferences(workspace: ParsedWorkspace, input: RequirementIdCollisionRepairPlanInput, replacementId: string): MutationResult<ResolvedReferences> {
+  const ownKeys = renameOwnLineKeys(workspace, input, replacementId);
+  const explicitKeys = new Set<string>();
+  const keepKeys = new Set<string>();
+  const keptReferences: ResolvedReferences["keptReferences"] = [];
+
+  for (const keep of input.keepReferences ?? []) {
+    const file = findFile(workspace, keep.filePath);
+    const line = file?.lines[keep.line - 1];
+    if (!file || line === undefined || !namesId(line, input.duplicateId)) {
+      return staleReference(keep.filePath, keep.line, `keepReferences names ${keep.filePath}:${keep.line}, which does not hold ${input.duplicateId}`);
+    }
+    if (ownKeys.has(explicitReferenceKey(keep))) {
+      return mutationFail("MUTATION_DENIED", `keepReferences names ${keep.filePath}:${keep.line}, a line the rename rewrites by itself`);
+    }
+    keepKeys.add(explicitReferenceKey(keep));
+    explicitKeys.add(explicitReferenceKey(keep));
+    keptReferences.push({ filePath: keep.filePath, line: keep.line, excerpt: line.trim().slice(0, 160), source: "keepReferences" });
+  }
+
+  const spansByLine = new Map<string, { file: TextFile; line: number; original: string; spans: Array<{ start: number; end: number; to: string }> }>();
+  const confirmKeys = new Set<string>();
+  for (const edit of input.referenceEdits ?? []) {
+    const where = `${edit.filePath}:${edit.line}`;
+    // A `to` carrying a newline writes whatever follows it at column zero of a spec file: measured
+    // landing `| Status | verified |` plus an unclosed fence through a repair that is supposed to
+    // renumber an identifier. A reference edit replaces text inside one line.
+    const oneLine = assertSingleLine<RequirementIdCollisionRepairOutput>(`referenceEdits[${where}].to`, edit.to);
+    if (oneLine) return oneLine as MutationResult<never>;
+    const file = findFile(workspace, edit.filePath);
+    const line = file?.lines[edit.line - 1];
+    if (!file || line === undefined || !line.includes(edit.from)) return staleReference(edit.filePath, edit.line, `Explicit reference edit is stale for ${where}`);
+    // @req FR-NODE-317 AC-4 — the edit swaps the duplicate id and nothing else, so a repair cannot
+    // write a Status, a relation or any other text no gate in its path would check.
+    const idStarts = matchStarts(edit.from, input.duplicateId);
+    if (idStarts.length === 0) {
+      return mutationFail("MUTATION_DENIED", `referenceEdits[${where}]: from must contain ${input.duplicateId}`);
+    }
+    const pieces = [...idStarts, edit.from.length].map((end, index) => edit.from.slice(index === 0 ? 0 : idStarts[index - 1]! + input.duplicateId.length, end));
+    const swap = new RegExp(`^${pieces.map(escapeRegExp).join(`(?:${escapeRegExp(input.duplicateId)}|${escapeRegExp(replacementId)})`)}$`);
+    if (!swap.test(edit.to)) {
+      return mutationFail("MUTATION_DENIED", `referenceEdits[${where}]: to may differ from from only by ${input.duplicateId} replaced with ${replacementId}`);
+    }
+    if (ownKeys.has(explicitReferenceKey(edit))) {
+      return mutationFail("MUTATION_DENIED", `referenceEdits[${where}] names a line the rename rewrites by itself`);
+    }
+    explicitKeys.add(explicitReferenceKey(edit));
+    // @req FR-NODE-317 AC-1 — from equal to confirms the line as kept. Its matches still take part in
+    // the occurrence and overlap checks, so a rewrite on the same line cannot change what it keeps.
+    const confirms = edit.from === edit.to;
+    if (confirms) confirmKeys.add(where);
+    const starts = matchStarts(line, edit.from);
+    if (starts.length === 0) return staleReference(edit.filePath, edit.line, `Explicit reference edit is stale for ${where}`);
+    let chosen: number[];
+    if (edit.occurrence === "all" || (edit.occurrence === undefined && confirms)) chosen = starts;
+    else if (edit.occurrence === undefined) {
+      if (starts.length > 1) {
+        const message = `${where}: ${starts.length} matches of "${edit.from}"; name occurrence "all" or the match number`;
+        return mutationFail("AMBIGUOUS_REFERENCE", message, [diagnostic("SRS-E076", "error", message, { filePath: edit.filePath, line: edit.line }, { matches: starts.length })]);
+      }
+      chosen = starts;
+    } else if (!Number.isInteger(edit.occurrence) || edit.occurrence < 1) {
+      return mutationFail("MUTATION_DENIED", `referenceEdits[${where}]: occurrence must be "all" or a whole number from 1`);
+    } else if (edit.occurrence > starts.length) {
+      return staleReference(edit.filePath, edit.line, `${where}: occurrence ${edit.occurrence} but the line holds ${starts.length} matches of "${edit.from}"`);
+    } else chosen = [starts[edit.occurrence - 1]!];
+    const entry = spansByLine.get(where) ?? { file, line: edit.line, original: line, spans: [] };
+    entry.spans.push(...chosen.map((start) => ({ start, end: start + edit.from.length, to: edit.to })));
+    spansByLine.set(where, entry);
+  }
+
+  const rewrites: ReferenceLineRewrite[] = [];
+  const remainingReferences: ResolvedReferences["remainingReferences"] = [];
+  for (const [where, entry] of spansByLine) {
+    const spans = [...entry.spans].sort((left, right) => left.start - right.start);
+    // @req FR-NODE-317 AC-3 — overlapping edits on one line are refused here, before any write.
+    if (spans.some((span, index) => index > 0 && span.start < spans[index - 1]!.end)) {
+      return mutationFail("MUTATION_DENIED", `${where}: reference edits on this line overlap`);
+    }
+    let replacement = entry.original;
+    for (const span of [...spans].reverse()) replacement = replacement.slice(0, span.start) + span.to + replacement.slice(span.end);
+    // @req FR-NODE-317 AC-7 — counted per match: a match no edit rewrites or confirms is reported, so a
+    // confirmation of one match never hides another on the same line. keepReferences keeps a whole line.
+    const left = matchStarts(entry.original, input.duplicateId).filter((start) => !spans.some((span) => start >= span.start && start < span.end)).length;
+    if (left > 0 && !keepKeys.has(where)) remainingReferences.push({ filePath: entry.file.relativePath, line: entry.line, excerpt: replacement.trim().slice(0, 160), matches: left });
+    // A line only confirmed as kept is not rewritten: no operation, as before.
+    if (replacement !== entry.original) rewrites.push({ file: entry.file, line: entry.line, original: entry.original, replacement });
+  }
+
+  // @req FR-NODE-317 AC-5 — the kept block's own lines name the kept requirement: kept, and listed,
+  // unless an edit rewrites them. A from-equal-to confirmation keeps them and is listed the same way.
+  const rewritten = new Set(rewrites.map((rewrite) => explicitReferenceKey({ filePath: rewrite.file.relativePath, line: rewrite.line })));
+  const listed = new Set(keptReferences.map(explicitReferenceKey));
+  const keptBlock = blockLines(workspace, input.keep, input.duplicateId);
+  const inKeptBlock = new Set(keptBlock.map(explicitReferenceKey));
+  for (const reference of keptBlock) {
+    const key = explicitReferenceKey(reference);
+    if (listed.has(key) || (rewritten.has(key) && !confirmKeys.has(key))) continue;
+    explicitKeys.add(key);
+    keptReferences.push({ ...reference, source: "kept-block" });
+  }
+  for (const key of confirmKeys) {
+    if (listed.has(key) || inKeptBlock.has(key)) continue;
+    const separator = key.lastIndexOf(":");
+    const filePath = key.slice(0, separator);
+    const line = Number(key.slice(separator + 1));
+    keptReferences.push({ filePath, line, excerpt: (findFile(workspace, filePath)?.lines[line - 1] ?? "").trim().slice(0, 160), source: "keepReferences" });
+  }
+  const byPosition = <T extends { filePath: string; line: number }>(items: T[]) => items.sort((left, right) => left.filePath.localeCompare(right.filePath) || left.line - right.line);
+  return mutationOk({ rewrites, keptReferences: byPosition(keptReferences), remainingReferences: byPosition(remainingReferences), explicitKeys });
+}
+
+function ambiguousReferences(workspace: ParsedWorkspace, input: RequirementIdCollisionRepairPlanInput, groupOccurrences: RequirementOccurrenceIdentity[], replacementId: string, explicitKeys: Set<string>): RequirementReferenceLine[] {
   const occurrenceHeadingKeys = new Set(groupOccurrences.map((occurrence) => explicitReferenceKey({ filePath: occurrence.filePath, line: occurrence.headingLine })));
   // The renamed block's own references are rewritten with it, so they are not ambiguous.
   const ownLines = new Set(renamedBlockReferences(workspace, input, replacementId).map((rewrite) => explicitReferenceKey({ filePath: rewrite.file.relativePath, line: rewrite.line })));
-  const references: Array<{ filePath: string; line: number; excerpt: string }> = [];
+  const references: RequirementReferenceLine[] = [];
   for (const file of workspace.files) {
     file.lines.forEach((line, index) => {
-      if (!line.includes(input.duplicateId)) return;
+      if (!namesId(line, input.duplicateId)) return;
       const lineNo = index + 1;
       if (occurrenceHeadingKeys.has(explicitReferenceKey({ filePath: file.relativePath, line: lineNo }))) return;
       // The selected occurrence's heading line, which the plan has matched against the parsed records.
@@ -236,8 +447,7 @@ function ambiguousReferences(workspace: ParsedWorkspace, input: RequirementIdCol
       references.push({ filePath: file.relativePath, line: lineNo, excerpt: line.trim().slice(0, 160) });
     });
   }
-  const explicit = new Set((input.referenceEdits ?? []).map((item) => `${item.filePath}:${item.line}`));
-  return references.filter((item) => !explicit.has(`${item.filePath}:${item.line}`));
+  return references.filter((item) => !explicitKeys.has(explicitReferenceKey(item)));
 }
 
 /**
@@ -257,28 +467,14 @@ function buildRenameOperations(workspace: ParsedWorkspace, file: TextFile, input
   ];
 }
 
-function buildOperationsByFile(workspace: ParsedWorkspace, input: RequirementIdCollisionRepairPlanInput, replacementId: string): Map<TextFile, PatchOperation[]> {
-  const operationsByPath = new Map<string, PatchOperation[]>();
-  const renameFile = findFile(workspace, input.rename.filePath);
-  if (renameFile) {
-    operationsByPath.set(renameFile.relativePath, buildRenameOperations(workspace, renameFile, input, replacementId));
-  }
-  for (const edit of input.referenceEdits ?? []) {
-    const operations = operationsByPath.get(edit.filePath) ?? [];
-    operationsByPath.set(edit.filePath, operations);
-  }
-
+function buildOperationsByFile(workspace: ParsedWorkspace, input: RequirementIdCollisionRepairPlanInput, replacementId: string, rewrites: readonly ReferenceLineRewrite[]): Map<TextFile, PatchOperation[]> {
   const result = new Map<TextFile, PatchOperation[]>();
-  for (const [filePath, operations] of operationsByPath.entries()) {
-    const file = findFile(workspace, filePath);
-    if (!file) continue;
-    const fileOperations = operations.length > 0 ? operations : [];
-    for (const edit of input.referenceEdits ?? []) {
-      if (edit.filePath !== file.relativePath) continue;
-      const line = file.lines[edit.line - 1] ?? "";
-      fileOperations.push({ type: "replaceLine", line: edit.line, original: line, replacement: line.replace(edit.from, edit.to) });
-    }
-    result.set(file, fileOperations);
+  const renameFile = findFile(workspace, input.rename.filePath);
+  if (renameFile) result.set(renameFile, buildRenameOperations(workspace, renameFile, input, replacementId));
+  for (const rewrite of rewrites) {
+    const operations = result.get(rewrite.file) ?? [];
+    operations.push({ type: "replaceLine", line: rewrite.line, original: rewrite.original, replacement: rewrite.replacement });
+    result.set(rewrite.file, operations);
   }
   return result;
 }
@@ -370,17 +566,17 @@ export async function planRequirementIdCollisionRepair(root: ProjectRoot, input:
       replacement.error?.staleGuard ? { staleGuard: replacement.error.staleGuard } : {}
     );
   }
-  const staleReferenceEdit = validateReferenceEdits(workspace, input);
-  if (staleReferenceEdit) {
+  const resolved = resolveReferences(workspace, input, replacement.value);
+  if (!resolved.ok || !resolved.value) {
     return mutationFail(
-      staleReferenceEdit.error?.code ?? "STALE_PATCH",
-      staleReferenceEdit.error?.message ?? "Explicit reference edit is stale",
-      staleReferenceEdit.diagnostics,
-      staleReferenceEdit.error?.staleGuard ? { staleGuard: staleReferenceEdit.error.staleGuard } : {}
+      resolved.error?.code ?? "STALE_PATCH",
+      resolved.error?.message ?? "Explicit reference edit is stale",
+      resolved.diagnostics,
+      resolved.error?.staleGuard ? { staleGuard: resolved.error.staleGuard } : {}
     );
   }
-  const ambiguous = ambiguousReferences(workspace, input, group.occurrences, replacement.value);
-  const operationsByFile = buildOperationsByFile(workspace, input, replacement.value);
+  const ambiguous = ambiguousReferences(workspace, input, group.occurrences, replacement.value, resolved.value.explicitKeys);
+  const operationsByFile = buildOperationsByFile(workspace, input, replacement.value, resolved.value.rewrites);
   const operations = [...operationsByFile.entries()].flatMap(([operationFile, fileOperations]) =>
     fileOperations.map((operation) => ({
       filePath: operationFile.relativePath,
@@ -397,9 +593,12 @@ export async function planRequirementIdCollisionRepair(root: ProjectRoot, input:
     rename: input.rename,
     replacementId: replacement.value,
     referenceEdits: input.referenceEdits ?? [],
+    keepReferences: input.keepReferences ?? [],
     touchedFiles,
     operations,
     ambiguousReferences: ambiguous,
+    keptReferences: resolved.value.keptReferences,
+    remainingReferences: resolved.value.remainingReferences,
     pendingDuplicateGroups,
     written: false
   });
@@ -407,6 +606,16 @@ export async function planRequirementIdCollisionRepair(root: ProjectRoot, input:
 
 export async function applyRequirementIdCollisionRepair(root: ProjectRoot, input: RequirementIdCollisionRepairApplyInput): Promise<MutationResult<RequirementIdCollisionRepairOutput>> {
   return withSrsMutationLock(root, { operation: "repair_requirement_id_collision", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, async () => {
+    // @req FR-NODE-317 AC-8 — a plan file names lines by number; a table re-sorted since then can leave
+    // every edit matching on the wrong row, so the lines it recorded must still read as they did.
+    if (input.expectedLines && input.expectedLines.length > 0) {
+      const current = await parseWorkspace(root);
+      for (const expected of input.expectedLines) {
+        if (findFile(current, expected.filePath)?.lines[expected.line - 1] !== expected.original) {
+          return staleReference(expected.filePath, expected.line, `The plan recorded ${expected.filePath}:${expected.line} as it no longer reads; rerun the plan`);
+        }
+      }
+    }
     const planned = await planRequirementIdCollisionRepair(root, input);
     if (!planned.ok && planned.error?.code === "AMBIGUOUS_REQUIREMENT_DUPLICATE" && input.replacementId) {
       const workspace = await parseWorkspace(root);
@@ -421,7 +630,8 @@ export async function applyRequirementIdCollisionRepair(root: ProjectRoot, input
             written: false,
             completedOperations: 0,
             pendingOperations: 0,
-            pendingDuplicateGroups: []
+            pendingDuplicateGroups: [],
+            remainingReferences: []
           }),
           { kind: "repair_requirement_id_collision", filePath: "<none>", dryRun: input.dryRun ?? false, written: false, operations: [], preview: [] },
           { filePath: "<none>", operations: 0, dryRun: input.dryRun ?? false, preview: [] }
@@ -443,7 +653,9 @@ export async function applyRequirementIdCollisionRepair(root: ProjectRoot, input
       ]);
     }
     const workspace = await parseWorkspace(root);
-    const operationsByFile = buildOperationsByFile(workspace, input, plan.replacementId);
+    const resolved = resolveReferences(workspace, input, plan.replacementId);
+    if (!resolved.ok || !resolved.value) return resolved as MutationResult<never>;
+    const operationsByFile = buildOperationsByFile(workspace, input, plan.replacementId, resolved.value.rewrites);
     const patchPlans = [...operationsByFile.entries()].map(([file, operations]) => createPatchPlan(file, operations));
     if (patchPlans.length === 0) return mutationFail("STALE_PATCH", "Requirement ID collision repair has no patchable files");
     try {
@@ -463,6 +675,7 @@ export async function applyRequirementIdCollisionRepair(root: ProjectRoot, input
         completedOperations: written ? plan.operations.length : 0,
         pendingOperations: written ? 0 : plan.operations.length,
         pendingDuplicateGroups,
+        remainingReferences: plan.remainingReferences,
         ...(!written || pendingDuplicateGroups.length > 0 ? { pendingRepair: { ...plan, pendingDuplicateGroups } } : {})
       });
       return withMutationEnvelope(result, repairEnvelope(patchPlans, input.dryRun ?? false, written), {
@@ -492,13 +705,41 @@ export async function writeRequirementIdCollisionRepairPlan(filePath: string, pl
   await writeFile(filePath, `${JSON.stringify(plan, null, 2)}\n`, "utf8");
 }
 
-export async function readRequirementIdCollisionRepairPlan(filePath: string): Promise<RequirementIdCollisionRepairPlanInput> {
+export async function readRequirementIdCollisionRepairPlan(filePath: string): Promise<RequirementIdCollisionRepairApplyInput> {
   const plan = JSON.parse(await readFile(filePath, "utf8")) as RequirementIdCollisionRepairPlan;
   return {
     duplicateId: plan.duplicateId,
     keep: plan.keep,
     rename: plan.rename,
     replacementId: plan.replacementId,
-    referenceEdits: plan.referenceEdits
+    referenceEdits: referenceEditsFromInput(plan.referenceEdits),
+    keepReferences: keepReferencesFromInput(plan.keepReferences),
+    expectedLines: (plan.operations ?? []).flatMap((operation) => (typeof operation.original === "string" ? [{ filePath: operation.filePath, line: operation.line, original: operation.original }] : []))
   };
+}
+
+/**
+ * @req FR-NODE-317 AC-2 AC-6 — the one reader of `referenceEdits` and `keepReferences` from an untyped
+ * payload (MCP arguments, a CLI JSON flag, a written plan), so every surface takes the same shape.
+ */
+export function referenceEditsFromInput(value: unknown): RequirementReferenceEdit[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) return [];
+    const record = item as Partial<RequirementReferenceEdit>;
+    if (typeof record.filePath !== "string" || typeof record.line !== "number" || typeof record.from !== "string" || typeof record.to !== "string") return [];
+    // Passed through as given: an occurrence the core cannot read is refused there, never dropped (a
+    // dropped "2" left the edit applying to whatever the line held). @req FR-NODE-317 AC-2
+    const occurrence = record.occurrence === undefined ? {} : { occurrence: record.occurrence as "all" | number };
+    return [{ filePath: record.filePath, line: record.line, from: record.from, to: record.to, ...occurrence }];
+  });
+}
+
+export function keepReferencesFromInput(value: unknown): RequirementKeepReference[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) return [];
+    const record = item as Partial<RequirementKeepReference>;
+    return typeof record.filePath === "string" && typeof record.line === "number" ? [{ filePath: record.filePath, line: record.line }] : [];
+  });
 }

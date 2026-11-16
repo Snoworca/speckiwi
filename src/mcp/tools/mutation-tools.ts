@@ -30,7 +30,7 @@ import { expireAcceptanceCriterion } from "../../core/mutation/expire-ac.js";
 import { markAcceptanceCriterionNonTest, unmarkAcceptanceCriterionNonTest } from "../../core/mutation/non-test-ac.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
 import { applyWorkflowMutation, defaultWorkflowOwner, type WorkflowMutationInput, type WorkflowMutationKind } from "../../core/workflow/mutation.js";
-import { applyRequirementIdCollisionRepair, type RequirementIdCollisionRepairApplyInput, type RequirementOccurrenceIdentity } from "../../core/mutation/repair-requirement-id.js";
+import { applyRequirementIdCollisionRepair, keepReferencesFromInput, referenceEditsFromInput, type RequirementIdCollisionRepairApplyInput, type RequirementOccurrenceIdentity } from "../../core/mutation/repair-requirement-id.js";
 import { editRequirementTableRows, replaceAcceptanceCriteria, updateRequirementFields } from "../../core/mutation/edit-requirement.js";
 import type { McpCallContext, McpDependencies, McpServerHandle } from "../adapter.js";
 import { z } from "zod";
@@ -160,16 +160,6 @@ function occurrenceInput(value: unknown): RequirementOccurrenceIdentity | null {
   return { filePath: record.filePath, headingLine: record.headingLine, blockHash: record.blockHash };
 }
 
-function referenceEditsInput(value: unknown): Array<{ filePath: string; line: number; from: string; to: string }> {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((item) => {
-    if (typeof item !== "object" || item === null || Array.isArray(item)) return [];
-    const record = item as Partial<{ filePath: string; line: number; from: string; to: string }>;
-    if (typeof record.filePath !== "string" || typeof record.line !== "number" || typeof record.from !== "string" || typeof record.to !== "string") return [];
-    return [{ filePath: record.filePath, line: record.line, from: record.from, to: record.to }];
-  });
-}
-
 function repairApplyInput(input: Record<string, unknown>): RequirementIdCollisionRepairApplyInput | null {
   const keep = occurrenceInput(input.keep);
   const rename = occurrenceInput(input.rename);
@@ -180,7 +170,8 @@ function repairApplyInput(input: Record<string, unknown>): RequirementIdCollisio
     keep,
     rename,
     ...(typeof input.replacementId === "string" ? { replacementId: input.replacementId } : { allocationStrategy: "next_available" as const }),
-    referenceEdits: referenceEditsInput(input.referenceEdits),
+    referenceEdits: referenceEditsFromInput(input.referenceEdits),
+    keepReferences: keepReferencesFromInput(input.keepReferences),
     ...mutationOptions(input)
   };
 }

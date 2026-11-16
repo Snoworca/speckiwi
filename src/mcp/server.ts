@@ -99,6 +99,26 @@ const WORKSPACE_ROOT_SCHEMA = z
   .describe("absolute path of a git top level that is a worktree of the MCP server's own repository")
   .optional();
 
+/** @req FR-NODE-317 AC-2 AC-4 — one reference edit, the same shape on plan and apply. */
+const REFERENCE_EDITS_SCHEMA = z
+  .array(
+    z.object({
+      filePath: z.string(),
+      line: z.number().int().positive(),
+      from: z.string().describe("text on that line containing the duplicate id"),
+      to: z.string().describe("from with the duplicate id swapped for the replacement id and nothing else; equal to from confirms the line as kept"),
+      occurrence: z
+        .union([z.literal("all"), z.number().int().positive()])
+        .optional()
+        .describe('which matches of from to change, or keep when to equals from: "all", or the n-th from the start of the line; a rewrite needs it when from matches more than once')
+    })
+  )
+  .optional();
+/** @req FR-NODE-317 AC-6 — lines confirmed as naming the kept occurrence, by position only. */
+const KEEP_REFERENCES_SCHEMA = z
+  .array(z.object({ filePath: z.string(), line: z.number().int().positive() }))
+  .optional()
+  .describe("lines outside the kept block that name the kept occurrence and stay as they are; each must hold the duplicate id");
 /** @req FR-MCP-070 AC-3 — the explicit path to every diagnostic entry of a bounded read. */
 const INCLUDE_ALL_DIAGNOSTICS_SCHEMA = z.boolean().describe(`return every diagnostic entry instead of the first ${MCP_READ_DIAGNOSTICS_LIMIT}`).optional();
 
@@ -234,7 +254,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     rename: z.object({ filePath: z.string(), headingLine: z.number().int().positive(), blockHash: z.string() }),
     replacementId: z.string().optional(),
     allocationStrategy: z.enum(["next_available"]).optional(),
-    referenceEdits: z.array(z.object({ filePath: z.string(), line: z.number().int().positive(), from: z.string(), to: z.string() })).optional(),
+    referenceEdits: REFERENCE_EDITS_SCHEMA,
+    keepReferences: KEEP_REFERENCES_SCHEMA,
     dryRun: z.boolean().optional()
   },
   workflow_workspace_info: { workspaceRoot: WORKSPACE_ROOT_SCHEMA },
@@ -505,7 +526,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     rename: z.object({ filePath: z.string(), headingLine: z.number().int().positive(), blockHash: z.string() }),
     replacementId: z.string().optional(),
     allocationStrategy: z.enum(["next_available"]).optional(),
-    referenceEdits: z.array(z.object({ filePath: z.string(), line: z.number().int().positive(), from: z.string(), to: z.string() })).optional(),
+    referenceEdits: REFERENCE_EDITS_SCHEMA,
+    keepReferences: KEEP_REFERENCES_SCHEMA,
     dryRun: z.boolean().optional(),
     ignoreLock: z.boolean().optional()
   },

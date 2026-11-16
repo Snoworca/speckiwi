@@ -10,6 +10,10 @@ import {
   readRequirementIdCollisionRepairPlan,
   writeRequirementIdCollisionRepairPlan,
   type RequirementIdCollisionRepairPlanInput,
+  keepReferencesFromInput,
+  referenceEditsFromInput,
+  type RequirementKeepReference,
+  type RequirementReferenceEdit,
   type RequirementOccurrenceIdentity
 } from "../../core/mutation/repair-requirement-id.js";
 import { repairRulesReferences } from "../../core/mutation/repair-rules-references.js";
@@ -31,16 +35,18 @@ function parseOccurrence(value: string, command: Command): RequirementOccurrence
   return { filePath, headingLine: line, blockHash };
 }
 
-function parseReferenceEdit(value: string): { filePath: string; line: number; from: string; to: string } {
-  const parsed = JSON.parse(value) as Partial<{ filePath: string; line: number; from: string; to: string }>;
-  if (typeof parsed.filePath !== "string" || typeof parsed.line !== "number" || typeof parsed.from !== "string" || typeof parsed.to !== "string") {
-    throw new Error("reference-edit must be JSON with filePath, line, from, and to");
-  }
-  return { filePath: parsed.filePath, line: parsed.line, from: parsed.from, to: parsed.to };
+function collectReferenceEdit(value: string, previous: RequirementReferenceEdit[]): RequirementReferenceEdit[] {
+  const [edit] = referenceEditsFromInput([JSON.parse(value)]);
+  if (!edit) throw new Error("reference-edit must be JSON with filePath, line, from, to and an optional occurrence (\"all\" or a match number)");
+  previous.push(edit);
+  return previous;
 }
 
-function collectReferenceEdit(value: string, previous: Array<{ filePath: string; line: number; from: string; to: string }>): Array<{ filePath: string; line: number; from: string; to: string }> {
-  previous.push(parseReferenceEdit(value));
+/** @req FR-NODE-317 AC-6 */
+function collectKeepReference(value: string, previous: RequirementKeepReference[]): RequirementKeepReference[] {
+  const [keep] = keepReferencesFromInput([JSON.parse(value)]);
+  if (!keep) throw new Error("keep-reference must be JSON with filePath and line");
+  previous.push(keep);
   return previous;
 }
 
@@ -66,7 +72,8 @@ function inputFromOptions(options: Record<string, unknown>, command: Command): R
     keep: parseOccurrence(options.keep, command),
     rename: parseOccurrence(options.rename, command),
     ...(typeof options.replacementId === "string" ? { replacementId: options.replacementId } : { allocationStrategy: "next_available" as const }),
-    referenceEdits: Array.isArray(options.referenceEdit) ? (options.referenceEdit as Array<{ filePath: string; line: number; from: string; to: string }>) : []
+    referenceEdits: Array.isArray(options.referenceEdit) ? (options.referenceEdit as RequirementReferenceEdit[]) : [],
+    keepReferences: Array.isArray(options.keepReference) ? (options.keepReference as RequirementKeepReference[]) : []
   };
 }
 
@@ -108,7 +115,8 @@ export function registerRepairCommands(command: Command, context: CliContext): v
     .requiredOption("--rename <file:line:blockHash>")
     .option("--replacement-id <id>")
     .option("--allocate-next")
-    .option("--reference-edit <json>", "explicit mapped reference edit; repeatable", collectReferenceEdit, [])
+    .option("--reference-edit <json>", 'explicit mapped reference edit {filePath, line, from, to, occurrence?: "all" | n}; to swaps the duplicate id only; repeatable', collectReferenceEdit, [])
+    .option("--keep-reference <json>", "line {filePath, line} confirmed as naming the kept occurrence; repeatable", collectKeepReference, [])
     .option("--write-plan <path>")
     .option("--json")
     .action(async (options) => {

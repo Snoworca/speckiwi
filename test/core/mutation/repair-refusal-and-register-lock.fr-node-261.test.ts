@@ -59,8 +59,42 @@ describe("FR-NODE-261 AC-1 — a replacement collision is refused before any doc
     expect(await snapshot(rootPath)).toEqual(before);
   });
 
+  // FR-NODE-317 AC-4 (5.5.2) narrowed a reference edit to swapping the duplicate id, so the edit these
+  // rows used to write — another heading's own id rewritten — is now refused before the collision check
+  // runs. The collision is still reachable through an allowed edit: the kept heading's duplicate id
+  // swapped for the replacement, which leaves both headings carrying it.
   // @req FR-NODE-261 AC-1
   it("refuses, writing nothing, when the repair's own reference edit would make another heading carry the replacement ID", async () => {
+    const { rootPath, root, keep, rename } = await duplicateWithThirdBlock();
+    const before = await snapshot(rootPath);
+    const result = await applyRequirementIdCollisionRepair(root, {
+      duplicateId: "FR-ARCH-001",
+      keep,
+      rename,
+      replacementId: "FR-ARCH-005",
+      referenceEdits: [{ filePath: "docs/spec/10.product-architecture.srs.md", line: keep.headingLine, from: "FR-ARCH-001", to: "FR-ARCH-005" }]
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("GENERATED_ID_COLLISION");
+    expect(await snapshot(rootPath)).toEqual(before);
+  });
+
+  // @req FR-NODE-261 AC-1
+  it("refuses the same reference-edit collision on a dry run", async () => {
+    const { root, keep, rename } = await duplicateWithThirdBlock();
+    const result = await applyRequirementIdCollisionRepair(root, {
+      duplicateId: "FR-ARCH-001",
+      keep,
+      rename,
+      replacementId: "FR-ARCH-005",
+      dryRun: true,
+      referenceEdits: [{ filePath: "docs/spec/10.product-architecture.srs.md", line: keep.headingLine, from: "FR-ARCH-001", to: "FR-ARCH-005" }]
+    });
+    expect(result.error?.code).toBe("GENERATED_ID_COLLISION");
+  });
+
+  // @req FR-NODE-261 AC-1
+  it("the edit these rows used to write, another heading's own id rewritten, is refused before any collision check", async () => {
     const { rootPath, root, keep, rename } = await duplicateWithThirdBlock();
     const thirdHeading = (await readFile(path.join(rootPath, ARCH), "utf8")).split(/\r?\n/).findIndex((l) => l.startsWith("### FR-ARCH-007")) + 1;
     const before = await snapshot(rootPath);
@@ -71,24 +105,8 @@ describe("FR-NODE-261 AC-1 — a replacement collision is refused before any doc
       replacementId: "FR-ARCH-005",
       referenceEdits: [{ filePath: "docs/spec/10.product-architecture.srs.md", line: thirdHeading, from: "FR-ARCH-007", to: "FR-ARCH-005" }]
     });
-    expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("GENERATED_ID_COLLISION");
+    expect(result.error?.code).toBe("MUTATION_DENIED");
     expect(await snapshot(rootPath)).toEqual(before);
-  });
-
-  // @req FR-NODE-261 AC-1
-  it("refuses the same reference-edit collision on a dry run", async () => {
-    const { rootPath, root, keep, rename } = await duplicateWithThirdBlock();
-    const thirdHeading = (await readFile(path.join(rootPath, ARCH), "utf8")).split(/\r?\n/).findIndex((l) => l.startsWith("### FR-ARCH-007")) + 1;
-    const result = await applyRequirementIdCollisionRepair(root, {
-      duplicateId: "FR-ARCH-001",
-      keep,
-      rename,
-      replacementId: "FR-ARCH-005",
-      dryRun: true,
-      referenceEdits: [{ filePath: "docs/spec/10.product-architecture.srs.md", line: thirdHeading, from: "FR-ARCH-007", to: "FR-ARCH-005" }]
-    });
-    expect(result.error?.code).toBe("GENERATED_ID_COLLISION");
   });
 
   // @req FR-NODE-261 AC-1
