@@ -2,7 +2,7 @@
 
 Requirements are Markdown SRS documents under `docs/spec/`, entered through `docs/spec/00.index.md`. Use the SpecKiwi MCP tools; fall back to the `speckiwi` CLI only when MCP is unavailable. Never bypass the SRS-MD rules, keep a second requirements source, or edit generated JSON as if it were the requirements.
 
-Rules: [SRS-MD-Rules-v2.6.0.md](docs/rule/SRS-MD-Rules-v2.6.0.md). An SDS, written only when the user asks for one, follows [SDS-MD-Rules-v2.6.0.md](docs/rule/SDS-MD-Rules-v2.6.0.md).
+Rules: [SRS-MD-Rules-v2.7.0.md](docs/rule/SRS-MD-Rules-v2.7.0.md). An SDS, written only when the user asks for one, follows [SDS-MD-Rules-v2.6.0.md](docs/rule/SDS-MD-Rules-v2.6.0.md).
 
 `AGENTS.md` and `CLAUDE.md` are the canonical root instruction files. Lowercase `agents.md` is kept as a compatibility mirror for tools that still discover it.
 
@@ -28,7 +28,7 @@ Code, contracts, SRS acceptance criteria and safety boundaries get the full bar:
 - **Comments**: `@req` references must resolve (mechanical); a why-comment on a safety gate is checked once at write time; a comment that restates the code is deleted.
 - Stop on evidence, not round count: recorded CRITICAL and HIGH catches came from mutation testing and adversarial execution, not from extra uniform review rounds (research 19).
 
-# SpecKiwi SRS workflow v1.11
+# SpecKiwi SRS workflow v1.12
 Written by speckiwi 5.5.1.
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
@@ -67,7 +67,7 @@ Work-mode and the TDD First (tdd) workflow:
 7. When the mode is `vibe`, code may come first for the Active Task, so the TDD principle and the stop-and-ask rule above do not hold that task back; the step SRS MUST still be synthesized (MCP `synthesize_step_srs`, or CLI `speckiwi step synthesize <task>` when MCP is unavailable) before the commit that lands the task; `check_vibe_gate` (CLI `speckiwi vibe-gate check`) only confirms that the Active Task's step directory exists, not that the synthesis ran. Switch to vibe only when the user asks for it.
 
 Scope SRS document naming:
-1. A scope SRS document is named `docs/spec/{NN}.{scope-slug}.srs.md`, where `{NN}` is a two-digit ordering number. The full rules are in `docs/rule/SRS-MD-Rules-v2.6.0.md` §5.2.
+1. A scope SRS document is named `docs/spec/{NN}.{scope-slug}.srs.md`, where `{NN}` is a two-digit ordering number. The full rules are in `docs/rule/SRS-MD-Rules-v2.7.0.md` §5.2.
 2. Allocate `{NN}` as one above the highest number already present among the project's scope documents. The first scope document of a project is `01`, the next `02`. Do not number by tens.
 3. Never reuse a number another scope document holds, and never renumber an existing document.
 4. Prefer `speckiwi scaffold-scope <Name>:<PREFIX> --apply`, which allocates the number and registers the document in both index sections in one operation, over writing the file and the index rows by hand.
@@ -75,9 +75,11 @@ Scope SRS document naming:
 Agents MUST NOT:
 - Implement behavior that is not covered by an SRS requirement (the tdd and vibe items above say how step-scoped work is covered).
 - Create an alternate requirements source outside `docs/spec/`.
-- Change requirement IDs manually.
+- Change an existing requirement's ID by hand.
 - Mark requirements as verified without evidence.
 - Flip several requirements to `verified`, or empty the Active Target, in one operation without per-requirement evidence and stability gate checks.
+
+Parallel worktrees that agreed their Requirement ID numbers beforehand pass the agreed free number to MCP `add_requirement` as `requirementId` (CLI `add-requirement --requirement-id`); the tool checks it against this checkout only, so the agreement itself is what keeps worktrees apart.
 
 When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. Normal target-scoped SRS mutations go through MCP only: the `speckiwi` CLI diagnoses installation, version and configuration (see the tool check above) and is not a normal replacement for an MCP mutation. Three target-scoped SRS mutations may use the CLI: registering an unregistered target, which the target workflow below names, and renaming a target (`speckiwi rename-target`) or setting a target's status (`speckiwi set-target-status`), which have no MCP tool; the CLI forms this block gives for work-mode, step and repair commands are for when MCP is unavailable. CLI reads remain available for lookup while MCP is being repaired.
 

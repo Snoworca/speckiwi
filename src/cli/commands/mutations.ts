@@ -612,6 +612,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .requiredOption("--type <type>")
     .requiredOption("--scope <scope>")
     .option("--target <target>")
+    .option("--requirement-id <id>", "a free Requirement ID to use instead of the next one; checked against this checkout only")
     .requiredOption("--title <title>")
     .option("--statement <statement>")
     .option("--requirement <requirement>")
@@ -643,6 +644,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
         type: options.type,
         scope: options.scope,
         ...(typeof options.target === "string" ? { target: options.target } : {}),
+        ...(typeof options.requirementId === "string" ? { requirementId: options.requirementId } : {}),
         title: options.title,
         statement,
         acceptanceCriteria: collect(options.ac),

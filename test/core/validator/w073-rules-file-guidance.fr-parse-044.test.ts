@@ -11,7 +11,7 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 // a tool-owned pointer is cleared by `speckiwi upgrade`; an author's own line is edited by hand.
 
 const OLD_RULES = "SRS-MD-Rules-v2.5.0.md";
-const NEW_RULES = "SRS-MD-Rules-v2.6.0.md";
+const NEW_RULES = "SRS-MD-Rules-v2.7.0.md";
 const SCOPE_DOCUMENT = "10.product-architecture.srs.md";
 
 async function staleRulesWarnings(root: string): Promise<Array<{ filePath: string; line: number; message: string }>> {
@@ -26,7 +26,7 @@ describe("FR-PARSE-044 AC-6 — SRS-W073 says how to clear a stale rules file na
     const root = await copyFixtureWorkspace("valid-basic");
     const indexPath = path.join(root, "docs", "spec", "00.index.md");
     const index = await readFile(indexPath, "utf8");
-    const staleIndex = index.replace(/SRS-MD Authoring Rules v2\.6\.0\]\(\.\.\/rule\/SRS-MD-Rules-v2\.6\.0\.md\)/, `SRS-MD Authoring Rules v2.5.0](../rule/${OLD_RULES})`);
+    const staleIndex = index.replace(/SRS-MD Authoring Rules v2\.7\.0\]\(\.\.\/rule\/SRS-MD-Rules-v2\.7\.0\.md\)/, `SRS-MD Authoring Rules v2.5.0](../rule/${OLD_RULES})`);
     expect(staleIndex).not.toBe(index);
     await writeFile(indexPath, staleIndex, "utf8");
     const scopePath = path.join(root, "docs", "spec", SCOPE_DOCUMENT);
@@ -70,7 +70,7 @@ describe("FR-PARSE-044 AC-6 — SRS-W073 says how to clear a stale rules file na
       scopePath,
       scope.replace(
         "| Scope Name | Product Architecture |",
-        `| Scope Name | Product Architecture |\n| Rules | [SRS-MD Authoring Rules v2.6.0][rules] |\n\n[rules]: ../rule/${OLD_RULES}`
+        `| Scope Name | Product Architecture |\n| Rules | [SRS-MD Authoring Rules v2.7.0][rules] |\n\n[rules]: ../rule/${OLD_RULES}`
       ),
       "utf8"
     );
@@ -94,7 +94,7 @@ describe("FR-PARSE-044 AC-6 — SRS-W073 says how to clear a stale rules file na
       scope
         .replace(
           "| Scope Name | Product Architecture |",
-          `| Scope Name | Product Architecture |\n| Rules | [SRS-MD Authoring Rules v2.6.0][rules] |\n\n[rules]: ../rule/${OLD_RULES}`
+          `| Scope Name | Product Architecture |\n| Rules | [SRS-MD Authoring Rules v2.7.0][rules] |\n\n[rules]: ../rule/${OLD_RULES}`
         )
         .replace("Fixture architecture scope.", "Fixture architecture scope, see [the old rules][rules]."),
       "utf8"

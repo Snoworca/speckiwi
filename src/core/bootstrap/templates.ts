@@ -35,7 +35,9 @@ export interface AgentInstructionOptions {
 // @req FR-NODE-219 — v1.10 records the tdd acceptance lines in intent.md and makes the step SDS opt-in.
 // @req FR-NODE-225 — v1.11 adds the tool check that installs and version-checks SpecKiwi, now that a
 // project carries no MCP setting or skills of its own.
-export const AGENT_INSTRUCTION_VERSION = "1.11";
+// @req FR-NODE-312 — v1.12 says the ID rule is about existing ids and lets parallel worktrees pass an
+// agreed free number to add_requirement.
+export const AGENT_INSTRUCTION_VERSION = "1.12";
 // @req FR-FLOW-207 AC-1/AC-2/AC-3/AC-4 — the one wording of the bilingual search rule. The agent
 // instruction block, the shipped skills, the MCP tool description and the CLI help all state it, so a
 // search for a requirement written in the other language still finds it; one constant keeps them equal.
@@ -51,7 +53,10 @@ export const BILINGUAL_SEARCH_EXAMPLE = "리뷰 루프 옵션 거부 review loop
 // @req FR-PARSE-044 AC-6 — 2.6.0 adds the expired-criterion grammar. It is a new version rather than
 // an edit of 2.5.0 because doctor compares versions, not content: only a raised version tells a
 // project that installed 2.5.0 to upgrade and receive the grammar.
-export const BUNDLED_RULES_VERSION = "2.6.0";
+// @req FR-NODE-312 — 2.7.0 says that a new requirement may take an author-chosen unused number and that
+// gaps between numbers are valid (§11.4 item 8), raised for the same reason: an edit in place would
+// never reach a project that installed 2.6.0.
+export const BUNDLED_RULES_VERSION = "2.7.0";
 
 // @req FR-NODE-085 — the rules filename, the index rules pointer and the bundled version all derive
 // from one constant per rules document, so raising a version cannot leave a filename or a pointer behind.
@@ -575,9 +580,11 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     "Agents MUST NOT:",
     "- Implement behavior that is not covered by an SRS requirement (the tdd and vibe items above say how step-scoped work is covered).",
     "- Create an alternate requirements source outside `docs/spec/`.",
-    "- Change requirement IDs manually.",
+    "- Change an existing requirement's ID by hand.",
     "- Mark requirements as verified without evidence.",
     "- Flip several requirements to `verified`, or empty the Active Target, in one operation without per-requirement evidence and stability gate checks.",
+    "",
+    "Parallel worktrees that agreed their Requirement ID numbers beforehand pass the agreed free number to MCP `add_requirement` as `requirementId` (CLI `add-requirement --requirement-id`); the tool checks it against this checkout only, so the agreement itself is what keeps worktrees apart.",
     "",
     // @req IR-MCP-012 AC-1 — every CLI-only target mutation is named here, not only registration.
     // @req FR-FLOW-179 AC-6 — this block is installed into a consumer's own instructions, so a

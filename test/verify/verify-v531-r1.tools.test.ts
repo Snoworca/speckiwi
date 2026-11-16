@@ -42,7 +42,7 @@ function withoutWorkspace(answer: Record<string, unknown>): Record<string, unkno
 
 describe("r1 tools: the CLI and MCP roadmap surfaces answer the same input alike", () => {
   // @req IR-MCP-009 AC-1
-  // Input: `Actual Start` written as `-`, the empty value docs/rule/SRS-MD-Rules-v2.6.0.md Appendix A.2 lists for that row.
+  // Input: `Actual Start` written as `-`, the empty value docs/rule/SRS-MD-Rules-v2.7.0.md Appendix A.2 lists for that row.
   it("IR-MCP-009 AC-1 update_roadmap_item and speckiwi roadmap update give the same answer for an Actual Start of -", async () => {
     const items: ItemSpec[] = [
       {

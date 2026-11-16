@@ -1,4 +1,4 @@
-# SRS-MD Authoring Rules v2.6.0
+# SRS-MD Authoring Rules v2.7.0
 
 Subtitle: **Git-native Markdown SRS authoring rules based on an extended ISO/IEC/IEEE 29148**
 
@@ -15,7 +15,7 @@ Subtitle: **Git-native Markdown SRS authoring rules based on an extended ISO/IEC
 | Audience | developers, reviewers, maintainers, AI coding agents |
 | Primary Use | SRS authoring, review, search, status updates, implementation verification |
 | Source Format | GitHub Flavored Markdown |
-| Canonical Location | `docs/rule/SRS-MD-Rules-v2.6.0.md` |
+| Canonical Location | `docs/rule/SRS-MD-Rules-v2.7.0.md` |
 | Last Updated | 2026-05-10 |
 
 ---
@@ -104,7 +104,7 @@ To mark a requirement as `verified`, the acceptance criteria must be satisfied a
 ```text
 docs/
 ├─ rule/
-│  └─ SRS-MD-Rules-v2.6.0.md
+│  └─ SRS-MD-Rules-v2.7.0.md
 │
 ├─ spec/
 │  ├─ 00.index.md
@@ -141,7 +141,7 @@ The responsibility of each path is as follows.
 
 | Path | Responsibility |
 |---|---|
-| `docs/rule/SRS-MD-Rules-v2.6.0.md` | SRS-MD authoring, parsing, validation, agent workflow rules |
+| `docs/rule/SRS-MD-Rules-v2.7.0.md` | SRS-MD authoring, parsing, validation, agent workflow rules |
 | `docs/spec/00.index.md` | Entry point for the whole SRS document set, target list, scope document links, summary |
 | `docs/spec/*.srs.md` | Source of truth for requirements per functional scope |
 | `docs/spec/90.appendix.md` | Common terms, enums, status definitions, cross-scope map, supplementary rules |
@@ -250,7 +250,7 @@ SRS documents are authored on the basis of GitHub Flavored Markdown, hereafter G
 | Document Type | srs_index |
 | Version | 1.0.0 |
 | Active Target |  |
-| Rules | [SRS-MD Authoring Rules v2.6.0](../rule/SRS-MD-Rules-v2.6.0.md) |
+| Rules | [SRS-MD Authoring Rules v2.7.0](../rule/SRS-MD-Rules-v2.7.0.md) |
 | Last Updated | YYYY-MM-DD |
 
 ## 1. Purpose
@@ -612,6 +612,7 @@ OBS-AGENT-001
 5. When merging multiple requirements, keep one representative ID and handle the rest with `discarded` or `Superseded By`.
 6. The prefix of the ID and the `Type` in the metadata table must match.
 7. The scope segment of the ID must match a prefix registered in the Scope Map of the SRS Index.
+8. A new requirement may take a number chosen by its author, such as one parallel worktrees agreed on, provided no SRS document of the checkout has used that number in the same prefix and scope, however it is padded (`FR-AUTH-0001` is the number `FR-AUTH-001` holds); unused numbers between IDs are valid and are not reported.
 
 ---
 
@@ -2110,7 +2111,7 @@ This document carries no copy of the block, because a copy drifts from the tool.
 
 ## 41. Document End
 
-This document is the reference document for SRS-MD Authoring Rules v2.6.0. Detailed enums, scope prefixes, and target naming that suit each repository's situation may be extended in `docs/spec/00.index.md` and `docs/spec/90.appendix.md`. However, the Requirement Block heading format, the metadata table, the status meanings, and the Acceptance Criteria, Verification Evidence, and Trace Links rules must be kept for compatibility.
+This document is the reference document for SRS-MD Authoring Rules v2.7.0. Detailed enums, scope prefixes, and target naming that suit each repository's situation may be extended in `docs/spec/00.index.md` and `docs/spec/90.appendix.md`. However, the Requirement Block heading format, the metadata table, the status meanings, and the Acceptance Criteria, Verification Evidence, and Trace Links rules must be kept for compatibility.
 
 ---
 

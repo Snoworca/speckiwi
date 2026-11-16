@@ -275,7 +275,7 @@ speckiwi init --target v0.1.0 --scope "App:APP"
 
 1. **SRS scaffold.** Creates `docs/spec/00.index.md` (Target Map, Scope Map, Completed Work Log) and `docs/spec/90.appendix.md`. When the project has no scope document yet, it also creates an empty one from `--scope`, such as `docs/spec/01.app.srs.md`. Existing scope documents are registered under their own names instead.
 2. **Step state.** Creates `docs/spec/steps/state.md`, in the `wait` work mode.
-3. **Authoring rules.** Writes the bundled `docs/rule/SRS-MD-Rules-v2.6.0.md` and `docs/rule/SDS-MD-Rules-v2.6.0.md`.
+3. **Authoring rules.** Writes the bundled `docs/rule/SRS-MD-Rules-v2.7.0.md` and `docs/rule/SDS-MD-Rules-v2.6.0.md`.
 4. **Agent instructions.** Adds or updates the *SpecKiwi SRS workflow* block in `AGENTS.md` and `CLAUDE.md`.
 5. **Hooks.** Installs the runners `docs/.kiwi/hooks/pre-commit.mjs` and `docs/.kiwi/hooks/trace.mjs`, a `.git/hooks/pre-commit` that delegates to the first, a PostToolUse trace hook in `.claude/settings.json` and an apply_patch trace hook in `.codex/hooks.json`.
 6. **MCP registration.** Registers the MCP server at user scope through each agent's own CLI. See [Connect the MCP server](#en-mcp).
@@ -318,7 +318,7 @@ docs/
 ├─ .kiwi/hooks/               # bundled hook runners
 ├─ .kiwi/trace/               # trace output written by trace.mjs
 ├─ rule/
-│  ├─ SRS-MD-Rules-v2.6.0.md
+│  ├─ SRS-MD-Rules-v2.7.0.md
 │  └─ SDS-MD-Rules-v2.6.0.md
 └─ spec/
    ├─ 00.index.md             # targets, scopes, completed work log
@@ -996,7 +996,7 @@ The npm package ships:
 ```text
 bin/
 dist/
-docs/rule/SRS-MD-Rules-v2.6.0.md
+docs/rule/SRS-MD-Rules-v2.7.0.md
 docs/rule/SDS-MD-Rules-v2.6.0.md
 docs/.kiwi/hooks
 skills/codex/
@@ -1275,7 +1275,7 @@ speckiwi init --target v0.1.0 --scope "App:APP"
 
 1. **SRS 뼈대.** `docs/spec/00.index.md`(Target Map, Scope Map, Completed Work Log)와 `docs/spec/90.appendix.md`를 만듭니다. 프로젝트에 scope 문서가 아직 없으면 `--scope`로 빈 scope 문서(예: `docs/spec/01.app.srs.md`)도 만듭니다. 기존 scope 문서가 있으면 새로 만들지 않고, 기존 문서를 원래 이름으로 등록합니다.
 2. **Step 상태.** `wait` 작업 모드로 `docs/spec/steps/state.md`를 만듭니다.
-3. **작성 규칙.** 패키지에 포함된 `docs/rule/SRS-MD-Rules-v2.6.0.md`와 `docs/rule/SDS-MD-Rules-v2.6.0.md`를 씁니다.
+3. **작성 규칙.** 패키지에 포함된 `docs/rule/SRS-MD-Rules-v2.7.0.md`와 `docs/rule/SDS-MD-Rules-v2.6.0.md`를 씁니다.
 4. **에이전트 지침.** `AGENTS.md`와 `CLAUDE.md`에 *SpecKiwi SRS workflow* 블록을 추가하거나 갱신합니다.
 5. **훅.** 실행기 `docs/.kiwi/hooks/pre-commit.mjs`와 `docs/.kiwi/hooks/trace.mjs`를 설치합니다. 또한 첫 번째 실행기에 위임하는 `.git/hooks/pre-commit`, `.claude/settings.json`의 PostToolUse 추적 훅, `.codex/hooks.json`의 apply_patch 추적 훅을 설치합니다.
 6. **MCP 등록.** 각 에이전트의 CLI로 MCP 서버를 사용자 범위에 등록합니다. [MCP 서버 연결](#ko-mcp)을 참조하십시오.
@@ -1318,7 +1318,7 @@ docs/
 ├─ .kiwi/hooks/               # 패키지에 포함된 훅 실행기
 ├─ .kiwi/trace/               # trace.mjs가 쓰는 추적 출력
 ├─ rule/
-│  ├─ SRS-MD-Rules-v2.6.0.md
+│  ├─ SRS-MD-Rules-v2.7.0.md
 │  └─ SDS-MD-Rules-v2.6.0.md
 └─ spec/
    ├─ 00.index.md             # 대상, scope, 완료한 작업 기록
@@ -1996,7 +1996,7 @@ npm 패키지에는 다음이 들어 있습니다.
 ```text
 bin/
 dist/
-docs/rule/SRS-MD-Rules-v2.6.0.md
+docs/rule/SRS-MD-Rules-v2.7.0.md
 docs/rule/SDS-MD-Rules-v2.6.0.md
 docs/.kiwi/hooks
 skills/codex/

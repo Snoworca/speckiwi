@@ -11,7 +11,8 @@ import { resolveProjectRoot } from "../../../src/core/project-root.js";
 import { validateWorkspace } from "../../../src/core/validator/validate-workspace.js";
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
-// FR-PARSE-044 AC-6 — the rules that carry the expired-criterion grammar ship as SRS-MD rules 2.6.0.
+// FR-PARSE-044 AC-6 — the rules that carry the expired-criterion grammar ship as SRS-MD rules 2.6.0 or later;
+// the bundled version is now 2.7.0 (FR-NODE-312), so "current" below is 2.7.0 and "old" stays 2.5.0.
 //
 // The version is raised instead of editing 2.5.0 in place because doctor compares versions, not
 // content: a project that installed 2.5.0 is told to upgrade only when the bundled version differs.
@@ -19,11 +20,11 @@ import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 // fails when the bump is reverted instead of following the constant back to 2.5.0.
 
 const OLD_RULES = "SRS-MD-Rules-v2.5.0.md";
-const NEW_RULES = "SRS-MD-Rules-v2.6.0.md";
+const NEW_RULES = "SRS-MD-Rules-v2.7.0.md";
 const OLD_ROW = `| Rules | [SRS-MD Authoring Rules v2.5.0](../rule/${OLD_RULES}) |`;
-const NEW_INDEX_ROW = `| Rules | [SRS-MD Authoring Rules v2.6.0](../rule/${NEW_RULES}) |`;
+const NEW_INDEX_ROW = `| Rules | [SRS-MD Authoring Rules v2.7.0](../rule/${NEW_RULES}) |`;
 const OLD_LIST_ENTRY = `- [SRS-MD Authoring Rules v2.5.0](../rule/${OLD_RULES})`;
-const NEW_LIST_ENTRY = `- [SRS-MD Authoring Rules v2.6.0](../rule/${NEW_RULES})`;
+const NEW_LIST_ENTRY = `- [SRS-MD Authoring Rules v2.7.0](../rule/${NEW_RULES})`;
 const SCOPE_DOCUMENT = "10.product-architecture.srs.md";
 
 /** A project exactly as speckiwi 5.1.0 left it: the 2.5.0 rules document, index row and agent block. */
@@ -59,19 +60,19 @@ async function upgrade(root: string): Promise<void> {
   if (!result.ok) throw new Error(result.error?.message ?? "upgrade failed");
 }
 
-describe("FR-PARSE-044 AC-6 — the bundled SRS rules ship as 2.6.0 and upgrade moves a 2.5.0 project onto them", () => {
+describe("FR-PARSE-044 AC-6 — the bundled SRS rules ship as 2.7.0 and upgrade moves a 2.5.0 project onto them", () => {
   // @req FR-PARSE-044 AC-6
-  it("doctor reports an installed 2.5.0 as differing from the bundled 2.6.0 before the upgrade", async () => {
+  it("doctor reports an installed 2.5.0 as differing from the bundled 2.7.0 before the upgrade", async () => {
     const root = await projectOn250();
 
     const check = await rulesCheck(root);
 
     expect(check?.state).toBe("warn");
-    expect(check?.message).toBe("installed rules v2.5.0 differs from bundled rules v2.6.0");
+    expect(check?.message).toBe("installed rules v2.5.0 differs from bundled rules v2.7.0");
   });
 
   // @req FR-PARSE-044 AC-6
-  it("upgrade installs the 2.6.0 document, prunes 2.5.0, and points the index row and the agent block at 2.6.0", async () => {
+  it("upgrade installs the 2.7.0 document, prunes 2.5.0, and points the index row and the agent block at 2.7.0", async () => {
     const root = await projectOn250();
 
     await upgrade(root);
@@ -79,7 +80,7 @@ describe("FR-PARSE-044 AC-6 — the bundled SRS rules ship as 2.6.0 and upgrade 
     const ruleDir = path.join(root, "docs", "rule");
     expect(await readdir(ruleDir)).not.toContain(OLD_RULES);
     const installed = await readFile(path.join(ruleDir, NEW_RULES), "utf8");
-    expect(installed.split(/\r?\n/)[0]).toBe("# SRS-MD Authoring Rules v2.6.0");
+    expect(installed.split(/\r?\n/)[0]).toBe("# SRS-MD Authoring Rules v2.7.0");
     // The shipped document is the one that carries the expiry grammar, not a placeholder.
     expect(installed).toContain("[EXPIRED");
 
@@ -93,7 +94,7 @@ describe("FR-PARSE-044 AC-6 — the bundled SRS rules ship as 2.6.0 and upgrade 
   });
 
   // @req FR-PARSE-044 AC-6
-  it("upgrade points every SRS document's Rules row and the index reference entry at 2.6.0, leaving validate with no stale rules reference", async () => {
+  it("upgrade points every SRS document's Rules row and the index reference entry at 2.7.0, leaving validate with no stale rules reference", async () => {
     const root = await projectOn250();
 
     await upgrade(root);
@@ -171,11 +172,11 @@ describe("FR-PARSE-044 AC-6 — the bundled SRS rules ship as 2.6.0 and upgrade 
 
   // @req FR-PARSE-044 AC-6
   it("reads a current Rules row whose link escapes or percent-encodes the bundled file name as current", async () => {
-    for (const destination of [`../rule/SRS\\-MD\\-Rules\\-v2.6.0.md`, "../rule/SRS-MD-Rules-v2%2E6%2E0.md"]) {
+    for (const destination of [`../rule/SRS\\-MD\\-Rules\\-v2.7.0.md`, "../rule/SRS-MD-Rules-v2%2E7%2E0.md"]) {
       const root = await projectOn250();
       await upgrade(root);
       const scopePath = path.join(root, "docs", "spec", SCOPE_DOCUMENT);
-      const row = `| Rules | [SRS-MD Authoring Rules v2.6.0](${destination}) |`;
+      const row = `| Rules | [SRS-MD Authoring Rules v2.7.0](${destination}) |`;
       const before = (await readFile(scopePath, "utf8")).replace(NEW_INDEX_ROW, row);
       expect(before, destination).toContain(row);
       await writeFile(scopePath, before, "utf8");
@@ -200,14 +201,14 @@ describe("FR-PARSE-044 AC-6 — the bundled SRS rules ship as 2.6.0 and upgrade 
   });
 
   // @req FR-PARSE-044 AC-6
-  it("doctor reports the upgraded project as matching the bundled 2.6.0", async () => {
+  it("doctor reports the upgraded project as matching the bundled 2.7.0", async () => {
     const root = await projectOn250();
     await upgrade(root);
 
     const check = await rulesCheck(root);
 
     expect(check?.state).toBe("ok");
-    expect(check?.message).toBe(`installed rules v2.6.0 matches bundled rules v2.6.0 (docs/rule/${NEW_RULES})`);
+    expect(check?.message).toBe(`installed rules v2.7.0 matches bundled rules v2.7.0 (docs/rule/${NEW_RULES})`);
   });
 });
 
@@ -227,7 +228,7 @@ async function specDocuments(root: string): Promise<string[]> {
 
 describe("FR-PARSE-044 AC-6 — the pointers upgrade writes resolve, and doctor sends a 2.5.0 project there", () => {
   // @req FR-PARSE-044 AC-6
-  it("every SRS-rules link under docs/spec, at every depth, names 2.6.0 and resolves to the installed file after upgrade", async () => {
+  it("every SRS-rules link under docs/spec, at every depth, names 2.7.0 and resolves to the installed file after upgrade", async () => {
     const root = await projectOn250();
     // A metadata Rules row one and two directories below docs/spec, each written with the
     // link that resolved from its own directory before the upgrade.
@@ -255,7 +256,7 @@ describe("FR-PARSE-044 AC-6 — the pointers upgrade writes resolve, and doctor 
         const link = match[1]!;
         const at = path.relative(root, document).replace(/\\/g, "/");
         links.push(at);
-        expect(link, `${at} names the bundled rules`).toMatch(/SRS-MD-Rules-v2\.6\.0\.md$/);
+        expect(link, `${at} names the bundled rules`).toMatch(/SRS-MD-Rules-v2\.7\.0\.md$/);
         expect((await stat(path.resolve(path.dirname(document), link)).catch(() => undefined))?.isFile(), `${at}: ${link} resolves`).toBe(true);
       }
     }
@@ -349,7 +350,7 @@ describe("FR-PARSE-044 AC-6 — doctor compares every SRS document's rules point
 });
 
 describe("FR-PARSE-044 AC-6 — doctor and upgrade agree on which lines are tool-owned rules pointers", () => {
-  /** A project already on 2.6.0, so each case starts from doctor ok and plants one state. */
+  /** A project already on 2.7.0, so each case starts from doctor ok and plants one state. */
   async function currentProject(): Promise<string> {
     const root = await projectOn250();
     await upgrade(root);
@@ -407,7 +408,7 @@ describe("FR-PARSE-044 AC-6 — doctor and upgrade agree on which lines are tool
       const after = await rulesCheck(root);
       expect({ state: after?.state, message: after?.message }).toEqual({
         state: "ok",
-        message: `installed rules v2.6.0 matches bundled rules v2.6.0 (docs/rule/${NEW_RULES})`
+        message: `installed rules v2.7.0 matches bundled rules v2.7.0 (docs/rule/${NEW_RULES})`
       });
     });
   }
@@ -485,16 +486,16 @@ describe("FR-PARSE-044 AC-6 — doctor and upgrade agree on which lines are tool
   const variants: ReadonlyArray<readonly [string, boolean, (root: string) => Promise<string>]> = [
     ["scope row: old label, old link", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, row("2.5.0", oldLink)); return scopePath(root); }],
     ["scope row: old label, new link", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, row("2.5.0", newLink)); return scopePath(root); }],
-    ["scope row: new label, old link", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, row("2.6.0", oldLink)); return scopePath(root); }],
-    ["scope row: spacing variant of the current row", false, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `|Rules|[SRS-MD Authoring Rules v2.6.0](${newLink})|`); return scopePath(root); }],
+    ["scope row: new label, old link", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, row("2.7.0", oldLink)); return scopePath(root); }],
+    ["scope row: spacing variant of the current row", false, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `|Rules|[SRS-MD Authoring Rules v2.7.0](${newLink})|`); return scopePath(root); }],
     ["scope row: spacing variant of a stale row", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `|Rules|[SRS-MD Authoring Rules v2.5.0](${oldLink})|`); return scopePath(root); }],
     ["scope row: prose without a version", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, "| Rules | see the team rules page |"); return scopePath(root); }],
-    ["scope row: current link and label, with the old file name later in the line", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD Authoring Rules v2.6.0](${newLink}) (was ${OLD_RULES}) |`); return scopePath(root); }],
+    ["scope row: current link and label, with the old file name later in the line", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD Authoring Rules v2.7.0](${newLink}) (was ${OLD_RULES}) |`); return scopePath(root); }],
     [
       "scope row: current reference-style link resolved by its definition",
       false,
       async (root) => {
-        await replaceLine(scopePath(root), NEW_INDEX_ROW, "| Rules | [SRS-MD Authoring Rules v2.6.0][rules] |");
+        await replaceLine(scopePath(root), NEW_INDEX_ROW, "| Rules | [SRS-MD Authoring Rules v2.7.0][rules] |");
         await writeFile(scopePath(root), `${(await readFile(scopePath(root), "utf8")).trimEnd()}\n\n[rules]: ${newLink}\n`, "utf8");
         return scopePath(root);
       }
@@ -504,7 +505,7 @@ describe("FR-PARSE-044 AC-6 — doctor and upgrade agree on which lines are tool
       "scope row: reference-style link whose definition names the old file",
       false,
       async (root) => {
-        await replaceLine(scopePath(root), NEW_INDEX_ROW, "| Rules | [SRS-MD Authoring Rules v2.6.0][rules] |");
+        await replaceLine(scopePath(root), NEW_INDEX_ROW, "| Rules | [SRS-MD Authoring Rules v2.7.0][rules] |");
         await writeFile(scopePath(root), `${(await readFile(scopePath(root), "utf8")).trimEnd()}\n\n[rules]: ${oldLink}\n`, "utf8");
         return scopePath(root);
       }
@@ -520,11 +521,11 @@ describe("FR-PARSE-044 AC-6 — doctor and upgrade agree on which lines are tool
       }
     ],
     ["scope row: old label written with runs of spaces", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD  Authoring   Rules v2.5.0](${newLink}) |`); return scopePath(root); }],
-    ["scope row: current link carrying a title", false, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD Authoring Rules v2.6.0](${newLink} "SRS rules") |`); return scopePath(root); }],
-    ["scope row: current link in angle brackets", false, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD Authoring Rules v2.6.0](<${newLink}>) |`); return scopePath(root); }],
-    ["scope row: current link with a fragment", false, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD Authoring Rules v2.6.0](${newLink}#21-7-expired-acceptance-criteria) |`); return scopePath(root); }],
-    ["scope row: current link in angle brackets from the wrong depth", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD Authoring Rules v2.6.0](<../../rule/${NEW_RULES}>) |`); return scopePath(root); }],
-    ["scope row: current link, with an old label later in the line", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD Authoring Rules v2.6.0](${newLink}), formerly SRS-MD Authoring Rules v2.5.0 |`); return scopePath(root); }],
+    ["scope row: current link carrying a title", false, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD Authoring Rules v2.7.0](${newLink} "SRS rules") |`); return scopePath(root); }],
+    ["scope row: current link in angle brackets", false, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD Authoring Rules v2.7.0](<${newLink}>) |`); return scopePath(root); }],
+    ["scope row: current link with a fragment", false, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD Authoring Rules v2.7.0](${newLink}#21-7-expired-acceptance-criteria) |`); return scopePath(root); }],
+    ["scope row: current link in angle brackets from the wrong depth", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD Authoring Rules v2.7.0](<../../rule/${NEW_RULES}>) |`); return scopePath(root); }],
+    ["scope row: current link, with an old label later in the line", true, async (root) => { await replaceLine(scopePath(root), NEW_INDEX_ROW, `| Rules | [SRS-MD Authoring Rules v2.7.0](${newLink}), formerly SRS-MD Authoring Rules v2.5.0 |`); return scopePath(root); }],
     [
       "scope row: stale, below a fenced example metadata table",
       true,
@@ -540,7 +541,7 @@ describe("FR-PARSE-044 AC-6 — doctor and upgrade agree on which lines are tool
       async (root) => { await replaceLine(scopePath(root), "## 1. Scope Overview", ["```md", "| Field | Value |", "|---|---|", row("2.5.0", oldLink), "```", "", "## 1. Scope Overview"].join("\n")); return scopePath(root); }
     ],
     ["nested SRS row: new label and file, link from the wrong depth", true, (root) => writeNested(root, "archive/old.srs.md", ["# Old", "", "| Field | Value |", "|---|---|", NEW_INDEX_ROW, ""])],
-    ["nested SRS row: current link from its own depth", false, (root) => writeNested(root, "archive/old.srs.md", ["# Old", "", "| Field | Value |", "|---|---|", row("2.6.0", `../../rule/${NEW_RULES}`), ""])],
+    ["nested SRS row: current link from its own depth", false, (root) => writeNested(root, "archive/old.srs.md", ["# Old", "", "| Field | Value |", "|---|---|", row("2.7.0", `../../rule/${NEW_RULES}`), ""])],
     ["index entry: old label, old link", true, async (root) => { await replaceLine(indexPath(root), NEW_LIST_ENTRY, entry("2.5.0", oldLink)); return indexPath(root); }],
     ["index entry: old label, new link", true, async (root) => { await replaceLine(indexPath(root), NEW_LIST_ENTRY, entry("2.5.0", newLink)); return indexPath(root); }],
     [

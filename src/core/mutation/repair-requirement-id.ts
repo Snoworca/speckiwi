@@ -13,6 +13,8 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { withMutationEnvelope } from "./envelope.js";
 import { requirementReferenceRewrites, type RequirementReferenceRewrite } from "./requirement-references.js";
 import { withSrsMutationLock } from "./srs-lock.js";
+import { checkRequirementIdAvailable } from "./requirement-id-availability.js";
+import { isRequirementType } from "../schema.js";
 
 export interface RequirementOccurrenceIdentity {
   filePath: string;
@@ -135,7 +137,22 @@ function allocateNextId(workspace: ParsedWorkspace, duplicateId: string): string
     .map((record) => new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d{3,4})$`).exec(record.id)?.[1])
     .filter((value): value is string => Boolean(value))
     .map((value) => Number.parseInt(value, 10));
-  return `${base}${String(Math.max(0, ...used) + 1).padStart(3, "0")}`;
+  // @req FR-NODE-312 AC-7 — above the series maximum, the first number no SRS document mentions, so the
+  // plan's in-use check accepts the candidate. The search stops at 9999, the last number the ID pattern
+  // allows: a series that already holds it has no next number, and the loop would otherwise never end.
+  const scope = scopeOf(duplicateId);
+  for (let number = Math.max(0, ...used) + 1; number <= LAST_REQUIREMENT_NUMBER; number += 1) {
+    const id = `${base}${String(number).padStart(3, "0")}`;
+    if (checkRequirementIdAvailable(workspace, { id, scope }).ok) return id;
+  }
+  return null;
+}
+
+/** The last number SRS-MD Rules §11.2 allows in a Requirement ID (`[0-9]{3,4}`). */
+const LAST_REQUIREMENT_NUMBER = 9999;
+
+function scopeOf(id: string): string {
+  return /^[A-Z]+-([A-Z0-9][A-Z0-9-]{1,24})-[0-9]{3,4}$/.exec(id)?.[1] ?? "";
 }
 
 function explicitReferenceKey(edit: { filePath: string; line: number }): string {
@@ -167,10 +184,16 @@ function resolveReplacementId(workspace: ParsedWorkspace, input: RequirementIdCo
   const replacementId = input.replacementId ?? (input.allocationStrategy === "next_available" ? allocateNextId(workspace, input.duplicateId) : null);
   if (!replacementId) return mutationFail("MUTATION_DENIED", "replacementId or allocationStrategy=next_available is required");
   if (!prefixBase(replacementId)) return mutationFail("MUTATION_DENIED", `Invalid replacement Requirement ID: ${replacementId}`);
-  const colliding = workspace.records.find((record) => record.id === replacementId && record !== renameRecord);
-  if (colliding) {
-    const collision = diagnostic("SRS-E032", "error", `Generated replacement Requirement ID already exists: ${replacementId}`, { filePath: colliding.filePath, line: colliding.headingLine }, { replacementId });
-    return mutationFail("GENERATED_ID_COLLISION", `Replacement Requirement ID already exists: ${replacementId}`, [collision]);
+  // @req FR-NODE-312 AC-7 — the replacement passes the rule a caller-chosen id passes: the renamed
+  // requirement's type prefix and scope segment, and no mention in any SRS document of this checkout,
+  // the completed-work history file and the step documents included.
+  const type = isRequirementType(renameRecord.type) ? renameRecord.type : undefined;
+  const availability = checkRequirementIdAvailable(workspace, { id: replacementId, ...(type ? { type } : {}), scope: scopeOf(input.duplicateId) });
+  if (!availability.ok) {
+    if (availability.check !== "in-use") return mutationFail("MUTATION_DENIED", availability.message);
+    const where = availability.filePath === undefined ? {} : { filePath: availability.filePath, ...(availability.line === undefined ? {} : { line: availability.line }) };
+    const collision = diagnostic("SRS-E032", "error", availability.message, where, { replacementId });
+    return mutationFail("GENERATED_ID_COLLISION", availability.message, [collision]);
   }
   return mutationOk(replacementId);
 }

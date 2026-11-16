@@ -14,7 +14,7 @@ import { validateWorkspace } from "../../../src/core/validator/validate-workspac
 // it, and validate tells the author to fix it by hand through SRS-W073."
 
 const OLD = "SRS-MD-Rules-v2.5.0.md";
-const NEW_ENTRY = "- [SRS-MD Authoring Rules v2.6.0](../rule/SRS-MD-Rules-v2.6.0.md)";
+const NEW_ENTRY = "- [SRS-MD Authoring Rules v2.7.0](../rule/SRS-MD-Rules-v2.7.0.md)";
 const SCOPE = "docs/spec/10.product-architecture.srs.md";
 const INDEX = "docs/spec/00.index.md";
 const ROW = "| Rules | [SRS rules][rules] |";

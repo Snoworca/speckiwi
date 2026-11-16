@@ -14,9 +14,9 @@ import { validateWorkspace } from "../../../src/core/validator/validate-workspac
 import { copyFixtureWorkspace } from "../../fixtures/fixture-utils.js";
 
 const OLD = "SRS-MD-Rules-v2.5.0.md";
-const NEW = "SRS-MD-Rules-v2.6.0.md";
+const NEW = "SRS-MD-Rules-v2.7.0.md";
 const OLD_ROW = `| Rules | [SRS-MD Authoring Rules v2.5.0](../rule/${OLD}) |`;
-const NEW_ROW = `| Rules | [SRS-MD Authoring Rules v2.6.0](../rule/${NEW}) |`;
+const NEW_ROW = `| Rules | [SRS-MD Authoring Rules v2.7.0](../rule/${NEW}) |`;
 const SCOPE = "10.product-architecture.srs.md";
 
 async function projectOn(version: string, opts: { rulesFile?: boolean; scopeRow?: string | null; crlf?: boolean } = {}): Promise<string> {

@@ -44,7 +44,7 @@ describe("verify FR-PARSE-044 AC-6 rules pointers, round 10", () => {
       "",
       "| Field | Value |",
       "| --- | --- |",
-      "| Rules | [SRS-MD Authoring Rules v2.6.0](../rule/SRS-MD-Rules-v2.6.0.md) |",
+      "| Rules | [SRS-MD Authoring Rules v2.7.0](../rule/SRS-MD-Rules-v2.7.0.md) |",
       "",
       "## 10. Reference Documents",
       "",

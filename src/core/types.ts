@@ -293,6 +293,12 @@ export interface ParsedWorkspace {
   /** @req FR-PARSE-024 */
   stepFiles?: TextFile[];
   /**
+   * The completed-work history file (91.completed-work-log.md) as text. Its rows are merged into
+   * index.completedWork, but it is not one of `files`; a reader that needs every SRS line reads it here.
+   * @req FR-NODE-312 AC-1
+   */
+  completedWorkLogFile?: TextFile;
+  /**
    * FR-PARSE-037 — every Markdown document directly under docs/spec, as workspace-relative POSIX
    * paths. `files` carries only the documents the parser reads, which is a fixed set: the index, the
    * scope documents and three known sidecars. A consumer's own numbered document is in neither, so a

@@ -33,10 +33,10 @@ function section(title: string): string {
 }
 
 describe("FR-NODE-225 — agent instruction block 1.11", () => {
-  it("FR-NODE-225 AC-1: the heading carries 1.11 and the next line names the rendering package version", () => {
-    expect(AGENT_INSTRUCTION_VERSION).toBe("1.11");
+  // The block has moved on since 1.11 (FR-NODE-312 raised it to 1.12); the heading carries the current version.
+  it("FR-NODE-225 AC-1: the heading carries the current version and the next line names the rendering package version", () => {
     const [heading, written] = lines();
-    expect(heading).toBe(`${AGENT_INSTRUCTION_HEADING_PREFIX}1.11`);
+    expect(heading).toBe(`${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`);
     expect(written).toBe(`Written by speckiwi ${packageVersion}.`);
   });
 
@@ -134,7 +134,7 @@ describe("FR-NODE-225 — agent instruction block 1.11", () => {
   });
 
   it("FR-NODE-225 AC-8: the rules document points to the block instead of carrying a copy", async () => {
-    const rules = await readFile(repo("docs/rule/SRS-MD-Rules-v2.6.0.md"), "utf8");
+    const rules = await readFile(repo("docs/rule/SRS-MD-Rules-v2.7.0.md"), "utf8");
     expect(rules).not.toContain(AGENT_INSTRUCTION_HEADING_PREFIX);
     expect(rules).not.toContain(AGENT_INSTRUCTION_END_MARKER);
     expect(rules).toMatch(/AGENTS\.md[^\n]*CLAUDE\.md|CLAUDE\.md[^\n]*AGENTS\.md/);

@@ -580,6 +580,7 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
       Object.assign(addInput, { statement });
       if (typeof optional.status === "string") Object.assign(addInput, { status: optional.status });
       if (typeof optional.target === "string") Object.assign(addInput, { target: optional.target });
+      if (typeof optional.requirementId === "string") Object.assign(addInput, { requirementId: optional.requirementId });
       if (typeof optional.priority === "string") Object.assign(addInput, { priority: optional.priority });
       if (typeof optional.risk === "string") Object.assign(addInput, { risk: optional.risk });
       if (typeof optional.stability === "string") Object.assign(addInput, { stability: optional.stability });

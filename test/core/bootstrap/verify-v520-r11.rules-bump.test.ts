@@ -6,7 +6,7 @@ import { linkDefinitions } from "../../../src/core/parser/markdown-links.js";
 // reader. Each case below is read the way CommonMark 0.31 reads it; the spec example or section is cited.
 
 const OLD = "SRS-MD-Rules-v2.5.0.md";
-const NEW = "SRS-MD-Rules-v2.6.0.md";
+const NEW = "SRS-MD-Rules-v2.7.0.md";
 const SCOPE = "docs/spec/01.alpha.srs.md";
 const INDEX = "docs/spec/00.index.md";
 
@@ -23,7 +23,7 @@ describe("verify FR-PARSE-044 AC-6 rules pointers and the shared link reader, ro
     // Lead decision (round 11): a reference-style Rules row is author text, not a tool-owned pointer,
     // whatever its definition says or wherever it sits; doctor and upgrade leave it, validate sends it
     // to a hand edit.
-    const text = scopeDoc("| Rules | [SRS-MD Authoring Rules v2.6.0][rules] |", "Body.", "", `> [rules]: ../rule/${NEW}`, "");
+    const text = scopeDoc("| Rules | [SRS-MD Authoring Rules v2.7.0][rules] |", "Body.", "", `> [rules]: ../rule/${NEW}`, "");
     expect(rulesRowVerdicts(text)).toEqual([]);
   });
 
@@ -32,7 +32,7 @@ describe("verify FR-PARSE-044 AC-6 rules pointers and the shared link reader, ro
     // Lead decision (round 11): a reference-style Rules row is author text, not a tool-owned pointer,
     // whatever its definition says or wherever it sits; doctor and upgrade leave it, validate sends it
     // to a hand edit.
-    const text = scopeDoc("| Rules | [SRS-MD Authoring Rules v2.6.0][rules] |", "Body.", "", `- [rules]: ../rule/${NEW}`, "");
+    const text = scopeDoc("| Rules | [SRS-MD Authoring Rules v2.7.0][rules] |", "Body.", "", `- [rules]: ../rule/${NEW}`, "");
     expect(rulesRowVerdicts(text)).toEqual([]);
   });
 
@@ -56,7 +56,7 @@ describe("verify FR-PARSE-044 AC-6 rules pointers and the shared link reader, ro
     // Lead decision (round 11): a reference-style Rules row is author text, not a tool-owned pointer,
     // whatever its definition says or wherever it sits; doctor and upgrade leave it, validate sends it
     // to a hand edit.
-    const text = scopeDoc("| Rules | [SRS-MD Authoring Rules v2.6.0][r] |", "The rules file is:", `[r]: ../rule/${NEW}`, "");
+    const text = scopeDoc("| Rules | [SRS-MD Authoring Rules v2.7.0][r] |", "The rules file is:", `[r]: ../rule/${NEW}`, "");
     expect(rulesRowVerdicts(text)).toEqual([]);
   });
 
@@ -91,13 +91,13 @@ describe("verify FR-PARSE-044 AC-6 rules pointers and the shared link reader, ro
   // @req FR-PARSE-044 AC-6
   it("a Rules row whose link escapes punctuation in the bundled file name does not need a refresh", () => {
     // CommonMark §2.4: `\-` in a destination is a literal `-`; the shared reader resolves it to the bundled file.
-    const text = scopeDoc("| Rules | [SRS-MD Authoring Rules v2.6.0](../rule/SRS\\-MD\\-Rules\\-v2.6.0.md) |");
+    const text = scopeDoc("| Rules | [SRS-MD Authoring Rules v2.7.0](../rule/SRS\\-MD\\-Rules\\-v2.7.0.md) |");
     expect(rulesRowVerdicts(text)).toEqual([{ line: 6, needsRefresh: false }]);
   });
 
   // @req FR-PARSE-044 AC-6
   it("a Rules row whose link percent-encodes the dots of the bundled file name does not need a refresh", () => {
-    const text = scopeDoc("| Rules | [SRS-MD Authoring Rules v2.6.0](../rule/SRS-MD-Rules-v2%2E6%2E0.md) |");
+    const text = scopeDoc("| Rules | [SRS-MD Authoring Rules v2.7.0](../rule/SRS-MD-Rules-v2%2E7%2E0.md) |");
     expect(rulesRowVerdicts(text)).toEqual([{ line: 6, needsRefresh: false }]);
   });
 

@@ -215,7 +215,7 @@ describe("FR-PARSE-044 AC-4 — a successor that is the requirement itself or di
 
 describe("FR-PARSE-044 AC-5 — the bundled rules document states the expiry rules", () => {
   async function acSection(): Promise<string> {
-    const text = await readFile(path.join("docs", "rule", "SRS-MD-Rules-v2.6.0.md"), "utf8");
+    const text = await readFile(path.join("docs", "rule", "SRS-MD-Rules-v2.7.0.md"), "utf8");
     const start = text.indexOf("## 21. Acceptance Criteria Rules");
     const end = text.indexOf("\n## 22.", start);
     return text.slice(start, end);

@@ -110,6 +110,8 @@ export async function parseWorkspace(root: ProjectRoot): Promise<ParsedWorkspace
     diagnostics,
     specDocuments: discovered.specDocuments,
     ...(discovered.stateFile ? { stateFile: discovered.stateFile } : {}),
-    stepRecords
+    ...(discovered.completedWorkLog ? { completedWorkLogFile: discovered.completedWorkLog } : {}),
+    stepRecords,
+    stepFiles: discovered.stepFiles
   };
 }

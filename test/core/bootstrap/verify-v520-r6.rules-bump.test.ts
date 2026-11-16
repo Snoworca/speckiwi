@@ -10,7 +10,7 @@ import { diagnoseHealth } from "../../../src/core/health/doctor.js";
 import { parseWorkspace } from "../../../src/core/parser/workspace-parser.js";
 import { resolveProjectRoot } from "../../../src/core/project-root.js";
 
-const NEW = "SRS-MD-Rules-v2.6.0.md";
+const NEW = "SRS-MD-Rules-v2.7.0.md";
 
 async function freshProject(): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "speckiwi-r6-rules-"));
@@ -52,12 +52,12 @@ describe("verify FR-PARSE-044 AC-6 pointer verdict, round 6", () => {
 
   // @req FR-PARSE-044 AC-6
   it("a current Rules row whose link carries a title is left alone", async () => {
-    expect(await verdict(`| Rules | [SRS-MD Authoring Rules v2.6.0](../rule/${NEW} "SRS rules") |`)).toEqual({ doctorWarned: false, upgradeRewrote: false });
+    expect(await verdict(`| Rules | [SRS-MD Authoring Rules v2.7.0](../rule/${NEW} "SRS rules") |`)).toEqual({ doctorWarned: false, upgradeRewrote: false });
   });
 
   // @req FR-PARSE-044 AC-6
   it("a current Rules row whose link destination is in angle brackets is left alone", async () => {
-    expect(await verdict(`| Rules | [SRS-MD Authoring Rules v2.6.0](<../rule/${NEW}>) |`)).toEqual({ doctorWarned: false, upgradeRewrote: false });
+    expect(await verdict(`| Rules | [SRS-MD Authoring Rules v2.7.0](<../rule/${NEW}>) |`)).toEqual({ doctorWarned: false, upgradeRewrote: false });
   });
 });
 

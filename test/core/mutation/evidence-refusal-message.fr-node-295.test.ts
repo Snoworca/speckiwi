@@ -167,7 +167,7 @@ describe("FR-NODE-295 AC-4 — the documents say a local evidence path is writte
 
   it("SRS-MD Rules section 22.4", () => {
     const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-    const rules = readFileSync(path.join(repo, "docs/rule/SRS-MD-Rules-v2.6.0.md"), "utf8").replace(/\r\n/g, "\n");
+    const rules = readFileSync(path.join(repo, "docs/rule/SRS-MD-Rules-v2.7.0.md"), "utf8").replace(/\r\n/g, "\n");
     const section = rules.slice(rules.indexOf("### 22.4 Evidence Reference Rules"), rules.indexOf("## 23. Trace Links Rules"));
     expect(section).toMatch(ROOT_SENTENCE);
   });

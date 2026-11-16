@@ -389,6 +389,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     type: z.string(),
     scope: z.string(),
     target: z.string().optional(),
+    // @req FR-NODE-312 AC-1 — a free id the caller chose; omitted, the next id of the series.
+    requirementId: z.string().describe("a free Requirement ID to use instead of the next one, such as an id parallel worktrees reserved; checked against this checkout's SRS documents only").optional(),
     title: z.string(),
     requirement: z.string(),
     statement: z.string().optional(),

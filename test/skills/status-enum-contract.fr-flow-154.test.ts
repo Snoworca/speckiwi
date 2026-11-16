@@ -1568,7 +1568,7 @@ function readCorpus(file: string): string {
 // directory somebody typed, and the file kinds inside it were inverted while the roots were not.
 // `package.json`'s `files` is this repository's only statement of what the published package
 // actually contains, and it names two documents no rendering carries:
-// `docs/rule/SRS-MD-Rules-v2.6.0.md` and `docs/rule/SDS-MD-Rules-v2.6.0.md`. The first names
+// `docs/rule/SRS-MD-Rules-v2.7.0.md` and `docs/rule/SDS-MD-Rules-v2.6.0.md`. The first names
 // lifecycle values on 85 lines, this repository's own CLAUDE.md instructs agents to read it, and
 // `speckiwi init` installs it into a consumer repository — where it reads as the authoritative
 // statement of the enum. No walk opened either of them, so `Status 칸에는 frozen 을 적는다` and
@@ -2959,7 +2959,7 @@ describe("FR-FLOW-154 AC-11 — the corpus roots come out of the packaging manif
       "dist",
       "docs/.kiwi/hooks",
       "docs/rule/SDS-MD-Rules-v2.6.0.md",
-      "docs/rule/SRS-MD-Rules-v2.6.0.md",
+      "docs/rule/SRS-MD-Rules-v2.7.0.md",
       "skills/claude",
       "skills/codex",
       "skills/etc"
@@ -3019,7 +3019,7 @@ describe("FR-FLOW-154 AC-11 — the documents the manifest ships are read by the
       "docs/.kiwi/hooks/pre-commit.mjs",
       "docs/.kiwi/hooks/trace.mjs",
       "docs/rule/SDS-MD-Rules-v2.6.0.md",
-      "docs/rule/SRS-MD-Rules-v2.6.0.md"
+      "docs/rule/SRS-MD-Rules-v2.7.0.md"
     ]);
     const kinds = [...new Set(files.map((file) => file.slice(file.lastIndexOf("."))))].sort();
     expect(kinds.filter((kind) => !(CORPUS_KINDS as readonly string[]).includes(kind)), "shipped-document kinds with no reader").toEqual(
@@ -3031,7 +3031,7 @@ describe("FR-FLOW-154 AC-11 — the documents the manifest ships are read by the
     // authoritative, so a rewrite that stopped naming lifecycle values would take the whole reason
     // for this sweep away while every assertion above went on passing.
     expect(
-      lifecycleLines(["docs/rule/SRS-MD-Rules-v2.6.0.md"]).length,
+      lifecycleLines(["docs/rule/SRS-MD-Rules-v2.7.0.md"]).length,
       "lines of the rules document that name a lifecycle value"
     ).toBeGreaterThanOrEqual(PACKAGED_RULES_LINE_FLOOR);
   });

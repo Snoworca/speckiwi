@@ -23,6 +23,7 @@ import { checkIndexRollupsWritableAt, syncIndexRollupsAfterWrite } from "./sync-
 import { allocateRequirementIdFromStatusCache } from "../status-cache.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal } from "../workflow/release-readiness.js";
+import { checkRequirementIdAvailable, type RequirementIdAvailability } from "./requirement-id-availability.js";
 
 export interface AddRequirementInput extends Omit<RenderRequirementInput, "id" | "type" | "target" | "changeNotes"> {
   type: RequirementType;
@@ -35,6 +36,11 @@ export interface AddRequirementInput extends Omit<RenderRequirementInput, "id" |
   changeNotes?: unknown;
   /** The surface that handed in `changeNotes`; the CLI takes only the string form. Default `mcp`. */
   changeNotesSurface?: ChangeNotesSurface;
+  /**
+   * A free Requirement ID the caller chose: parallel worktrees that agreed their numbers beforehand.
+   * Omitted, the next id of the series is allocated exactly as before. @req FR-NODE-312 AC-1 AC-3
+   */
+  requirementId?: string;
   dryRun?: boolean;
   ignoreLock?: boolean;
   skipLock?: boolean;
@@ -49,6 +55,23 @@ export interface AddRequirementOutput {
   written: boolean;
   targetSource: "explicit" | "active-target";
   record: RequirementRecord;
+  /** Present only when the caller named the id. @req FR-NODE-312 AC-1 */
+  idSource?: "caller";
+  /** Present only when the caller named the id: what the availability check could not see. @req FR-NODE-312 AC-4 */
+  idNotice?: string;
+}
+
+const CALLER_ID_NOTICE =
+  "Availability was checked against this checkout's SRS documents only; other branches and worktrees were not consulted, so the agreement that reserved this number is what keeps them apart.";
+
+/**
+ * A refused caller-chosen id: a malformed, mistyped or misscoped id is the caller's argument error; an id
+ * already in use is a state refusal that names where it appears. @req FR-NODE-312 AC-2
+ */
+function chosenIdRefusal<T>(availability: Extract<RequirementIdAvailability, { ok: false }>): MutationResult<T> {
+  if (availability.check !== "in-use") return mutationFail("USAGE", availability.message) as MutationResult<T>;
+  const where = availability.filePath === undefined ? {} : { filePath: availability.filePath, ...(availability.line === undefined ? {} : { line: availability.line }) };
+  return mutationFail("MUTATION_DENIED", availability.message, [diagnostic("SRS-E002", "error", availability.message, where)]) as MutationResult<T>;
 }
 
 type ResolvedAddRequirementInput = NormalizedAddRequirementInput & { target: string };
@@ -283,6 +306,12 @@ export async function addRequirement(root: ProjectRoot, input: AddRequirementInp
   const normalizedInput: NormalizedAddRequirementInput = { ...input, evidence: rows.evidence, trace: rows.trace, changeNotes: rows.changeNotes };
   const discardedRefusal = await refuseDiscardedTraceTargetsBeforeLock<AddRequirementOutput>(root, rows.trace.map(traceRowCells));
   if (discardedRefusal) return discardedRefusal;
+  // @req FR-NODE-312 AC-2 — an unusable caller id is refused before the lock is taken, so the refusal
+  // leaves the status cache as well as the documents untouched; the check runs again under the lock.
+  if (input.requirementId !== undefined && isRequirementType(input.type)) {
+    const availability = checkRequirementIdAvailable(await parseWorkspace(root), { id: input.requirementId, type: input.type, scope: input.scope });
+    if (!availability.ok) return chosenIdRefusal(availability);
+  }
   return withSrsMutationLock(root, { operation: "add_requirement", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addRequirementUnlocked(root, normalizedInput));
 }
 
@@ -357,10 +386,16 @@ async function addRequirementUnlocked(root: ProjectRoot, input: NormalizedAddReq
   } catch (error) {
     return mutationFail("MUTATION_DENIED", (error as Error).message);
   }
-  const cacheAllocation = await allocateRequirementIdFromStatusCache(root, workspace, resolvedInput.type, resolvedInput.scope);
+  const chosenId = input.requirementId;
+  const checkChosen = (latest: ParsedWorkspace) => checkRequirementIdAvailable(latest, { id: chosenId ?? "", type: resolvedInput.type, scope: resolvedInput.scope });
+  if (chosenId !== undefined) {
+    const availability = checkChosen(workspace);
+    if (!availability.ok) return chosenIdRefusal(availability);
+  }
+  const cacheAllocation = chosenId === undefined ? await allocateRequirementIdFromStatusCache(root, workspace, resolvedInput.type, resolvedInput.scope) : { id: undefined, diagnostics: [] };
   const diagnostics = [...cacheAllocation.diagnostics];
-  let id = cacheAllocation.id ?? generateNextRequirementId(workspace, resolvedInput.type, resolvedInput.scope);
-  if (workspace.records.some((record) => record.id === id)) {
+  let id = chosenId ?? cacheAllocation.id ?? generateNextRequirementId(workspace, resolvedInput.type, resolvedInput.scope);
+  if (chosenId === undefined && workspace.records.some((record) => record.id === id)) {
     diagnostics.push(diagnostic("SRS-W065", "warning", `SRS status cache ignored: cached Requirement ID already exists: ${id}`, { filePath: "kiwi/.status.json" }, { reason: "cached-id-collision", requirementId: id, fallback: "full-workspace-parse" }));
     id = generateNextRequirementId(workspace, resolvedInput.type, resolvedInput.scope);
   }
@@ -371,7 +406,12 @@ async function addRequirementUnlocked(root: ProjectRoot, input: NormalizedAddReq
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const latestWorkspace = await parseWorkspace(root);
     const relativePath = path.relative(root.root, filePath).replace(/\\/g, "/");
-    if (latestWorkspace.records.some((record) => record.id === id)) {
+    // @req FR-NODE-312 AC-5 — a caller's id is checked again on the latest documents and refused if it
+    // was taken meanwhile: it is never swapped for the next free number the way a generated one is.
+    if (chosenId !== undefined) {
+      const availability = checkChosen(latestWorkspace);
+      if (!availability.ok) return chosenIdRefusal(availability);
+    } else if (latestWorkspace.records.some((record) => record.id === id)) {
       if (attempt === 0) {
         id = generateNextRequirementId(latestWorkspace, resolvedInput.type, resolvedInput.scope);
         continue;
@@ -395,7 +435,8 @@ async function addRequirementUnlocked(root: ProjectRoot, input: NormalizedAddReq
           filePath: file.relativePath,
           written: applied.written,
           targetSource,
-          record: buildOutputRecord(resolvedInput, id, file.relativePath)
+          record: buildOutputRecord(resolvedInput, id, file.relativePath),
+          ...(chosenId === undefined ? {} : { idSource: "caller" as const, idNotice: CALLER_ID_NOTICE })
         },
         diagnostics: mergedDiagnostics,
         diagnosticsSummary: summarizeDiagnostics(mergedDiagnostics),
@@ -443,6 +484,14 @@ async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteS
   const stepRecord = (workspace.stepRecords ?? []).find((record) => record.id === input.id && record.stepName === input.fromStep);
   if (!stepRecord) {
     return mutationFail("NOT_FOUND", `Step requirement not found: ${input.id} in step ${input.fromStep}`) as MutationResult<AddRequirementOutput>;
+  }
+  // @req FR-NODE-312 AC-7 — the id lands verbatim, so it passes the rule a caller-chosen id passes: the
+  // target scope's segment, the type's prefix, and no mention in any SRS document but its own step's.
+  const stepDirectory = path.posix.dirname(stepRecord.filePath);
+  const stepType = isRequirementType(stepRecord.type) ? stepRecord.type : undefined;
+  const availability = checkRequirementIdAvailable(workspace, { id: input.id, ...(stepType ? { type: stepType } : {}), scope: input.toScope, ignoreFile: (file) => path.posix.dirname(file) === stepDirectory });
+  if (!availability.ok) {
+    return mutationFail("MUTATION_DENIED", availability.message) as MutationResult<AddRequirementOutput>;
   }
   if (!stepRecord.markdown) {
     return mutationFail("MUTATION_DENIED", `Step requirement block is empty: ${input.id}`) as MutationResult<AddRequirementOutput>;

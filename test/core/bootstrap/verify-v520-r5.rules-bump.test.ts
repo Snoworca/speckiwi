@@ -10,7 +10,7 @@ import { resolveProjectRoot } from "../../../src/core/project-root.js";
 import { validateWorkspace } from "../../../src/core/validator/validate-workspace.js";
 
 const OLD = "SRS-MD-Rules-v2.5.0.md";
-const NEW = "SRS-MD-Rules-v2.6.0.md";
+const NEW = "SRS-MD-Rules-v2.7.0.md";
 
 async function freshProject(): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "speckiwi-r5-rules-"));
@@ -60,7 +60,7 @@ describe("verify FR-PARSE-044 AC-6 / FR-PARSE-039 SRS-W073 guidance, round 5", (
     const rel = "docs/spec/01.alpha.srs.md";
     await writeFile(
       path.join(root, rel),
-      scopeDoc(`| Rules | [SRS-MD Authoring Rules v2.6.0](../rule/${NEW}) (was ${OLD}) |`),
+      scopeDoc(`| Rules | [SRS-MD Authoring Rules v2.7.0](../rule/${NEW}) (was ${OLD}) |`),
       "utf8"
     );
     const before = await staleRules(root);
@@ -72,7 +72,7 @@ describe("verify FR-PARSE-044 AC-6 / FR-PARSE-039 SRS-W073 guidance, round 5", (
   // @req FR-PARSE-044 AC-6
   it("doctor and validate agree on a tool-owned Rules row that still names the old file", async () => {
     const root = await freshProject();
-    await writeFile(path.join(root, "docs/spec/01.alpha.srs.md"), scopeDoc(`| Rules | [SRS-MD Authoring Rules v2.6.0](../rule/${NEW}) (was ${OLD}) |`), "utf8");
+    await writeFile(path.join(root, "docs/spec/01.alpha.srs.md"), scopeDoc(`| Rules | [SRS-MD Authoring Rules v2.7.0](../rule/${NEW}) (was ${OLD}) |`), "utf8");
     const validateSaysUpgrade = (await staleRules(root)).some((w) => /run `speckiwi upgrade`/.test(w.message));
     const doctorWarns = (await rulesDrift(root)).state === "warn";
     expect({ validateSaysUpgrade, doctorWarns }).toEqual({ validateSaysUpgrade, doctorWarns: validateSaysUpgrade });

@@ -28,7 +28,7 @@ import { validateWorkspace } from "../../../src/core/validator/validate-workspac
 // the plan reports what the apply reports.
 
 const OLD = "SRS-MD-Rules-v2.5.0.md";
-const NEW = "SRS-MD-Rules-v2.6.0.md";
+const NEW = "SRS-MD-Rules-v2.7.0.md";
 const SCOPE = "docs/spec/01.alpha.srs.md";
 const INDEX = "docs/spec/00.index.md";
 
@@ -41,7 +41,7 @@ type Ending = "lf" | "crlf" | "no-final-newline";
 type State = "stale" | "current";
 
 const fileOf = (state: State) => (state === "stale" ? OLD : NEW);
-const labelOf = (state: State) => `SRS-MD Authoring Rules v${state === "stale" ? "2.5.0" : "2.6.0"}`;
+const labelOf = (state: State) => `SRS-MD Authoring Rules v${state === "stale" ? "2.5.0" : "2.7.0"}`;
 const linkOf = (state: State) => `../rule/${fileOf(state)}`;
 const keyOf = (form: Form, state: State) => (form === "full" ? "rules" : labelOf(state));
 

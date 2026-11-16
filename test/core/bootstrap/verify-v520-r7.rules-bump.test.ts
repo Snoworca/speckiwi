@@ -24,7 +24,7 @@ const { diagnoseHealth } = await import("../../../src/core/health/doctor.js");
 const { parseWorkspace } = await import("../../../src/core/parser/workspace-parser.js");
 const { resolveProjectRoot } = await import("../../../src/core/project-root.js");
 
-const NEW = "SRS-MD-Rules-v2.6.0.md";
+const NEW = "SRS-MD-Rules-v2.7.0.md";
 const OLD_ROW = "| Rules | [SRS-MD Authoring Rules v2.5.0](../rule/SRS-MD-Rules-v2.5.0.md) |";
 
 async function freshProject(): Promise<string> {
@@ -82,7 +82,7 @@ describe("verify FR-PARSE-044 AC-6 pointer set, round 7", () => {
   // @req FR-PARSE-044 AC-6
   it("a current Rules row written as a reference-style link to the bundled file is not reported stale", async () => {
     const root = await freshProject();
-    const doc = scopeDoc("| Rules | [SRS-MD Authoring Rules v2.6.0][rules] |") + `\n[rules]: ../rule/${NEW}\n`;
+    const doc = scopeDoc("| Rules | [SRS-MD Authoring Rules v2.7.0][rules] |") + `\n[rules]: ../rule/${NEW}\n`;
     await writeFile(path.join(root, "docs", "spec", "01.alpha.srs.md"), doc, "utf8");
     expect((await rulesDrift(root)).state).toBe("ok");
   });

@@ -567,10 +567,11 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("add-requirement", mcp("add_requirement", "Creates a new requirement block in the scope document, allocating the next id in the series that the type prefix and the scope prefix share, and can seed criteria, evidence and trace rows in the same call. Writes the scope SRS document and the index rollups."), "workspace", "addRequirement", [
+  mutationSpec("add-requirement", mcp("add_requirement", "Creates a new requirement block in the scope document, allocating the next id in the series that the type prefix and the scope prefix share unless `requirementId` names a free id of that series, and can seed criteria, evidence and trace rows in the same call. A named id is refused, never renumbered, when it is malformed, of another type or scope, or mentioned anywhere in this checkout's SRS documents; other branches and worktrees are not consulted. Writes the scope SRS document and the index rollups."), "workspace", "addRequirement", [
     opt("--type <type>", "type"),
     opt("--scope <scope>", "scope"),
     opt("--target <target>", "target"),
+    opt("--requirement-id <id>", "requirementId"),
     opt("--title <title>", "title"),
     opt("--statement <statement>", "statement"),
     opt("--requirement <requirement>", "requirement"),
