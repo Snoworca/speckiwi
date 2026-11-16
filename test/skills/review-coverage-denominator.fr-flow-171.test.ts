@@ -70,7 +70,35 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   // rejects, since the loop hands that number over — left all 172 assertions passing, and so did
   // rewriting the row to carry a count. The rule the section then states contradicts itself: the
   // reviewer returns counts and the loop compares anchors that nothing produces.
-  ["the reviewer owes one anchor per hunk", "**리뷰어는 hunk 마다 앵커 하나를 돌려준다.**"],
+  ["the reviewer owes one anchor per distinct hunk body", "**리뷰어는 서로 다른 hunk 내용마다 앵커 하나를 돌려준다.**"],
+  // FR-FLOW-171 AC-1 AC-2 (5.5.2) — hunks whose bodies are the same are counted once. Nine identical
+  // renames in one file and the same `// @req` line added above several methods (the two OG lanes
+  // that reopened the rule) left an honest reviewer able to fill at most six of nine rows, because
+  // comparison 3 bans the repeat and only a handful of distinct anchors exist. Opening one of them
+  // tells the reviewer every other one's body, so counting them once buys no blind cover.
+  ["what a hunk body is, and that it is compared on trimmed lines", "**hunk 내용은 그 hunk 의 추가·삭제된 줄을 순서대로 이은 것이며, 줄마다 앞뒤 공백을 다듬어 비교한다**"],
+  ["sameness is decided by the command, not by judgement", "**내용이 같은지는 리뷰어도 루프도 눈으로 판단하지 않는다.**"],
+  // Round-1 review: the command prints three numbers and no grouping, so comparison 2 had nothing
+  // to match against except the judgement the section forbids. The grouping rule is now stated.
+  ["comparison 2 groups hunks by the command's own key", "검사 2 의 대응도 이 명령과 같은 기준으로 hunk 를 묶어 확인한다"],
+  // Round-2 review: the command drops a line that trims to nothing from the key even inside a hunk
+  // with content, and the sentence did not say so; 14c5fab duplication-audit.fr-node-135.test.ts
+  // gives 9 by the command and 10 by the sentence. Both definitions now drop it.
+  ["a blank line is left out of the body, not only out of the count", "다듬어 빈 줄이 된 줄은 잇지 않는다"],
+  ["the grouping key drops blank lines as the command does", "줄마다 앞뒤 공백을 다듬어 빈 줄을 뺀 추가·삭제 줄을"],
+  ["counting a repeated body once is argued from what opening one reveals", "하나를 열면 나머지의 내용도 모두 알게 되는데"],
+  // Round-1 review measured the cost the first wording denied: over 1,133 multi-hunk code files of
+  // the last 300 commits, files a blind pool fills rose from 639 to 654 while honest dead ends fell
+  // from 15 to 0. The cost is stated with its size rather than argued away.
+  ["the cost of grouping is stated", "**대가도 있다**"],
+  ["the size of the cost is stated as measured", "639개에서 654개로 는다"],
+  ["a blank-only hunk leaves the anchor denominator, not the review", "앵커 분모에서 빠질 뿐 리뷰 대상에서 빠지는 것은 아니다"],
+  ["a blank-only hunk is left out of the count", "**빈 줄만 추가·삭제한 hunk 는 `hunks_total` 에 넣지 않는다**"],
+  ["the file header is told apart by position, not by its spelling", "파일 헤더(`---`·`+++`)는 첫 `@@` 앞이라는 위치로 거르므로"],
+  // AC-4 (5.5.2) — comparison 3 says what "the same string" means. Unstated, nine copies of one line
+  // with different indentation, or with and without the diff prefix, clear it.
+  ["comparison 3 compares anchors after trimming and dropping the diff prefix", "두 앵커가 같은지는 각 앵커의 앞뒤 공백을 다듬고 맨 앞의 `+` 또는 `-` 하나를 뗀 뒤 다시 다듬어 비교한다"],
+  ["the within-row ban is argued not to stop an honest reviewer once bodies are grouped", "내용이 같은 hunk 는 이미 하나로 세었으므로 이 금지가 정직한 리뷰어를 막지 않는다"],
   ["the row carries the anchors themselves, not a number", "각 행은 그 파일의 앵커 목록과 finding 이 붙었는지를 밝힌다"],
   ["every included file gets a row", "finding 0건인 파일도 행으로 남는다."],
   ["a sample is not a denominator", "표본·발췌·상위 N 은 분모가 아니다."],
@@ -86,7 +114,7 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   // definition inside comparison 1 turns 32 of those 40 commits invalid, cooperative output and the
   // honest cross-row collision both still passing.
   ["comparison 1 enforces the definition rather than substring containment", "**줄의 임의의 부분문자열은 앵커가 아니다.**"],
-  ["what counts as being inside the hunk is spelled out as the definition", "그 hunk 의 추가·삭제된 줄 하나와 **통째로 같거나**(앞뒤 공백만 다른 것은 같은 것으로 본다), 그 줄에 **토큰 경계로 실재하는 심볼 이름**이어야 한다"],
+  ["what counts as being inside the hunk is spelled out as the definition", "그 hunk 의 추가·삭제된 줄 하나와 **통째로 같거나**(앞뒤 공백만 다른 것과 그 줄의 `+`·`-` 접두를 붙여 옮긴 것은 같은 것으로 본다), 그 줄에 **토큰 경계로 실재하는 심볼 이름**이어야 한다"],
   // The word the definition turns on was left undefined, and the residual figure depends on it.
   // Read as "any token is a symbol name", every word of Korean prose becomes an anchor: measured
   // over the same forty commits, admitting prose words raises the blind-fillable commit count from
@@ -149,7 +177,12 @@ const INVERSIONS: ReadonlyArray<readonly [string, RegExp]> = [
   ["reuse inside a row is permitted", /한 행 안에서.{0,30}(두 번 써도|반복해도|재사용해도|같아도 된다)/],
   ["a sample is admitted", /표본(만|으로)?.{0,20}(충분|허용|가능)|상위 N (만|으로)?.{0,15}(충분|허용)/],
   ["an invalid round is still a pass", /무효(인|한|여도| 라운드도).{0,20}PASS|무효.{0,15}통과로 (기록|본다)/],
-  ["a zero-finding file may be dropped from the rows", /finding 0건.{0,20}(행을 생략|빼도|제외한다)/]
+  ["a zero-finding file may be dropped from the rows", /finding 0건.{0,20}(행을 생략|빼도|제외한다)/],
+  // FR-FLOW-171 AC-1 (5.5.2) — grouping by bytes leaves an indentation-only repeat ungroupable, and
+  // grouping by anyone's judgement makes the count a value the counted party can argue with.
+  ["bodies are grouped byte for byte", /바이트 단위로 (같은|묶|비교한다|센다)/],
+  ["sameness is left to the reviewer or the loop to judge", /(리뷰어|루프|LLM)(가|이) (내용이 )?같은지(를)? (판단|정한)/],
+  ["grouping is said to cost no blind cover", /덮는 힘은 늘지 않는다/]
 ];
 
 /**
@@ -178,10 +211,10 @@ const WIRING_FULL: ReadonlyArray<readonly [string, string]> = [
   ["the output schema declares the rows", '"coverage_rows": ['],
   ["a schema row declares the count its anchors must match", '"hunks_total": 3'],
   ["a schema row declares its anchors", '"anchors": ['],
-  ["the schema says one anchor per hunk for every file of the denominator", "`review_denominator[]` 의 모든 파일이 한 행씩 갖고, 행마다 hunk 당 앵커 하나를 싣는다"],
+  ["the schema says one anchor per distinct hunk body for every file of the denominator", "`review_denominator[]` 의 모든 파일이 한 행씩 갖고, 행마다 서로 다른 hunk 내용 하나에 앵커 하나를 싣는다"],
   ["the re-review fixes the denominator again over the round-N scope", "2회차부터는 회차 범위(FR-NODE-274 AC-2)를 대상으로 루프가 다시 고정하고 `hunks_total` 을 다시 센 분모"],
   ["the re-review output carries the rows as well", "+ `coverage_rows`)"],
-  ["the report states the comparison result round by round", "라운드별 `review_denominator[]` 크기 · 파일별 `hunks_total` 과 앵커 개수"]
+  ["the report states the comparison result round by round", "라운드별 `review_denominator[]` 크기 · 파일별 `hunks_total`(서로 다른 hunk 내용 수) · 묶기 전 hunk 수 · 뺀 빈 줄 hunk 수 · 앵커 개수"]
 ];
 
 /** The abridged renderings state it as a workflow step and defer the schema to the reference file. */
@@ -204,11 +237,11 @@ describe("FR-FLOW-171 — the corpora these checks iterate are not empty", () =>
   // name; these four are the same hole one layer up, and the floors are set at the current sizes so
   // that deleting one entry is a failure rather than a smaller silent pass.
   it("PINNED still carries every pinned rule", () => {
-    expect(PINNED.length).toBeGreaterThanOrEqual(25);
+    expect(PINNED.length).toBeGreaterThanOrEqual(38);
   });
 
   it("INVERSIONS still carries every loosening spelling", () => {
-    expect(INVERSIONS.length).toBeGreaterThanOrEqual(10);
+    expect(INVERSIONS.length).toBeGreaterThanOrEqual(13);
   });
 
   it("WIRING_FULL still carries every wiring site of the full rendering", () => {
@@ -258,8 +291,11 @@ describe.each(COPIES)("FR-FLOW-171 AC-1 — the loop fixes the denominator and c
     // adjacent hunks of docs/plan/3.0/index.md and reports 3 where -U0 reports 4. A denominator
     // that undercounts is one the reviewer clears without reading everything.
     expect(text, "the command is written out").toMatch(/git diff -U0/);
-    expect(text, "the hunk headers are what is counted").toMatch(/grep -c '\^@@'/);
     expect(text, "the reason for zero context is stated").toMatch(/컨텍스트 줄이 인접 hunk 를 병합/);
+    // What the command prints is run in review-hunk-count-command.fr-flow-171.test.ts; here the
+    // section has to say which of its three numbers is hunks_total.
+    expect(text, "the three printed numbers are named").toMatch(/첫째가 `hunks_total`, 곧 \*\*서로 다른 hunk 내용의 수\*\*이고, 둘째는 묶기 전 hunk 수, 셋째는 그 가운데 빈 줄만 바꾼 hunk 수다/);
+    expect(text, "a bare header count is no longer the count").not.toMatch(/grep -c '\^@@'/);
   });
 });
 
@@ -314,7 +350,7 @@ describe.each(COPIES)("FR-FLOW-171 AC-4 — three comparisons, not one (%s)", (c
     const text = flat(coverage(copy));
     expect(text, "the count equality is stated").toMatch(/앵커 개수가 `hunks_total` 과 같고/);
     // Equality alone admits N anchors all taken from one hunk.
-    expect(text, "the anchors map onto distinct hunks").toMatch(/서로 다른 hunk 에 하나씩 대응한다/);
+    expect(text, "the anchors map onto distinct hunk bodies").toMatch(/서로 다른 hunk 내용에 하나씩 대응한다/);
   });
 
   it("states why within-row reuse has to be banned separately from the matching", () => {
@@ -327,6 +363,16 @@ describe.each(COPIES)("FR-FLOW-171 AC-4 — three comparisons, not one (%s)", (c
     expect(flat(coverage(copy)), "the reason the ban stops at the row").toMatch(
       /정직한 리뷰어의 앵커도 행 사이에서 겹치므로/
     );
+  });
+});
+
+describe("FR-FLOW-171 AC-4 — the schema example writes an anchor the way comparison 3 compares it", () => {
+  it("carries no anchor with the diff's + or - prefix", () => {
+    // Comparison 3 drops the prefix before comparing, so an example that writes it teaches the one
+    // spelling the comparison treats as equal to its unprefixed twin.
+    const block = /"anchors": \[([^\]]*)\]/.exec(bodyOf(FULL_COPY))?.[1] ?? "";
+    expect(block, "the example anchors are found").not.toBe("");
+    expect(block).not.toMatch(/"[+-] /);
   });
 });
 
@@ -440,7 +486,7 @@ describe("FR-FLOW-171 AC-2 · AC-6 — the reference file the abridged rendering
     // This file IS the reviewer output schema for three of the four renderings. The SKILL.md
     // section can say a row exists while the schema the reviewer is handed has no field for it.
     expect(flat(readRepoFile(relPath))).toContain(
-      flat("The reviewer also returns `coverage_rows[]`, one row per file of `review_denominator[]`, each carrying one anchor per hunk.")
+      flat("The reviewer also returns `coverage_rows[]`, one row per file of `review_denominator[]`, each carrying one anchor per distinct hunk body.")
     );
   });
 

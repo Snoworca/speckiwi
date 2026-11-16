@@ -68,7 +68,7 @@ Normalize findings to:
 ```
 
 The reviewer also returns `coverage_rows[]`, one row per file of
-`review_denominator[]`, each carrying one anchor per hunk. The rule and the
+`review_denominator[]`, each carrying one anchor per distinct hunk body. The rule and the
 three comparisons the loop runs over those anchors are in the SKILL.md
 리뷰 커버리지 분모 section; do not restate them here.
 
