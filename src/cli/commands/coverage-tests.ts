@@ -46,6 +46,8 @@ function formatReport(report: TestSufficiencyReport): string {
   ];
   for (const gap of report.gaps.requirements) for (const acId of gap.acIds) lines.push(`gap ${gap.requirementId} ${acId}`);
   for (const gap of report.gaps.sdsContracts) lines.push(`gap ${gap.sdsAcId} ${gap.reason}`);
+  // @req FR-PARSE-051 AC-4 — a marked criterion is listed apart with whether a non-test row names it.
+  for (const item of report.nonTest ?? []) lines.push(`non-test ${item.requirementId} ${item.acId} ${item.evidenced ? "evidenced" : "unevidenced"}`);
   // @req FR-PARSE-044 AC-3 — a test still citing an expired criterion is listed apart, never as coverage.
   for (const expired of report.expiredCitations) {
     lines.push(`expired ${expired.requirementId} ${expired.acId} cited by ${expired.citations.map((citation) => `${citation.file}:${citation.line}`).join(", ")}`);

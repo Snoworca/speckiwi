@@ -703,6 +703,18 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
+  // @req FR-NODE-315 AC-5 — acts on one requirement id, so req-scoped.
+  mutationSpec("mark-ac-non-test", mcp("mark_acceptance_criterion_non_test", "Marks one live acceptance criterion of a requirement non-test: the line keeps its number, text and checkbox and gains ` [NON-TEST]` at its end, and the mandatory `reason` lands in a Change Notes row of the same patch. Use it only for a check this repository's automated tests cannot reproduce, such as one against a real external service. A marked criterion leaves the test-sufficiency gaps and is listed under `nonTest` instead, and `verified` then needs an evidence row whose Type is not test and whose Covers names the criterion (`all` does not). It refuses, changing nothing, an empty reason, an expired, absent or already marked criterion, and a verified requirement. Writes the requirement block."), "req-scoped", "markAcceptanceCriterionNonTest", [
+    opt("--reason <text>", "reason"),
+    DRY_RUN,
+    IGNORE_LOCK
+  ]),
+  // @req FR-NODE-315 AC-5 — acts on one requirement id, so req-scoped.
+  mutationSpec("unmark-ac-non-test", mcp("unmark_acceptance_criterion_non_test", "Removes the ` [NON-TEST]` marker from one acceptance criterion of a requirement, so a test must cite it again, and the mandatory `reason` lands in a Change Notes row of the same patch. It refuses, changing nothing, an empty reason, an unmarked or expired criterion, and a verified requirement. Writes the requirement block."), "req-scoped", "unmarkAcceptanceCriterionNonTest", [
+    opt("--reason <text>", "reason"),
+    DRY_RUN,
+    IGNORE_LOCK
+  ]),
   // register-scopes: real CLI mutation (promote_step_requirement moved to `step promote`, IR-CLI-074).
   mutationSpec("register-scopes", mcp("register_scopes", "Registers scope documents that exist on disk but are missing from the index's Scope Map, creating no document and adding no SRS Documents row. It previews by default and changes nothing on disk until `apply` is passed. Writes the index."), "workspace", "registerScopes", [
     opt("--apply", "apply"),

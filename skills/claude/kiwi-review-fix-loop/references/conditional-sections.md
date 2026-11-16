@@ -45,7 +45,7 @@
 |---|---|
 | `denominator` | `list_requirements` 가 돌려준 집합. 스킬이 만들지 않는다 |
 | `scoped` | `denominator` 를 이번 실행의 리뷰 범위와 교차한 부분집합. 교차 근거는 아래 `match_confidence` 이며 `high` 미만은 교차에서 빠지되 **제외로 계상한다**. 호출자가 `--sds` 나 `--req-filter` 로 범위를 지명했으면 교차 상대는 그 ID 집합(`--sds` 면 그 SDS 의 `@req` 요구)이고 아래 휴리스틱을 쓰지 않는다 — 지명된 요구가 휴리스틱에 빠져 승급되지 않으면 SDS 가 run 뒤에도 남는다(`kiwi-sds` §3.2) |
-| `eligible` | `scoped` 에서 산문 증거 REQ 와 `stability` 가 `draft`·`deprecated` 인 REQ 를 뺀 것. status 가 `implemented` 가 아닌 REQ 는 분모가 이미 걸러 냈다 |
+| `eligible` | `scoped` 에서 산문 증거 REQ 와 `stability` 가 `draft`·`deprecated` 인 REQ 를 뺀 것. status 가 `implemented` 가 아닌 REQ 는 분모가 이미 걸러 냈다. Phase 7.4 결과의 `nonTest` 에 `evidenced=false` AC 가 있는 REQ 도 그 확인 뒤에 빼고 `excluded` 에 `non-test-unevidenced` 로 계상한다 |
 | `transitioned` | 실제로 `verified` 전이에 성공한 수 |
 | `excluded` | `scoped` 에서 닫히지 않은 REQ 를 사유와 함께 REQ 단위로 열거한 목록 |
 
@@ -78,7 +78,7 @@
 각 `eligible` REQ 에 대해 순서대로:
 
 1. `add_verification_evidence({ id: req_id, type: "test", reference: <그 AC 의 인용 테스트 파일>, covers: <그 AC-ID>, notes: "kiwi-review-fix-loop 회귀 검증 통과 (run_id={run-id})" })` — speckiwi MCP schema `covers: z.string().optional()` 준수. AC 마다 1건씩 호출한다. `reference` 와 `covers` 는 Phase 7.4 테스트 충분성 확인(SKILL.md §6.5.1)이 그 AC 에 돌려준 인용에서 가져온다 (`_shared/kiwi/test-sufficiency.md` §4). 인용이 없는 AC 에는 증거를 등록하지 않는다.
-2. `check_acceptance_criteria({ id: req_id, acIds: [<인용이 있는 AC-ID>], checked: true })` — **AC 마다 그 AC 를 통과시킨 테스트 식별자는 Phase 7.4 테스트 충분성 확인이 그 AC 에 돌려준 인용(파일 경로와 테스트 줄)이다** — 에이전트가 스스로 테스트를 지목하지 않는다. 직전 1번 호출은 같은 인용을 `reference` 로 등록했다. **지목이 없는 AC 는 체크하지 않는다** — 도구가 인용을 돌려주지 않은 AC 다. `acIds` 에서 빼고 그 REQ 를 `skipped_reason: "unnamed-ac"` 로 기록한다. 체크는 mutation 이므로, 통과하지 않은 AC 를 체크하면 게이트가 형식만 만족된다.
+2. `check_acceptance_criteria({ id: req_id, acIds: [<인용이 있는 AC-ID>], checked: true })` — **AC 마다 그 AC 를 통과시킨 테스트 식별자는 Phase 7.4 테스트 충분성 확인이 그 AC 에 돌려준 인용(파일 경로와 테스트 줄)이다** — 에이전트가 스스로 테스트를 지목하지 않는다. 직전 1번 호출은 같은 인용을 `reference` 로 등록했다. **지목이 없는 AC 는 체크하지 않는다** — 도구가 인용을 돌려주지 않은 AC 다. `acIds` 에서 빼고 그 REQ 를 `skipped_reason: "unnamed-ac"` 로 기록한다. 체크는 mutation 이므로, 통과하지 않은 AC 를 체크하면 게이트가 형식만 만족된다. 표식 AC(Phase 7.4 의 `nonTest`)는 인용 대신 지명 증거로 판정한다 — `evidenced=true` 면 1번의 test 행 없이 `acIds` 에 넣고, `evidenced=false` AC 를 가진 요구는 `eligible` 에 없다(`_shared/kiwi/test-sufficiency.md` §4).
 3. `update_status({ id: req_id, status: "verified" })`
 
 순서 의무: evidence 등록 → AC 체크 → status 전이 (앞 단계 실패 시 뒤 단계 skip + skipped_reason 기록). `update-status.ts` 의 게이트가 AC 전량 체크와 증거를 함께 요구하므로, 2번을 건너뛴 3번은 `MUTATION_DENIED` 로 거부된다.

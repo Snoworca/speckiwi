@@ -176,7 +176,7 @@ Four names, used exactly:
 |---|---|
 | `denominator` | what `list_requirements` returned; the skill does not build it |
 | `scoped` | the denominator intersected with this run's review scope. When the caller named the scope with `--sds` or `--req-filter`, the intersection is taken with that ID set (for `--sds`, the SDS's `@req` requirements) and the heuristics of step 3 are not used — a named requirement the heuristics missed would stay unpromoted and keep the SDS alive after the run (`kiwi-sds` §3.2) |
-| `eligible` | `scoped` minus prose-evidence requirements and those whose stability is `draft` or `deprecated`; a status other than `implemented` was already filtered by the denominator |
+| `eligible` | `scoped` minus prose-evidence requirements and those whose stability is `draft` or `deprecated`; a status other than `implemented` was already filtered by the denominator. A requirement whose test-sufficiency `nonTest` lists an AC with `evidenced=false` also leaves it after the check, counted in `excluded` as `non-test-unevidenced` |
 | `transitioned` | how many actually reached `verified` |
 | `excluded` | the requirements in `scoped` that were not closed, enumerated one per requirement with a reason |
 
@@ -198,6 +198,8 @@ Mutation order per REQ:
    test-sufficiency step returned for it — the agent does not name one
    itself. Do not check a criterion for which no such identifier is
    named; leave it out of `acIds` and record the requirement as skipped.
+   A marked AC (`nonTest`) is judged by its named evidence instead: with
+   `evidenced=true` it goes into `acIds` without a test row.
 3. `update_status` to `verified`.
 
 If evidence fails for a REQ, skip its status update. Record every skipped and

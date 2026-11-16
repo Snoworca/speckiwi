@@ -428,14 +428,15 @@ implemented	-	kiwi-pm/SKILL.md	| update_status("implemented") | kiwi-pm | T-fina
 implemented	-	kiwi-pm/SKILL.md	가 있으면 lifecycle gate 와 T-final implemented 승급은 집합의 요구를 하나씩 get_requireme
 implemented	-	kiwi-pm/SKILL.md	나면 T-final 단계에서 update_status("implemented") + add_completed_work(req-su
 implemented	-	kiwi-pm/SKILL.md	시 요구 집합 중 테스트 충분성 gap 이 없는 요구의 implemented 승급 + add_completed_work(req-sum
+implemented	-	kiwi-pm/SKILL.md	식 AC 는 gap 이 아니어서 승급을 막지 않는다 — implemented 는 gap 만 보고 올리고, evidenced=fal
 implemented	-	kiwi-pm/SKILL.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸을 때(CLOSE_SAFE) — --sds
 implemented	-	kiwi-pm/SKILL.md	요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 implemented 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 요구
-implemented	-	kiwi-pm/SKILL.md	을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 implemented 로 올리고, 나머지는 gap 과 함께 보고한다. ad
+implemented	-	kiwi-pm/SKILL.md	을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 implemented 로 올리고, 나머지는 gap 과 함께 보고한다. no
 implemented	-	kiwi-review-fix-loop/SKILL.md	S + finding 0건 시 영향 REQ status를 implemented→verified 전이 + verification evid
 implemented	-	kiwi-review-fix-loop/SKILL.md	se-reqs + 영향 REQ 중 현재 status 가 implemented 가 아닌 항목 (예: verified 이미 / plann
 implemented	-	kiwi-review-fix-loop/SKILL.md	시 시 셀프 모드 한정으로 update_status (implemented→verified, forward-only) + add_
 implemented	-	kiwi-review-fix-loop/references/conditional-sections.md	medium|low", "current_status": "implemented", "stability": "evolving" }
-implemented	-	kiwi-review-fix-loop/references/conditional-sections.md	recated 인 REQ 를 뺀 것. status 가 implemented 가 아닌 REQ 는 분모가 이미 걸러 냈다 |
+implemented	-	kiwi-review-fix-loop/references/conditional-sections.md	recated 인 REQ 를 뺀 것. status 가 implemented 가 아닌 REQ 는 분모가 이미 걸러 냈다. Phase
 implemented	-	kiwi-review-fix-loop/references/conditional-sections.md	target: <해소한 target>, status: "implemented" }) 로 분모를 받는다. 이 둘은 read 이
 implemented	-	kiwi-sds/SKILL.md	자가 둘 중 하나를 고른다: 그 요구를 저장소 절차대로 implemented 로 내리고 --close 를 다시 부른 뒤 다시
 implemented	-	kiwi-srs-feasibility/SKILL.md	ed + REQ.status ∈ {in_progress, implemented, verified} | stability mutation
@@ -450,6 +451,7 @@ implemented	-	kiwi-srs/SKILL.md	update_status 로 in_progress/implemented 승격
 implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented) 호출 시도 → 차단 + AskUserQuestion
 implemented	-	kiwi-srs/SKILL.md	태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + AskUserQuestion
 implemented	-	kiwi-srs/SKILL.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi-srs → /kiw
+implemented	-	kiwi-tdd/SKILL.md	하고 멈춘다 — 사용자가 승격을 정하면 step 요구를 implemented 로 승격하고, body 요구에서 표식과 그 AC 를 지
 in_progress	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, implemented, or verified
 in_progress	-	_shared/kiwi/parallel-waves.md	다). 전이는 두 단계다 — 착지하면 planned/in_progress → implemented, 검증이 pass 이고
 in_progress	-	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 줄을 append 하며, 해소는 언제나 최신
@@ -561,6 +563,8 @@ stable	-	kiwi-srs-from-code/SKILL.md	| 완전 | 부분/없음 | stable | impleme
 stable	-	kiwi-srs/SKILL.md	는 draft 로 demote 됨. 폐기/재작성/수동 stable 복원 중 결정 필요" | §9.2 conflict |
 stable	-	kiwi-srs/SKILL.md	되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9 b/c/e)
 verified	-	_shared/kiwi/feasibility-policy-schema-v1.md	n_progress, implemented, or verified | keep current stability and r
+verified	-	_shared/kiwi/parallel-waves.md	, 없으면(evidenced=false) 그 요구를 verified 로 쓰지 않고 사용자 확인으로 보고한다. type="
+verified	-	_shared/kiwi/parallel-waves.md	C 는 사용자 확인 항목이고, PW-16 은 그 요구를 verified 로 쓰지 않는다 — --auto 로 풀지 않는다.
 verified	-	_shared/kiwi/parallel-waves.md	se 를 한 번 더 부른다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
 verified	-	_shared/kiwi/parallel-waves.md	구를 지명한 잔여가 없으면 implemented → verified. 증거는 type="test" 와 type="co
 verified	-	_shared/kiwi/test-sufficiency.md	## 4. verified 를 쓰는 호출자 — 인용이 곧 테스트 식별자다
@@ -572,7 +576,10 @@ verified	-	_shared/kiwi/test-sufficiency.md	| kiwi-srs-sync | verified 를 쓰�
 verified	-	_shared/kiwi/test-sufficiency.md	| verified 를 쓰기 직전 | 이번 실행이 verified 로 쓰려는 요구 |
 verified	-	_shared/kiwi/test-sufficiency.md	§3 의 3번 실행(채우기로 더한 테스트)이 맡는다. verified 를 쓰지 않는 호출자의 pass 는 인용이 있다는
 verified	-	_shared/kiwi/test-sufficiency.md	구는 인용을 읽을 뿐 테스트를 실행하지 않는다. 그래서 verified 를 쓰는 호출자는 증거로 쓸 인용의 테스트 파일을 증거
+verified	-	_shared/kiwi/test-sufficiency.md	그 AC 의 증거이므로 호출자가 그 AC 를 체크한다. verified 를 쓰는 호출자는 nonTest 가운데 evide
 verified	-	_shared/kiwi/test-sufficiency.md	맡고, 테스트가 실제로 실행·통과했는지는 §4 의 실행(verified 를 쓰는 호출자가 증거로 쓸 인용의 테스트 파일)과 §
+verified	-	_shared/kiwi/test-sufficiency.md	인 AC 를 사용자 확인 항목으로 보고하고 그 요구를 verified 로 쓰지 않는다. 사람이 해야 하는 확인이므로 --a
+verified	-	_shared/kiwi/test-sufficiency.md	처럼 증거 행을 쓰지 않는다. update_status verified 도 지명 증거가 없는 표식 AC 를 이름으로 대고 거절
 verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 끝난 wave 의 verified 요구 | 그 요구를 고치지 않는다. 뒤 wave 에 후
 verified	-	_shared/kiwi/wave-srs-registration.md	| ac-change — 현재 wave 의 verified 아닌 요구 | 그 AC 를 고치고 그 wave 를 재진
 verified	-	kiwi-coder/SKILL.md	# 테스트 파일(경로, 경로:줄 또는 경로:줄-줄) — verified 전이가 줄 표기를 떼고 파일 경로로 해석한다
@@ -587,11 +594,14 @@ verified	-	kiwi-coder/SKILL.md	verified 전이는 $kiwi-review-fix-loop --c
 verified	-	kiwi-coder/SKILL.md	본 §8.4 의 mutation (verified 전이) 은 review-fix-loop §6.6 에 위임
 verified	-	kiwi-coder/SKILL.md	을 자동 채택해 --close-reqs 로 요구를 verified 로 닫으러 가는 경우. 나머지 두 갈래인 (2) 나중에
 verified	-	kiwi-coder/SKILL.md	중에 그대로 다시 돌릴 수 있고, (1) 자체도 여기서 verified 를 쓰지 않는다 — 그 쓰기는 kiwi-review-
+verified	-	kiwi-hot-fix/SKILL.md	— 위임받은 kiwi-srs-sync 도 그 요구를 verified 로 쓰지 않는다. 범위가 비면 결과는 no-scope
 verified	-	kiwi-hot-fix/SKILL.md	고 위임은 진행한다 — kiwi-srs-sync 가 verified 를 쓰기 직전에 같은 확인을 다시 돈다. 위임하지 않는
 verified	-	kiwi-orchestrator/SKILL.md	-id 마다 한 번 더 한다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
 verified	-	kiwi-orchestrator/SKILL.md	fication_cmd 는 참조에 넣지 않는다 — verified 전이는 test 증거의 참조를 파일 경로로 해석해, 파
 verified	-	kiwi-orchestrator/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래
+verified	-	kiwi-orchestrator/SKILL.md	lse) 1 처럼 사용자 확인으로 보고하고 그 요구를 verified 로 쓰지 않는다;
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
+verified	-	kiwi-orchestrator/SKILL.md	그 AC 를 사용자 확인 항목으로 보고하고 그 요구를 verified 로 쓰지 않는다 — 사람이 해야 하는 확인이라 --a
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pm/SKILL.md	"in_progress", "implemented", "verified"]
@@ -608,12 +618,14 @@ verified	-	kiwi-review-fix-loop/SKILL.md	-gap 을 올림 | 차단 — gap 이 �
 verified	-	kiwi-review-fix-loop/SKILL.md	0건 시 영향 REQ status를 implemented→verified 전이 + verification evidence 등록 (
 verified	-	kiwi-review-fix-loop/SKILL.md	11. (--close-reqs 활성 시) REQ verified 전이 결과 — closed_reqs.json 인용 (
 verified	-	kiwi-review-fix-loop/SKILL.md	: (--close-reqs 활성 시) 영향 REQ verified 일괄 승급 (§6.6, §0.G7 게이트)
+verified	-	kiwi-review-fix-loop/SKILL.md	idenced=false AC 가 있음 | 그 요구만 verified 로 쓰지 않는다 — eligible 에서 빼고 e
 verified	-	kiwi-review-fix-loop/SKILL.md	l | --close-reqs + 회귀 fail — verified 전이 부적합 (§0.G7 Rule 3) | §0.G7 |
 verified	-	kiwi-review-fix-loop/SKILL.md	on (--close-reqs 활성 시) — REQ verified 전이 결과 (req_id → from_status, to
 verified	-	kiwi-review-fix-loop/SKILL.md	tatus 가 implemented 가 아닌 항목 (예: verified 이미 / planned) | 해당 REQ skip + 보
 verified	-	kiwi-review-fix-loop/SKILL.md	| "REQ 닫기", "verified 전이", "검증 완료 표시" | --close-reqs
 verified	-	kiwi-review-fix-loop/SKILL.md	| 해당 REQ skip + 사용자 보고 (draft 는 verified 부적격), 나머지 진행 |
 verified	-	kiwi-review-fix-loop/SKILL.md	뒤에도 인용 gap 이 남음 — gap 이 남은 요구는 verified 로 쓰지 않는다 (_shared/kiwi/test-s
+verified	-	kiwi-review-fix-loop/SKILL.md	사용자 확인 항목이고, Phase 7.5 는 그 요구를 verified 로 쓰지 않는다 — eligible 에서 빼고 e
 verified	-	kiwi-review-fix-loop/SKILL.md	으로 update_status (implemented→verified, forward-only) + add_verificat
 verified	-	kiwi-review-fix-loop/references/conditional-sections.md	### 6.6 Phase 7.5 — REQ verified 일괄 승급 (--close-reqs 활성 시)
 verified	-	kiwi-review-fix-loop/references/conditional-sections.md	- 6.6 Phase 7.5 — REQ verified 일괄 승급 (--close-reqs 활성 시)
@@ -641,6 +653,7 @@ verified	-	kiwi-srs-sync/SKILL.md	ce·covers 로 쓴다 — gap 이 남은 REQ �
 verified	-	kiwi-srs-sync/SKILL.md	s > 제안 status 면 backward 차단 (예: verified → implemented 금지)
 verified	-	kiwi-srs-sync/SKILL.md	test-sufficiency-gap", reason: "verified 전이 직전 테스트 충분성 확인의 채우기 1회 뒤에도 인용
 verified	-	kiwi-srs-sync/SKILL.md	verified 로 쓰는 제안 — 그 증거의 reference·
+verified	-	kiwi-srs-sync/SKILL.md	는 REQ 는 그 AC 를 사용자 확인 항목으로 보고하고 verified 로 쓰지 않는다 (--auto 로 풀지 않는다)
 verified	-	kiwi-srs-sync/SKILL.md	으로 멈추면 1~3번은 이미 적용된 채이고 그 REQ 는 verified 로 가지 않는다 — 보고서 6번에 적는다.
 verified	-	kiwi-srs-sync/SKILL.md	채우기 1회 뒤에도 인용 gap 잔존 — 그 REQ 는 verified 로 쓰지 않는다 (§10.1 step 4, _shared
 verified	-	kiwi-srs-sync/SKILL.md	코드면 평가자가 MEDIUM 경고만 발행 (차단 X). verified 직전 테스트 충분성 확인(§10.1 4번)의 채우기만은
@@ -650,6 +663,10 @@ verified	-	kiwi-srs/SKILL.md	ict 이면서 기존 REQ {X} 의 status ≠ verifie
 verified	-	kiwi-srs/SKILL.md	th trace link 만 남긴 뒤 6단계 보고에서 "verified REQ 와 충돌하여 보류 불가" 를 사용자에게 함께 보고
 verified	-	kiwi-srs/SKILL.md	us = verified | "기존 REQ {X} 는 verified 라 draft demote 를 시도하지 않았음 (u
 verified	-	kiwi-srs/SKILL.md	| 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9
+verified	-	kiwi-tdd/SKILL.md	— 표식 도구는 verified 요구를 거절하므로 verified 로 바로 승격하지 않는다.
+verified	-	kiwi-tdd/SKILL.md	그 AC 를 사용자 확인 항목으로 보고하고 그 요구를 verified 로 승격하지 않는다 — --auto 로 풀지 않는다
+verified	-	kiwi-tdd/SKILL.md	서 표식과 그 AC 를 지명한 비시험 증거를 더한 뒤에 verified 로 올린다 — 표식 도구는 verified 요구를
+verified	-	kiwi-tdd/SKILL.md	한 뒤에 verified 로 올린다 — 표식 도구는 verified 요구를 거절하므로 verified 로 바로 승격하지
 verified	-	kiwi-wave-master/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 그 뒤 §6 의 complete
 verified	-	kiwi-wave-master/SKILL.md	· 범위 · 의존은 바꾸지 않는다. 끝난 wave 의 verified 동작을 옮기는 길은 후속 요구와 AC 만료뿐이다 (§0
 verified	-	kiwi-wave-master/SKILL.md	이 원칙의 예외로 허용된다. 끝난 wave 의 verified 동작을 옮기는 길은 후속 요구와 AC 만료뿐이다(wa
@@ -1081,9 +1098,10 @@ implemented	-	kiwi-pm/references/extended-workflow.md	from: p.from, to: "impleme
 implemented	-	kiwi-pm/references/extended-workflow.md	req_id, from: req.status, to: "implemented" })
 implemented	-	kiwi-pm/references/extended-workflow.md	te_status, id=p.req_id, status="implemented")
 implemented	-	kiwi-pm/references/extended-workflow.md	| update_status("implemented") | kiwi-pm | T-final, 실행이
+implemented	-	kiwi-pm/references/extended-workflow.md	식 AC 는 gap 이 아니어서 승급을 막지 않는다 — implemented 는 gap 만 보고 올리고, evidenced=fal
 implemented	-	kiwi-pm/references/extended-workflow.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸을 때(CLOSE_SAFE) — --sds
 implemented	-	kiwi-pm/references/extended-workflow.md	요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 implemented 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 요구
-implemented	-	kiwi-pm/references/extended-workflow.md	을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 implemented 로 올리고, 나머지는 gap 과 함께 보고한다. ad
+implemented	-	kiwi-pm/references/extended-workflow.md	을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 implemented 로 올리고, 나머지는 gap 과 함께 보고한다. no
 implemented	-	kiwi-review-fix-loop/SKILL.md	ce and move eligible REQs from implemented to verified.
 implemented	-	kiwi-review-fix-loop/SKILL.md	s named), and update_status (implemented to verified, forward-only).
 implemented	-	kiwi-review-fix-loop/SKILL.md	| close implemented REQs | --close-reqs | off |
@@ -1110,6 +1128,7 @@ implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented
 implemented	-	kiwi-srs/SKILL.md	태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + Codex clarificat
 implemented	-	kiwi-srs/references/extended-workflow.md	update_status 로 in_progress/implemented 승격
 implemented	-	kiwi-srs/references/extended-workflow.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi-srs → $kiw
+implemented	-	kiwi-tdd/SKILL.md	romote the step requirement as implemented, mark the AC and add a non-tes
 in_progress	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, implemented, or verified
 in_progress	-	_shared/kiwi/parallel-waves.md	steps — landed moves planned/in_progress → implemented, and a pass
 in_progress	-	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 줄을 append 하며, 해소는 언제나 최신
@@ -1224,14 +1243,19 @@ stable	-	kiwi-srs/references/extended-workflow.md	는 draft 로 demote 됨. 폐�
 stable	-	kiwi-srs/references/extended-workflow.md	되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9 b/c/e)
 verified	-	_shared/kiwi/feasibility-policy-schema-v1.md	n_progress, implemented, or verified | keep current stability and r
 verified	-	_shared/kiwi/parallel-waves.md	en every @req requirement is verified or discarded, the SDS file i
+verified	-	_shared/kiwi/parallel-waves.md	requirement is not written as verified and the AC is reported as a us
+verified	-	_shared/kiwi/parallel-waves.md	s not write its requirement as verified; --auto does not lift it.
 verified	-	_shared/kiwi/parallel-waves.md	uirement moves implemented → verified. The evidence is type="test"
 verified	-	_shared/kiwi/test-sufficiency.md	## 4. Callers that write verified — the citation is the test ide
 verified	-	_shared/kiwi/test-sufficiency.md	A caller that writes verified runs this check before it
+verified	-	_shared/kiwi/test-sufficiency.md	at check itself. update_status verified also refuses, naming each mark
 verified	-	_shared/kiwi/test-sufficiency.md	citations a caller that writes verified will use as evidence) and by t
 verified	-	_shared/kiwi/test-sufficiency.md	gaps remain is not written as verified.
+verified	-	_shared/kiwi/test-sufficiency.md	not write that requirement as verified. The check is one a person mus
 verified	-	_shared/kiwi/test-sufficiency.md	r a caller that does not write verified, pass means only that the ci
 verified	-	_shared/kiwi/test-sufficiency.md	step 1 as it is — there is no verified write to stop, so no gate is r
 verified	-	_shared/kiwi/test-sufficiency.md	test. So a caller that writes verified runs the test files of the cit
+verified	-	_shared/kiwi/test-sufficiency.md	that AC. A caller that writes verified reports each nonTest AC with
 verified	-	_shared/kiwi/test-sufficiency.md	this run is about to write as verified |
 verified	-	_shared/kiwi/test-sufficiency.md	ver goes in the reference: the verified transition resolves a test ref
 verified	-	_shared/kiwi/test-sufficiency.md	| immediately before writing verified | the requirements this run is
@@ -1248,10 +1272,13 @@ verified	-	kiwi-coder/references/extended-workflow.md	der 는 per-REQ evidence �
 verified	-	kiwi-coder/references/extended-workflow.md	kiwi-coder 는 verified 전이, bulk finalize, bulk archive
 verified	-	kiwi-coder/references/extended-workflow.md	verified 전이는 $kiwi-review-fix-loop --c
 verified	-	kiwi-hot-fix/references/extended-workflow.md	before it writes verified. A run that does not delegate
+verified	-	kiwi-hot-fix/references/extended-workflow.md	not write that requirement as verified either.
 verified	-	kiwi-orchestrator/SKILL.md	-id 마다 한 번 더 한다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
 verified	-	kiwi-orchestrator/SKILL.md	fication_cmd 는 참조에 넣지 않는다 — verified 전이는 test 증거의 참조를 파일 경로로 해석해, 파
 verified	-	kiwi-orchestrator/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래
+verified	-	kiwi-orchestrator/SKILL.md	lse) 1 처럼 사용자 확인으로 보고하고 그 요구를 verified 로 쓰지 않는다;
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
+verified	-	kiwi-orchestrator/SKILL.md	그 AC 를 사용자 확인 항목으로 보고하고 그 요구를 verified 로 쓰지 않는다 — 사람이 해야 하는 확인이라 --a
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pm/SKILL.md	--close-reqs 를 시작하면 되감을 수 없는 verified 를 향한다. 자식 kiwi-coder 가 §8.4
@@ -1270,6 +1297,8 @@ verified	-	kiwi-review-fix-loop/SKILL.md	date_status (implemented to verified, f
 verified	-	kiwi-review-fix-loop/SKILL.md	gaps remain is not written as verified (../_shared/kiwi/test-suffici
 verified	-	kiwi-review-fix-loop/SKILL.md	gaps remain is not written as verified (Test Sufficiency section) |
 verified	-	kiwi-review-fix-loop/SKILL.md	kept or residual findings block verified transition; record findings do
+verified	-	kiwi-review-fix-loop/SKILL.md	not write that requirement as verified: take it out of eligible, co
+verified	-	kiwi-review-fix-loop/SKILL.md	promotion does not write it as verified: it leaves eligible and is c
 verified	-	kiwi-review-fix-loop/SKILL.md	se-reqs-with-regression-fail | verified transition requires passing reg
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	3. update_status to verified.
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	d | how many actually reached verified |
@@ -1298,6 +1327,7 @@ verified	-	kiwi-srs-sync/references/extended-workflow.md	ce — 테스트 통과
 verified	-	kiwi-srs-sync/references/extended-workflow.md	ce·covers 로 쓴다 — gap 이 남은 REQ 는 verified 로 쓰지 않는다 (test-sufficiency-gap
 verified	-	kiwi-srs-sync/references/extended-workflow.md	s > 제안 status 면 backward 차단 (예: verified → implemented 금지)
 verified	-	kiwi-srs-sync/references/extended-workflow.md	verified 로 쓰는 제안 — 그 증거의 reference·
+verified	-	kiwi-srs-sync/references/extended-workflow.md	는 REQ 는 그 AC 를 사용자 확인 항목으로 보고하고 verified 로 쓰지 않는다 (--auto 로 풀지 않는다)
 verified	-	kiwi-srs-sync/references/extended-workflow.md	으로 멈추면 1~3번은 이미 적용된 채이고 그 REQ 는 verified 로 가지 않는다 — 보고서 6번에 적는다.
 verified	-	kiwi-srs/references/extended-workflow.md	E 로 거부한다. REQ-X 의 status 가 이미 verified 이면 이 호출은 MUTATION_DENIED 로 거
 verified	-	kiwi-srs/references/extended-workflow.md	ict 이면서 기존 REQ {X} 의 status = verified | "기존 REQ {X} 는 verified 라 dr
@@ -1305,6 +1335,10 @@ verified	-	kiwi-srs/references/extended-workflow.md	ict 이면서 기존 REQ {X}
 verified	-	kiwi-srs/references/extended-workflow.md	th trace link 만 남긴 뒤 6단계 보고에서 "verified REQ 와 충돌하여 보류 불가" 를 사용자에게 함께 보고
 verified	-	kiwi-srs/references/extended-workflow.md	us = verified | "기존 REQ {X} 는 verified 라 draft demote 를 시도하지 않았음 (u
 verified	-	kiwi-srs/references/extended-workflow.md	| 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9
+verified	-	kiwi-tdd/SKILL.md	d — the marker tool refuses a verified requirement, so do not promote
+verified	-	kiwi-tdd/SKILL.md	ent, and only then raise it to verified — the marker tool refuses a v
+verified	-	kiwi-tdd/SKILL.md	not promote the requirement as verified; --auto does not lift it. Th
+verified	-	kiwi-tdd/SKILL.md	so do not promote straight to verified.
 verified	-	kiwi-wave-master/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 그 뒤 §6 의 complete
 verified	-	kiwi-wave-master/SKILL.md	· 범위 · 의존은 바꾸지 않는다. 끝난 wave 의 verified 동작을 옮기는 길은 후속 요구와 AC 만료뿐이다 (§0
 verified	-	kiwi-wave-master/SKILL.md	이 원칙의 예외로 허용된다. 끝난 wave 의 verified 동작을 옮기는 길은 후속 요구와 AC 만료뿐이다(wa
@@ -1719,9 +1753,10 @@ implemented	-	kiwi-pm/references/extended-workflow.md	from: p.from, to: "impleme
 implemented	-	kiwi-pm/references/extended-workflow.md	req_id, from: req.status, to: "implemented" })
 implemented	-	kiwi-pm/references/extended-workflow.md	te_status, id=p.req_id, status="implemented")
 implemented	-	kiwi-pm/references/extended-workflow.md	| update_status("implemented") | kiwi-pm | T-final, 실행이
+implemented	-	kiwi-pm/references/extended-workflow.md	식 AC 는 gap 이 아니어서 승급을 막지 않는다 — implemented 는 gap 만 보고 올리고, evidenced=fal
 implemented	-	kiwi-pm/references/extended-workflow.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸을 때(CLOSE_SAFE) — --sds
 implemented	-	kiwi-pm/references/extended-workflow.md	요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 implemented 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 요구
-implemented	-	kiwi-pm/references/extended-workflow.md	을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 implemented 로 올리고, 나머지는 gap 과 함께 보고한다. ad
+implemented	-	kiwi-pm/references/extended-workflow.md	을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 implemented 로 올리고, 나머지는 gap 과 함께 보고한다. no
 implemented	-	kiwi-review-fix-loop/SKILL.md	from implemented to verified.
 implemented	-	kiwi-review-fix-loop/SKILL.md	s named), and update_status (implemented to verified, forward-only).
 implemented	-	kiwi-review-fix-loop/SKILL.md	| close implemented REQs | --close-reqs | off |
@@ -1747,6 +1782,7 @@ implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented
 implemented	-	kiwi-srs/SKILL.md	태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + User clarificati
 implemented	-	kiwi-srs/references/extended-workflow.md	update_status 로 in_progress/implemented 승격
 implemented	-	kiwi-srs/references/extended-workflow.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi-srs → $kiw
+implemented	-	kiwi-tdd/SKILL.md	romote the step requirement as implemented, mark the AC and add a non-tes
 in_progress	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, implemented, or verified
 in_progress	-	_shared/kiwi/parallel-waves.md	steps — landed moves planned/in_progress → implemented, and a pass
 in_progress	-	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 줄을 append 하며, 해소는 언제나 최신
@@ -1855,14 +1891,19 @@ stable	-	kiwi-srs/references/extended-workflow.md	는 draft 로 demote 됨. 폐�
 stable	-	kiwi-srs/references/extended-workflow.md	되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9 b/c/e)
 verified	-	_shared/kiwi/feasibility-policy-schema-v1.md	n_progress, implemented, or verified | keep current stability and r
 verified	-	_shared/kiwi/parallel-waves.md	en every @req requirement is verified or discarded, the SDS file i
+verified	-	_shared/kiwi/parallel-waves.md	requirement is not written as verified and the AC is reported as a us
+verified	-	_shared/kiwi/parallel-waves.md	s not write its requirement as verified; --auto does not lift it.
 verified	-	_shared/kiwi/parallel-waves.md	uirement moves implemented → verified. The evidence is type="test"
 verified	-	_shared/kiwi/test-sufficiency.md	## 4. Callers that write verified — the citation is the test ide
 verified	-	_shared/kiwi/test-sufficiency.md	A caller that writes verified runs this check before it
+verified	-	_shared/kiwi/test-sufficiency.md	at check itself. update_status verified also refuses, naming each mark
 verified	-	_shared/kiwi/test-sufficiency.md	citations a caller that writes verified will use as evidence) and by t
 verified	-	_shared/kiwi/test-sufficiency.md	gaps remain is not written as verified.
+verified	-	_shared/kiwi/test-sufficiency.md	not write that requirement as verified. The check is one a person mus
 verified	-	_shared/kiwi/test-sufficiency.md	r a caller that does not write verified, pass means only that the ci
 verified	-	_shared/kiwi/test-sufficiency.md	step 1 as it is — there is no verified write to stop, so no gate is r
 verified	-	_shared/kiwi/test-sufficiency.md	test. So a caller that writes verified runs the test files of the cit
+verified	-	_shared/kiwi/test-sufficiency.md	that AC. A caller that writes verified reports each nonTest AC with
 verified	-	_shared/kiwi/test-sufficiency.md	this run is about to write as verified |
 verified	-	_shared/kiwi/test-sufficiency.md	ver goes in the reference: the verified transition resolves a test ref
 verified	-	_shared/kiwi/test-sufficiency.md	| immediately before writing verified | the requirements this run is
@@ -1879,10 +1920,13 @@ verified	-	kiwi-coder/references/extended-workflow.md	der 는 per-REQ evidence �
 verified	-	kiwi-coder/references/extended-workflow.md	verified 전이는 $kiwi-review-fix-loop --c
 verified	-	kiwi-coder/references/extended-workflow.md	지금 자동 시작, (2) 나중에 수동, (3) skip(verified 로 닫지 않음). (1) 의 순서는 kiwi-pm §
 verified	-	kiwi-hot-fix/references/extended-workflow.md	before it writes verified. A run that does not delegate
+verified	-	kiwi-hot-fix/references/extended-workflow.md	not write that requirement as verified either.
 verified	-	kiwi-orchestrator/SKILL.md	-id 마다 한 번 더 한다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
 verified	-	kiwi-orchestrator/SKILL.md	fication_cmd 는 참조에 넣지 않는다 — verified 전이는 test 증거의 참조를 파일 경로로 해석해, 파
 verified	-	kiwi-orchestrator/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래
+verified	-	kiwi-orchestrator/SKILL.md	lse) 1 처럼 사용자 확인으로 보고하고 그 요구를 verified 로 쓰지 않는다;
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
+verified	-	kiwi-orchestrator/SKILL.md	그 AC 를 사용자 확인 항목으로 보고하고 그 요구를 verified 로 쓰지 않는다 — 사람이 해야 하는 확인이라 --a
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pm/SKILL.md	--close-reqs 를 시작하면 되감을 수 없는 verified 를 향한다. 자식 kiwi-coder 가 §8.4
@@ -1901,6 +1945,8 @@ verified	-	kiwi-review-fix-loop/SKILL.md	gaps remain is not written as verified 
 verified	-	kiwi-review-fix-loop/SKILL.md	gaps remain is not written as verified (Test Sufficiency section) |
 verified	-	kiwi-review-fix-loop/SKILL.md	kept or residual findings block verified transition; record findings do
 verified	-	kiwi-review-fix-loop/SKILL.md	nd guarded --close-reqs per-REQ verified transition through speckiwi mcp
+verified	-	kiwi-review-fix-loop/SKILL.md	not write that requirement as verified: take it out of eligible, co
+verified	-	kiwi-review-fix-loop/SKILL.md	promotion does not write it as verified: it leaves eligible and is c
 verified	-	kiwi-review-fix-loop/SKILL.md	se-reqs-with-regression-fail | verified transition requires passing reg
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	3. update_status to verified.
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	d | how many actually reached verified |
@@ -1929,6 +1975,7 @@ verified	-	kiwi-srs-sync/references/extended-workflow.md	ce — 테스트 통과
 verified	-	kiwi-srs-sync/references/extended-workflow.md	ce·covers 로 쓴다 — gap 이 남은 REQ 는 verified 로 쓰지 않는다 (test-sufficiency-gap
 verified	-	kiwi-srs-sync/references/extended-workflow.md	s > 제안 status 면 backward 차단 (예: verified → implemented 금지)
 verified	-	kiwi-srs-sync/references/extended-workflow.md	verified 로 쓰는 제안 — 그 증거의 reference·
+verified	-	kiwi-srs-sync/references/extended-workflow.md	는 REQ 는 그 AC 를 사용자 확인 항목으로 보고하고 verified 로 쓰지 않는다 (--auto 로 풀지 않는다)
 verified	-	kiwi-srs-sync/references/extended-workflow.md	으로 멈추면 1~3번은 이미 적용된 채이고 그 REQ 는 verified 로 가지 않는다 — 보고서 6번에 적는다.
 verified	-	kiwi-srs/references/extended-workflow.md	E 로 거부한다. REQ-X 의 status 가 이미 verified 이면 이 호출은 MUTATION_DENIED 로 거
 verified	-	kiwi-srs/references/extended-workflow.md	ict 이면서 기존 REQ {X} 의 status = verified | "기존 REQ {X} 는 verified 라 dr
@@ -1936,6 +1983,10 @@ verified	-	kiwi-srs/references/extended-workflow.md	ict 이면서 기존 REQ {X}
 verified	-	kiwi-srs/references/extended-workflow.md	th trace link 만 남긴 뒤 6단계 보고에서 "verified REQ 와 충돌하여 보류 불가" 를 사용자에게 함께 보고
 verified	-	kiwi-srs/references/extended-workflow.md	us = verified | "기존 REQ {X} 는 verified 라 draft demote 를 시도하지 않았음 (u
 verified	-	kiwi-srs/references/extended-workflow.md	| 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9
+verified	-	kiwi-tdd/SKILL.md	d — the marker tool refuses a verified requirement, so do not promote
+verified	-	kiwi-tdd/SKILL.md	ent, and only then raise it to verified — the marker tool refuses a v
+verified	-	kiwi-tdd/SKILL.md	not promote the requirement as verified; --auto does not lift it. Th
+verified	-	kiwi-tdd/SKILL.md	so do not promote straight to verified.
 verified	-	kiwi-wave-master/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 그 뒤 §6 의 complete
 verified	-	kiwi-wave-master/SKILL.md	· 범위 · 의존은 바꾸지 않는다. 끝난 wave 의 verified 동작을 옮기는 길은 후속 요구와 AC 만료뿐이다 (§0
 verified	-	kiwi-wave-master/SKILL.md	이 원칙의 예외로 허용된다. 끝난 wave 의 verified 동작을 옮기는 길은 후속 요구와 AC 만료뿐이다(wa
@@ -2356,9 +2407,10 @@ implemented	-	kiwi-pm/references/extended-workflow.md	from: p.from, to: "impleme
 implemented	-	kiwi-pm/references/extended-workflow.md	req_id, from: req.status, to: "implemented" })
 implemented	-	kiwi-pm/references/extended-workflow.md	te_status, id=p.req_id, status="implemented")
 implemented	-	kiwi-pm/references/extended-workflow.md	| update_status("implemented") | kiwi-pm | T-final, 실행이
+implemented	-	kiwi-pm/references/extended-workflow.md	식 AC 는 gap 이 아니어서 승급을 막지 않는다 — implemented 는 gap 만 보고 올리고, evidenced=fal
 implemented	-	kiwi-pm/references/extended-workflow.md	실행이 done 으로 끝나 T-final 이 요구를 implemented 로 올렸을 때(CLOSE_SAFE) — --sds
 implemented	-	kiwi-pm/references/extended-workflow.md	요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 implemented 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 요구
-implemented	-	kiwi-pm/references/extended-workflow.md	을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 implemented 로 올리고, 나머지는 gap 과 함께 보고한다. ad
+implemented	-	kiwi-pm/references/extended-workflow.md	을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 implemented 로 올리고, 나머지는 gap 과 함께 보고한다. no
 implemented	-	kiwi-review-fix-loop/SKILL.md	ce and move eligible REQs from implemented to verified.
 implemented	-	kiwi-review-fix-loop/SKILL.md	s named), and update_status (implemented to verified, forward-only).
 implemented	-	kiwi-review-fix-loop/SKILL.md	| close implemented REQs | --close-reqs | off |
@@ -2385,6 +2437,7 @@ implemented	-	kiwi-srs/SKILL.md	드에서 update_status(in_progress\|implemented
 implemented	-	kiwi-srs/SKILL.md	태에서 update_status(in_progress\|implemented) 호출 시도 | 차단 + Codex clarificat
 implemented	-	kiwi-srs/references/extended-workflow.md	update_status 로 in_progress/implemented 승격
 implemented	-	kiwi-srs/references/extended-workflow.md	토 후 update_status(in_progress\|implemented) 진행 가능. 구현은 kiwi-srs → $kiw
+implemented	-	kiwi-tdd/SKILL.md	romote the step requirement as implemented, mark the AC and add a non-tes
 in_progress	-	_shared/kiwi/feasibility-policy-schema-v1.md	| blocked | status is in_progress, implemented, or verified
 in_progress	-	_shared/kiwi/parallel-waves.md	steps — landed moves planned/in_progress → implemented, and a pass
 in_progress	-	_shared/kiwi/wave-decomposition.md	에서 고치지 않고 새 아티팩트로 쓰고, 그 경로를 실은 in_progress 줄을 append 하며, 해소는 언제나 최신
@@ -2492,14 +2545,19 @@ stable	-	kiwi-srs/references/extended-workflow.md	는 draft 로 demote 됨. 폐�
 stable	-	kiwi-srs/references/extended-workflow.md	되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9 b/c/e)
 verified	-	_shared/kiwi/feasibility-policy-schema-v1.md	n_progress, implemented, or verified | keep current stability and r
 verified	-	_shared/kiwi/parallel-waves.md	en every @req requirement is verified or discarded, the SDS file i
+verified	-	_shared/kiwi/parallel-waves.md	requirement is not written as verified and the AC is reported as a us
+verified	-	_shared/kiwi/parallel-waves.md	s not write its requirement as verified; --auto does not lift it.
 verified	-	_shared/kiwi/parallel-waves.md	uirement moves implemented → verified. The evidence is type="test"
 verified	-	_shared/kiwi/test-sufficiency.md	## 4. Callers that write verified — the citation is the test ide
 verified	-	_shared/kiwi/test-sufficiency.md	A caller that writes verified runs this check before it
+verified	-	_shared/kiwi/test-sufficiency.md	at check itself. update_status verified also refuses, naming each mark
 verified	-	_shared/kiwi/test-sufficiency.md	citations a caller that writes verified will use as evidence) and by t
 verified	-	_shared/kiwi/test-sufficiency.md	gaps remain is not written as verified.
+verified	-	_shared/kiwi/test-sufficiency.md	not write that requirement as verified. The check is one a person mus
 verified	-	_shared/kiwi/test-sufficiency.md	r a caller that does not write verified, pass means only that the ci
 verified	-	_shared/kiwi/test-sufficiency.md	step 1 as it is — there is no verified write to stop, so no gate is r
 verified	-	_shared/kiwi/test-sufficiency.md	test. So a caller that writes verified runs the test files of the cit
+verified	-	_shared/kiwi/test-sufficiency.md	that AC. A caller that writes verified reports each nonTest AC with
 verified	-	_shared/kiwi/test-sufficiency.md	this run is about to write as verified |
 verified	-	_shared/kiwi/test-sufficiency.md	ver goes in the reference: the verified transition resolves a test ref
 verified	-	_shared/kiwi/test-sufficiency.md	| immediately before writing verified | the requirements this run is
@@ -2516,10 +2574,13 @@ verified	-	kiwi-coder/references/extended-workflow.md	der 는 per-REQ evidence �
 verified	-	kiwi-coder/references/extended-workflow.md	kiwi-coder 는 verified 전이, bulk finalize, bulk archive
 verified	-	kiwi-coder/references/extended-workflow.md	verified 전이는 $kiwi-review-fix-loop --c
 verified	-	kiwi-hot-fix/references/extended-workflow.md	before it writes verified. A run that does not delegate
+verified	-	kiwi-hot-fix/references/extended-workflow.md	not write that requirement as verified either.
 verified	-	kiwi-orchestrator/SKILL.md	-id 마다 한 번 더 한다. @req 요구가 모두 verified 또는 discarded 이면 SDS 파일이 지워지고
 verified	-	kiwi-orchestrator/SKILL.md	fication_cmd 는 참조에 넣지 않는다 — verified 전이는 test 증거의 참조를 파일 경로로 해석해, 파
 verified	-	kiwi-orchestrator/SKILL.md	iency-gap 으로 멈추고 그 wave 의 요구를 verified 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래
+verified	-	kiwi-orchestrator/SKILL.md	lse) 1 처럼 사용자 확인으로 보고하고 그 요구를 verified 로 쓰지 않는다;
 verified	-	kiwi-orchestrator/SKILL.md	| implemented | verified | 추가로 이 wave 의 loop P ve
+verified	-	kiwi-orchestrator/SKILL.md	그 AC 를 사용자 확인 항목으로 보고하고 그 요구를 verified 로 쓰지 않는다 — 사람이 해야 하는 확인이라 --a
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pipeline/SKILL.md	단계로 테스트 충분성 확인을 돌리고 gap 없는 요구만 verified 로 올린다.
 verified	-	kiwi-pm/SKILL.md	--close-reqs 를 시작하면 되감을 수 없는 verified 를 향한다. 자식 kiwi-coder 가 §8.4
@@ -2538,6 +2599,8 @@ verified	-	kiwi-review-fix-loop/SKILL.md	date_status (implemented to verified, f
 verified	-	kiwi-review-fix-loop/SKILL.md	gaps remain is not written as verified (../_shared/kiwi/test-suffici
 verified	-	kiwi-review-fix-loop/SKILL.md	gaps remain is not written as verified (Test Sufficiency section) |
 verified	-	kiwi-review-fix-loop/SKILL.md	kept or residual findings block verified transition; record findings do
+verified	-	kiwi-review-fix-loop/SKILL.md	not write that requirement as verified: take it out of eligible, co
+verified	-	kiwi-review-fix-loop/SKILL.md	promotion does not write it as verified: it leaves eligible and is c
 verified	-	kiwi-review-fix-loop/SKILL.md	se-reqs-with-regression-fail | verified transition requires passing reg
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	3. update_status to verified.
 verified	-	kiwi-review-fix-loop/references/extended-workflow.md	d | how many actually reached verified |
@@ -2566,6 +2629,7 @@ verified	-	kiwi-srs-sync/references/extended-workflow.md	ce — 테스트 통과
 verified	-	kiwi-srs-sync/references/extended-workflow.md	ce·covers 로 쓴다 — gap 이 남은 REQ 는 verified 로 쓰지 않는다 (test-sufficiency-gap
 verified	-	kiwi-srs-sync/references/extended-workflow.md	s > 제안 status 면 backward 차단 (예: verified → implemented 금지)
 verified	-	kiwi-srs-sync/references/extended-workflow.md	verified 로 쓰는 제안 — 그 증거의 reference·
+verified	-	kiwi-srs-sync/references/extended-workflow.md	는 REQ 는 그 AC 를 사용자 확인 항목으로 보고하고 verified 로 쓰지 않는다 (--auto 로 풀지 않는다)
 verified	-	kiwi-srs-sync/references/extended-workflow.md	으로 멈추면 1~3번은 이미 적용된 채이고 그 REQ 는 verified 로 가지 않는다 — 보고서 6번에 적는다.
 verified	-	kiwi-srs/references/extended-workflow.md	E 로 거부한다. REQ-X 의 status 가 이미 verified 이면 이 호출은 MUTATION_DENIED 로 거
 verified	-	kiwi-srs/references/extended-workflow.md	ict 이면서 기존 REQ {X} 의 status = verified | "기존 REQ {X} 는 verified 라 dr
@@ -2573,6 +2637,10 @@ verified	-	kiwi-srs/references/extended-workflow.md	ict 이면서 기존 REQ {X}
 verified	-	kiwi-srs/references/extended-workflow.md	th trace link 만 남긴 뒤 6단계 보고에서 "verified REQ 와 충돌하여 보류 불가" 를 사용자에게 함께 보고
 verified	-	kiwi-srs/references/extended-workflow.md	us = verified | "기존 REQ {X} 는 verified 라 draft demote 를 시도하지 않았음 (u
 verified	-	kiwi-srs/references/extended-workflow.md	| 서로 모순되는 두 문장의 인용 | 신규 REQ ↔ verified/stable REQ 모순, REQ 내부 모순(axis 9
+verified	-	kiwi-tdd/SKILL.md	d — the marker tool refuses a verified requirement, so do not promote
+verified	-	kiwi-tdd/SKILL.md	ent, and only then raise it to verified — the marker tool refuses a v
+verified	-	kiwi-tdd/SKILL.md	not promote the requirement as verified; --auto does not lift it. Th
+verified	-	kiwi-tdd/SKILL.md	so do not promote straight to verified.
 verified	verified-changes-adjective	_shared/kiwi/pipeline-v1.md	it-auto-push | Commit and push verified changes with issue/SRS trailers
 
 ## packaged-documents
@@ -2709,6 +2777,7 @@ verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	granular edits are refused on a veri
 verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	implemented -> verified
 verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	ing an AC in order to meet the verified conditions is forbidden. When
 verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	ited by hand: SRS-E010 for a verified requirement with an unchecked
+verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	not name it. The tool refuses verified otherwise and names the criter
 verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	requirement that is already in verified shape; on an unchecked one it i
 verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	s none of the four. Unlike the verified and discarded transitions in
 verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	separate the implemented and verified statuses.
@@ -2719,3 +2788,4 @@ verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	verified -> in_progress
 verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	| Status | verified |
 verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	| required for implemented, verified | Implementation or verificati
 verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	| verified | The acceptance criteria are
+verified	-	docs/rule/SRS-MD-Rules-v2.7.0.md	} non-test row. Both refuse a verified requirement. A marker typed by

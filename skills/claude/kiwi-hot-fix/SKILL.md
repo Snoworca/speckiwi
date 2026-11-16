@@ -385,7 +385,7 @@ severity: P1-P5 CRITICAL, P6 HIGH, P7 HIGH (정보성 가능).
 
 #### 6.2.1 위임 결정 (§0.G4 적용)
 
-**위임 직전 테스트 충분성 확인** — `_shared/kiwi/test-sufficiency.md` 를 범위 `--ids <bug_repro.json.candidate_req_ids 중 match_confidence=high>` 로 따르고 결과를 `test_sufficiency.json` 에 남긴다. gap 이 남으면 `test-sufficiency-gap` 으로 멈추고 위임하지 않는다. 범위가 비면 결과는 `no-scope` 이고 위임은 진행한다 — `kiwi-srs-sync` 가 `verified` 를 쓰기 직전에 같은 확인을 다시 돈다. 위임하지 않는 실행(§6.2.3)에서는 돌지 않는다. `--dry-run` 이면 계약 §3 대로 채우기 없이 처음 결과만 적는다.
+**위임 직전 테스트 충분성 확인** — `_shared/kiwi/test-sufficiency.md` 를 범위 `--ids <bug_repro.json.candidate_req_ids 중 match_confidence=high>` 로 따르고 결과를 `test_sufficiency.json` 에 남긴다. gap 이 남으면 `test-sufficiency-gap` 으로 멈추고 위임하지 않는다. 결과의 `nonTest` 에 `evidenced=false` 인 표식 AC 가 있으면 그 AC 를 사용자 확인 항목으로 보고한다 — 위임받은 `kiwi-srs-sync` 도 그 요구를 `verified` 로 쓰지 않는다. 범위가 비면 결과는 `no-scope` 이고 위임은 진행한다 — `kiwi-srs-sync` 가 `verified` 를 쓰기 직전에 같은 확인을 다시 돈다. 위임하지 않는 실행(§6.2.3)에서는 돌지 않는다. `--dry-run` 이면 계약 §3 대로 채우기 없이 처음 결과만 적는다.
 
 조건 통과 시 다음을 메인이 수행:
 

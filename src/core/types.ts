@@ -209,6 +209,8 @@ export interface AcceptanceCriterion {
   text: string;
   checked: boolean;
   line: number;
+  /** @req FR-PARSE-051 AC-1 — the line ends ` [NON-TEST]`; absent on an ordinary criterion. */
+  nonTest?: true;
 }
 
 /** @req FR-PARSE-044 AC-1 — a criterion marked `~~text~~ [EXPIRED <date>[ → <REQ-ID>]]`; it never counts as live. */

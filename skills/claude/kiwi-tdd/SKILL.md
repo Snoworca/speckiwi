@@ -167,7 +167,7 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {
 ### 2.7 Phase 6 — 후행 SRS 승격
 
 1. `speckiwi step synthesize <task>`(MCP `synthesize_step_srs`)로 step SRS를 합성한다(멱등 — 기존 산출물이 있으면 no-op). 합성 결과 위에서 intent.md 의 `## Acceptance` 줄을 같은 순서와 번호로 요구 블록의 Acceptance Criteria 로 옮긴다(`--sds` 면 design.md 의 SDS-AC 를 이관한다). 요구 블록의 ID 가 정해지면 Phase 3 테스트 제목 줄마다 그 AC 의 `<REQ-ID> AC-<n>` 인용을 덧붙인다 — 제목에 인용만 더하고 단언은 바꾸지 않으므로 §0.5 에 걸리지 않으며, red 를 먼저 본 그 테스트가 요구 AC 의 증거가 된다.
-2. **테스트 충분성 확인 (승격 직전)** — `_shared/kiwi/test-sufficiency.md` 를 범위 `--ids <1번 요구 블록의 ID>` 와 `--sds` 없이 따른다(`--sds` 면 `--sds docs/spec/steps/<task>/design.md` 를 더한다). gap 이 남으면 `test-sufficiency-gap` 으로 멈추고 승격하지 않는다.
+2. **테스트 충분성 확인 (승격 직전)** — `_shared/kiwi/test-sufficiency.md` 를 범위 `--ids <1번 요구 블록의 ID>` 와 `--sds` 없이 따른다(`--sds` 면 `--sds docs/spec/steps/<task>/design.md` 를 더한다). gap 이 남으면 `test-sufficiency-gap` 으로 멈추고 승격하지 않는다. 도구 결과의 `nonTest` 에 `evidenced=false` 인 표식 AC 가 있으면 그 AC 를 사용자 확인 항목으로 보고하고 그 요구를 `verified` 로 승격하지 않는다 — `--auto` 로 풀지 않는다. 표식 도구는 step 요구를 받지 않으므로(`mark-ac-non-test` 는 body 요구만 받는다), 자동 시험으로 재현할 수 없는 AC 가 step 범위에서 gap 으로 남으면 그 AC 를 사용자 확인 항목으로 보고하고 멈춘다 — 사용자가 승격을 정하면 step 요구를 `implemented` 로 승격하고, body 요구에서 표식과 그 AC 를 지명한 비시험 증거를 더한 뒤에 `verified` 로 올린다 — 표식 도구는 `verified` 요구를 거절하므로 `verified` 로 바로 승격하지 않는다.
 3. 도구가 AC 마다 돌려준 인용 테스트(Phase 3~5 의 테스트와 채우기로 더한 테스트)를 Verification Evidence 행으로 기록한다.
 4. `promote_step_requirement`(MCP) 또는 `speckiwi step promote <id> --from-step <task> --to-scope <scope>`(CLI fallback)로 body scope에 승격한다. **검증 증거 0건이면 tdd 모드에서 EVIDENCE_REQUIRED로 거부된다** — 거부 시 증거를 채우고 재시도한다(우회 금지).
 5. **추적성 복원 (post-promote, 비차단, §0.10)** — promote가 body Requirement ID를 확정한 **후에만** 적용한다(Phase 2/4에서는 부착 금지):

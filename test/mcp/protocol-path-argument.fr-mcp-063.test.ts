@@ -57,8 +57,9 @@ const WORKSPACE_ROOT_KEY = "workspaceRoot";
 // 109 since 5.3.1 added the six roadmap tools (IR-MCP-009).
 // 110 since 5.3.3 added `check_review_round` (FR-NODE-274).
 // 114 since 5.3.6 added `add_related_doc`, `add_change_note` (FR-MCP-049), `edit_acceptance_criterion` and `append_acceptance_criterion` (FR-MCP-072).
+// 118 since 5.5.2 added `mark_acceptance_criterion_non_test` and `unmark_acceptance_criterion_non_test` (FR-NODE-315);
 // 116 since 5.4.0 added `retarget_requirements` (FR-MCP-073); 115 since 5.3.7 added `set_target_description` (FR-NODE-276).
-const REGISTERED_TOOL_COUNT = 116;
+const REGISTERED_TOOL_COUNT = 118;
 
 /**
  * The refusing set is held to names rather than to a size.

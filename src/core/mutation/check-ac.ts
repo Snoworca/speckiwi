@@ -1,3 +1,4 @@
+import { nonTestCriterionText } from "../parser/ac-parser.js";
 import { applyPatchPlan } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { summarizePatch } from "../patch/hunk-summary.js";
@@ -6,7 +7,7 @@ import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertEditable } from "./edit-requirement.js";
 import { loadRecord } from "./internal.js";
-import { acceptanceCriterionLine, refuseExpiredMarker } from "./render-requirement.js";
+import { acceptanceCriterionLine, refuseToolOnlyMarkers } from "./render-requirement.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 
 /** @req FR-NODE-243 AC-4 — the refusal for a named expired criterion, or undefined when none is named. */
@@ -75,7 +76,7 @@ const AC_UNSAFE_TEXT_RE = /[\x00-\x1F\x7F]/;
 function refuseUnsafeCriterionText(text: string): MutationResult | undefined {
   if (typeof text !== "string" || text.length === 0) return mutationFail("USAGE", "text is required");
   if (AC_UNSAFE_TEXT_RE.test(text)) return mutationFail("USAGE", "text contains forbidden newline or control characters");
-  return refuseExpiredMarker("text", [text]);
+  return refuseToolOnlyMarkers("text", [text]);
 }
 
 export interface EditAcceptanceCriteriaInput {
@@ -111,7 +112,8 @@ async function editAcceptanceCriteriaUnlocked(root: ProjectRoot, input: EditAcce
   const markerIndex = original.indexOf(marker);
   if (markerIndex < 0) return mutationFail("MUTATION_DENIED", `Acceptance Criterion prefix not found for ${input.acId}`);
   const prefix = original.slice(0, markerIndex + marker.length);
-  const replacement = `${prefix} ${input.text}`;
+  // @req FR-NODE-315 AC-4 — rewording a marked criterion keeps its marker; only its own tool removes it.
+  const replacement = `${prefix} ${criterion.nonTest === true ? nonTestCriterionText(input.text) : input.text}`;
 
   const dryRun = input.dryRun ?? false;
   const plan = createPatchPlan(loaded.file, [{ type: "replaceLine", line: criterion.line, original, replacement }]);

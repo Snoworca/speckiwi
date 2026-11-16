@@ -27,6 +27,7 @@ import { registerScopes } from "../../core/mutation/register-scopes.js";
 import { renameScope } from "../../core/mutation/rename-scope.js";
 import { renameTarget } from "../../core/mutation/rename-target.js";
 import { expireAcceptanceCriterion } from "../../core/mutation/expire-ac.js";
+import { markAcceptanceCriterionNonTest, unmarkAcceptanceCriterionNonTest } from "../../core/mutation/non-test-ac.js";
 import { addRelatedDoc } from "../../core/mutation/add-related-doc.js";
 import { addChangeNote } from "../../core/mutation/add-change-note.js";
 import { validateReportPathToken } from "../../core/completed-work/report-paths.js";
@@ -985,6 +986,32 @@ export function registerMutationCommands(command: Command, context: CliContext):
       output(context, { json: options.json || command.opts().json }, result);
       if (!result.ok) command.setOptionValue("exitCode", 5);
     });
+
+  // @req FR-NODE-315 AC-1 AC-3 AC-5
+  for (const [name, mutate, help] of [
+    ["mark-ac-non-test", markAcceptanceCriterionNonTest, "why this repository's automated tests cannot check it; recorded in Change Notes"],
+    ["unmark-ac-non-test", unmarkAcceptanceCriterionNonTest, "why it goes back to test citation; recorded in Change Notes"]
+  ] as const) {
+    command
+      .command(name)
+      .argument("<id>")
+      .argument("<acId>", "the live criterion, e.g. AC-2")
+      .requiredOption("--reason <text>", help)
+      .option("--dry-run")
+      .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
+      .option("--json")
+      .action(async (id, acId, options) => {
+        const result = await mutate(await rootFrom(command.opts()), {
+          id,
+          acId,
+          reason: options.reason,
+          ...(options.dryRun ? { dryRun: true } : {}),
+          ...(options.ignoreLock ? { ignoreLock: true } : {})
+        });
+        output(context, { json: options.json || command.opts().json }, result);
+        if (!result.ok) command.setOptionValue("exitCode", 5);
+      });
+  }
 
   command
     .command("register-scopes")

@@ -925,7 +925,7 @@ wave 의 워커 dispatch 는 그 wave 가 의존하는 모든 wave — 선언된
 
 승급은 **wave 당 한 번, host root 에서, Phase 3.n 에**, 그리고 **loop P 의 3.l verdict 가 `pass` 인 뒤에만** 일어난다. 한 stage 의 wave 들이 끝나도 3.n 은 wave 하나씩 직렬로 돈다 — SRS 쓰기는 호스트에서 하나씩이다. 순서는 넷이고 바꾸지 않는다: 테스트 충분성 확인 → SDS close-out(옮김) → 승급 → SDS close-out(삭제). 두 SDS close-out 단계는 SDS 파일이 있는 wave(`--sds`)에서만 돈다.
 
-**1. 테스트 충분성 확인** — 승급 **바로 앞**에 `../_shared/kiwi/test-sufficiency.md` 를 그 노드의 요구 집합으로 돈다 — SDS 파일이 있는 wave 면 그 wave 의 SDS 파일마다 `--sds <그 파일>` 을 주어 돈다. 나뉘지 않았으면 `docs/sds/{run_id}-wave-{n}.sds.md` 하나다(`parallel-waves.md §3`). 재진입이 쓴 SDS(`docs/sds/{run_id}-wave-{n}-r{m}.sds.md`)도 그 wave 의 SDS 파일이다. 공백이 남으면 `test-sufficiency-gap` 으로 멈추고 그 wave 의 요구를 `verified` 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래 `type="test"` 증거의 테스트 식별자다.
+**1. 테스트 충분성 확인** — 승급 **바로 앞**에 `../_shared/kiwi/test-sufficiency.md` 를 그 노드의 요구 집합으로 돈다 — SDS 파일이 있는 wave 면 그 wave 의 SDS 파일마다 `--sds <그 파일>` 을 주어 돈다. 나뉘지 않았으면 `docs/sds/{run_id}-wave-{n}.sds.md` 하나다(`parallel-waves.md §3`). 재진입이 쓴 SDS(`docs/sds/{run_id}-wave-{n}-r{m}.sds.md`)도 그 wave 의 SDS 파일이다. 공백이 남으면 `test-sufficiency-gap` 으로 멈추고 그 wave 의 요구를 `verified` 로 쓰지 않는다. 도구가 AC 마다 돌려준 인용이 아래 `type="test"` 증거의 테스트 식별자다. 도구 결과의 `nonTest` 가운데 `evidenced=false` 인 표식 AC 가 있으면 그 AC 를 사용자 확인 항목으로 보고하고 그 요구를 `verified` 로 쓰지 않는다 — 사람이 해야 하는 확인이라 `--auto` 로 풀지 않는다.
 
 **2. SDS close-out, 옮김 (`--sds` 만)** — SDS-AC 의 해석 결정을 SRS AC 의 명확화로 옮기고, durable 로 표시된 규칙만 제약 요구로 올린다. 그 wave 의 sds-id 마다 부른다 — 기본 id `{run_id}-wave-{n}` 과 저널에 기록된 재진입 id `{run_id}-wave-{n}-r{m}` 각각이며, 아래 호출의 `{run_id}-wave-{n}` 자리에 그 id 를 넣는다(`parallel-waves.md` PW-15). `kiwi-sds --close <base id>` 는 조각만 찾고 재진입 파일은 찾지 않기 때문이다:
 
@@ -947,6 +947,7 @@ Skill({ skill: "kiwi-sds", args: "--close {run_id}-wave-{n} --no-pipeline-emit [
 **증거 두 행**:
 
 - `type="test"` — `test-sufficiency.md` §4 대로 AC 마다 한 행이다 — 참조는 1 이 그 AC 에 돌려준 인용의 테스트 파일(`경로` 또는 `경로:줄`), `covers` 는 그 AC, notes 는 `verification_cmd` 와 워커의 `docs/analysis/kiwi-pm-…` 번들(3.g 에서 수확한 사본)이다. **`verification_cmd` 는 참조에 넣지 않는다** — `verified` 전이는 test 증거의 참조를 파일 경로로 해석해, 파일로 풀리지 않는 명령을 거절한다;
+- 표식 AC(`[NON-TEST]`, 1 의 `nonTest`)는 AC 마다 test 한 행의 예외다 — test 행 대신 그 AC 를 지명한 비시험 증거 행(그 항목의 `evidence`)이 증거이고, 그런 행이 없으면(`evidenced=false`) 1 처럼 사용자 확인으로 보고하고 그 요구를 `verified` 로 쓰지 않는다;
 - `type="commit"` — 참조는 `frozen.integration_branch` 위 그 wave 의 `Orch-Wave` trailer 가 붙은 워커 커밋 sha 각각.
 
 **lane `audit.json` 이나 `integrate-lane` 병합 sha 를 증거 참조로 지명하지 않는다.** `intentionally_empty` 선언으로 landed 한 wave 는 워커가 커밋을 만들지 않았으므로 **`type="test"` 증거만 운반하고 commit 참조가 없다**.

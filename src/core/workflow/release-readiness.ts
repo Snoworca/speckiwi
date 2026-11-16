@@ -49,12 +49,29 @@ export function coversAcceptanceCriterion(row: Pick<EvidenceRow, "covers">, acId
   return covered.has("all") || covered.has(acId.toLowerCase());
 }
 
+/**
+ * @req FR-PARSE-051 AC-2 — the one judgement of whether an evidence row names a non-test criterion:
+ * a row whose Type is not `test` and whose Covers lists that id. `all` does not name it, so one
+ * blanket row cannot stand in for the check a marked criterion says was done by hand.
+ */
+export function namesNonTestCriterion(row: Pick<EvidenceRow, "type" | "covers">, acId: string): boolean {
+  return row.type.trim().toLowerCase() !== "test" && coveredAcIds(row).has(acId.toLowerCase());
+}
+
+/** The marked live criteria of `record` that no evidence row names. @req FR-PARSE-051 AC-5 */
+export function unnamedNonTestCriteria(record: Pick<RequirementRecord, "acceptanceCriteria" | "verificationEvidence">): string[] {
+  return record.acceptanceCriteria
+    .filter((criterion) => criterion.nonTest === true && !record.verificationEvidence.some((row) => namesNonTestCriterion(row, criterion.id)))
+    .map((criterion) => criterion.id);
+}
+
 export function collectAcCoverageGaps(records: RequirementRecord[]): AcCoverageGap[] {
   const gaps: AcCoverageGap[] = [];
   for (const record of records) {
     if (record.status !== "verified") continue;
     const missingAcIds = record.acceptanceCriteria
-      .filter((criterion) => !criterion.checked || !record.verificationEvidence.some((row) => coversAcceptanceCriterion(row, criterion.id)))
+      // @req FR-PARSE-051 AC-2 — a marked criterion is covered only by a non-test row that names it.
+      .filter((criterion) => !criterion.checked || !record.verificationEvidence.some((row) => (criterion.nonTest === true ? namesNonTestCriterion(row, criterion.id) : coversAcceptanceCriterion(row, criterion.id))))
       .map((criterion) => criterion.id);
     if (missingAcIds.length > 0) {
       gaps.push({ requirementId: record.id, missingAcIds });

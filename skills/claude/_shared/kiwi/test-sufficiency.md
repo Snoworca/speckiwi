@@ -10,6 +10,7 @@
 - **SDS 계약**: SDS Test Plan 행이 지명한 테스트 파일 안에서, 테스트 줄에 `SDS-AC-<n>` 을 적는다.
 - 한 테스트가 둘 다 검증하면 한 줄에 둘 다 적는다.
 - 코드의 `@req` 주석은 이 확인의 입력이 아니다 — FR-FLOW-020 AC-3 의 면제는 그대로다.
+- **비시험 AC**: 줄 끝에 `[NON-TEST]` 표식이 있는 AC 는 인용 대상이 아니다 — 도구는 그 AC 를 `gaps` 에서 빼고 `nonTest` 목록에 `{requirementId, acId, evidence, evidenced}` 로 싣는다. `evidence` 는 그 AC 를 지명한 비시험 증거 행(Type 이 test 가 아니고 Covers 에 그 AC id 가 있는 행)이고, `all` 은 지명이 아니다. 그런 행이 있으면 `evidenced=true` 다. 표식은 도구(MCP `mark_acceptance_criterion_non_test`, CLI `mark-ac-non-test`)만 쓴다.
 
 ---
 
@@ -44,8 +45,8 @@
    `--sds` 는 SDS 가 있을 때만 넘긴다. gap 목록은 **도구 출력**이다 — 에이전트가 테스트를 읽고 gap 을 판정하지 않는다.
    **워크트리에서 도는 호출자는 그 워크트리를 읽게 한다** — `parallel-waves.md` 의 워커처럼 linked worktree 에서 이 확인을 부르면 MCP `check_test_sufficiency` 에 `workspaceRoot` = 그 워크트리 절대 경로를 주고, CLI 면 그 워크트리를 cwd 로 부른다. 호스트 root 에 묶인 MCP 는 워커가 방금 쓴 테스트를 보지 못해 없는 공백을 보고하고, 3번의 채우기가 워크트리에 테스트를 더해도 4번의 재실행이 여전히 호스트를 읽어 없는 공백이 닫히지 않는다. 3번의 채우기도 같은 워크트리에서 쓴다.
    linked worktree 를 호출 단위 `workspaceRoot` 로 지명해 부를 때 MCP 는 `docs/spec` 아래를 가리키는 `sds` 인자(step `design.md`)를 거부한다(FR-MCP-064 AC-7) — step 확인을 그렇게 해야 하면 이 한 번은 MCP 규칙의 예외로, 그 워크트리를 cwd 로 CLI `speckiwi coverage --tests` 를 돈다. `docs/sds/` 의 lite SDS 는 거부되지 않는다.
-2. gap 이 없으면 결과는 `pass` 다. 여기서 끝난다.
-3. gap 이 있으면 **테스트 작성 서브에이전트 하나**를 띄운다. 입력은 gap 목록(요구 ID·AC 번호·AC 본문, SDS-AC 와 그 Test Plan 행이 지명한 파일)과 관련 코드 경로다. 서브에이전트는 빠진 `<REQ-ID> AC-<n>` / `SDS-AC-<n>` 을 테스트 줄에 인용한 테스트를 **더한다**. 기존 테스트를 지우거나 약화하거나 고치지 않는다. 프로덕션 코드를 고치지 않는다. 더한 테스트를 실행한다 — 현재 코드에서 실패하는 새 테스트는 고치지도 지우지도 않고 결함으로 보고하며, 그 테스트가 인용한 AC 는 5번에서 gap 으로 센다. 호출자는 채우기 diff 가 새 테스트만 더했는지 diff 로 확인한다 — 기존 테스트 줄의 삭제·수정, 프로덕션 파일 변경, mock 이 하나라도 있으면 그 diff 를 인용 근거로 쓰지 않고 결과를 `gap` 으로 적는다. 자기 스킬에 보존 스캔이나 mock 검사가 있으면 그것도 이 diff 에 적용한다.
+2. gap 이 없으면 결과는 `pass` 다. 여기서 끝난다. `nonTest` 는 이 판정에 들지 않는다.
+3. gap 이 있으면 **테스트 작성 서브에이전트 하나**를 띄운다. 입력은 gap 목록(요구 ID·AC 번호·AC 본문, SDS-AC 와 그 Test Plan 행이 지명한 파일)과 관련 코드 경로다. 서브에이전트는 빠진 `<REQ-ID> AC-<n>` / `SDS-AC-<n>` 을 테스트 줄에 인용한 테스트를 **더한다**. 기존 테스트를 지우거나 약화하거나 고치지 않는다. 프로덕션 코드를 고치지 않는다. 채우기 서브에이전트는 `nonTest` 를 건드리지 않는다 — 표식 AC 는 gap 이 아니므로 그 AC 에 테스트를 더하지 않고 표식과 증거 행을 바꾸지 않는다. 더한 테스트를 실행한다 — 현재 코드에서 실패하는 새 테스트는 고치지도 지우지도 않고 결함으로 보고하며, 그 테스트가 인용한 AC 는 5번에서 gap 으로 센다. 호출자는 채우기 diff 가 새 테스트만 더했는지 diff 로 확인한다 — 기존 테스트 줄의 삭제·수정, 프로덕션 파일 변경, mock 이 하나라도 있으면 그 diff 를 인용 근거로 쓰지 않고 결과를 `gap` 으로 적는다. 자기 스킬에 보존 스캔이나 mock 검사가 있으면 그것도 이 diff 에 적용한다.
 4. 같은 범위로 도구(`check_test_sufficiency` / `speckiwi coverage --tests`)를 다시 부른다.
 5. gap 이 남으면(3번에서 실패한 새 테스트가 인용한 AC 포함) 게이트 `test-sufficiency-gap` 을 올린다 — critical 이고 `--auto` 도 풀지 못한다. gap 이 남은 요구는 `verified` 로 쓰지 않는다.
 
@@ -63,6 +64,8 @@
 
 **인용은 통과한 테스트여야 한다** — 도구는 인용을 읽을 뿐 테스트를 실행하지 않는다. 그래서 `verified` 를 쓰는 호출자는 증거로 쓸 인용의 테스트 파일을 증거 등록 전에 실행하고, 그 실행에서 통과한 테스트의 인용만 증거로 쓴다. 실패했거나 skip 되었거나 실행되지 않은 테스트의 인용은 그 AC 를 gap 으로 남기고, gap 이 남으면 §3 의 5번처럼 `test-sufficiency-gap` 을 올린다.
 
+**비시험 AC 는 인용 대신 지명 증거로 판정한다.** 표식 AC 는 test 행을 받지 않는다. `nonTest` 의 `evidenced=true` AC 는 `evidence` 가 가리키는 비시험 증거 행이 그 AC 의 증거이므로 호출자가 그 AC 를 체크한다. `verified` 를 쓰는 호출자는 `nonTest` 가운데 `evidenced=false` 인 AC 를 사용자 확인 항목으로 보고하고 그 요구를 `verified` 로 쓰지 않는다. 사람이 해야 하는 확인이므로 `--auto` 도 이것을 풀지 않으며, 에이전트가 그 확인을 대신 한 것처럼 증거 행을 쓰지 않는다. `update_status verified` 도 지명 증거가 없는 표식 AC 를 이름으로 대고 거절한다.
+
 ---
 
 ## 5. 결과 기록
@@ -70,10 +73,10 @@
 호출자는 결과를 산출물에 `test_sufficiency` 로 남긴다.
 
 ```json
-{ "verdict": "pass|gap|no-scope", "scope": { "ids": [], "target": null, "sds": null }, "gaps_first": [], "fill": { "attempted": false, "tests_added": [], "failing_new_tests": [] }, "gaps_final": [] }
+{ "verdict": "pass|gap|no-scope", "scope": { "ids": [], "target": null, "sds": null }, "gaps_first": [], "fill": { "attempted": false, "tests_added": [], "failing_new_tests": [] }, "gaps_final": [], "non_test": [] }
 ```
 
-오케스트레이션 스킬(`kiwi-pipeline` · `kiwi-wave-master` · `kiwi-orchestrator`)의 최종 보고는 이 `verdict` 를 적는다.
+`non_test` 는 마지막 도구 결과의 `nonTest` 를 그대로 옮긴다. 오케스트레이션 스킬(`kiwi-pipeline` · `kiwi-wave-master` · `kiwi-orchestrator`)의 최종 보고는 이 `verdict` 와 `non_test` 가운데 `evidenced=false` 항목을 적는다.
 
 ---
 

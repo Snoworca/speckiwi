@@ -230,6 +230,8 @@ When the run is in a linked worktree, such as a worker's, the check reads that w
 
 With `--close-reqs`, this step ends by running the test files of the citations the promotion will use as evidence, as `../_shared/kiwi/test-sufficiency.md` §4 requires, and hands only the citations of tests that passed in that run to the promotion — a citation whose test failed, was skipped or did not run leaves its AC a gap, and a remaining gap raises `test-sufficiency-gap`. The tool reads citations and never runs a test, so without this run a citation in an unchanged file or on a skipped test would become evidence.
 
+Report each AC the tool's `nonTest` lists with `evidenced=false` in the run report as a user confirmation item — the check is one a person must make, so `--auto` does not lift it. With `--close-reqs`, a requirement holding an `evidenced=false` AC is a user confirmation item and the promotion does not write it as `verified`: it leaves `eligible` and is counted in `excluded` as `non-test-unevidenced` (`../_shared/kiwi/test-sufficiency.md` §4).
+
 The fill subagent (contract §3) is a second code writer beside the fixer pass, and it writes new tests only. Run the preservation scan (보존 스캔 section) over its diff. Under `--dry-run` there is no fill and no rerun; the first result is reported (contract §3).
 
 Record the result as `test_sufficiency.json` (contract §5). When `test-sufficiency-gap` is raised the run waits for the user: it does not end `TASK_DONE` and does not enter the `--close-reqs` promotion.
@@ -245,6 +247,7 @@ Skip or halt when:
 | regression failed or skipped without evidence | halt |
 | blocking kept or residual finding remains | halt; a record (`declared_limit`) finding does not block |
 | the test-sufficiency step raised `test-sufficiency-gap` | halt; a requirement whose gaps remain is not written as `verified` (Test Sufficiency section) |
+| the test-sufficiency step's `nonTest` lists an AC with `evidenced=false` | do not write that requirement as `verified`: take it out of `eligible`, count it in `excluded` as `non-test-unevidenced`, and report the AC as a user confirmation item; `--auto` does not lift it (Test Sufficiency section) |
 | a target requirement rests on **prose** as verification **evidence** | this skill does not close it; report the omission instead — it reviews only code (파일 부류 경계), so it cannot run the full-document audit `FR-FLOW-136` AC-6 gates the close with, and an obligation a skill cannot discharge is not a gate. **No pipeline path closes such a requirement automatically** — a person audits and closes it. Say so in the report, so an unclosed requirement does not read as a failure |
 | `scoped` is empty | skip, and report the denominator's size and why the intersection came out zero |
 | `eligible` is at least one and `transitioned` is zero | NOT `TASK_DONE`; end `FAILED` and report |
@@ -263,7 +266,9 @@ For each eligible REQ:
    `reference` under `covers` for that same criterion. **Do not check a criterion for which no such
    identifier is named** — one the tool returned no citation for: leave it out of `acIds` and record
    the requirement as skipped. Checking is a mutation, so a
-   criterion ticked without a named test satisfies the gate in form only.
+   criterion ticked without a named test satisfies the gate in form only. A marked AC (the
+   test-sufficiency step's `nonTest`) is judged by its named evidence instead of a citation: with
+   `evidenced=true` it goes into `acIds` without a step-1 test row (`../_shared/kiwi/test-sufficiency.md` §4).
 3. Then call `update_status` to `verified`. `update-status.ts` requires every criterion checked AND
    evidence present, so a transition attempted without step 2 returns `MUTATION_DENIED`.
 4. Log each call and result.

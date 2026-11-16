@@ -654,7 +654,7 @@ speckiwi 보장 사항:
 1. **Classification correctness** — 4-way 라벨 적합?
 2. **Conflict integrity** — conflict 시 상대 REQ-ID 명시 + status 갱신?
 3. **Trace link validity** — 코드 path:line 실존?
-4. **AC verifiability** — AC 코드/테스트 검증 가능?
+4. **AC verifiability** — AC 코드/테스트 검증 가능? `[NON-TEST]` 표식 AC 는 표식 사유가 이 저장소의 자동 시험으로 재현할 수 없는 확인(실제 외부 서비스, 사람의 눈)인지 검토한다 — 테스트로 할 수 있는 확인이면 표식이 틀린 것이다. 다른 시스템의 동작이나 한계·범위 진술은 AC 로 쓰지 않는다 — 다른 시스템의 동작은 그 시스템의 요구로 옮기고, 한계·범위 진술은 Rationale·Implementation Notes·Out of Scope 에 둔다.
 5. **Scope fit** — 할당 scope 적합? cross-scope 누수 없음?
 6. **Incremental delta consistency** — update 시 supersede 명시? 용어 일관성?
 7. **Feasibility grounding** — 구현 가능성/제품 적합성 코드 증거 뒷받침?

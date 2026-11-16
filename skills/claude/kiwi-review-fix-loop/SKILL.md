@@ -168,6 +168,7 @@ self_scope.source enum 매핑 (§3.1):
 | `--close-reqs` + 회귀 fail | 차단 + WARN ("회귀 미통과로 verified 전이 부적합") |
 | `--close-reqs` + 차단 kept 또는 residual finding 잔존 (≥1) | 차단 + WARN — 기록(`declared_limit`) finding 은 승급을 막지 않는다. residual 은 사용자 결정 전까지 승급하지 않는다 (FR-FLOW-203) |
 | `--close-reqs` + Phase 7.4 테스트 충분성 확인이 `test-sufficiency-gap` 을 올림 | 차단 — gap 이 남은 요구를 `verified` 로 쓰지 않는다 (§6.5.1) |
+| `--close-reqs` + Phase 7.4 결과의 `nonTest` 에 `evidenced=false` AC 가 있음 | 그 요구만 `verified` 로 쓰지 않는다 — `eligible` 에서 빼고 `excluded` 에 `non-test-unevidenced` 로 계상하며, 그 AC 를 사용자 확인 항목으로 보고한다. `--auto` 로 풀지 않는다 (§6.5.1) |
 | `--close-reqs` + `scoped` 0건 | §6.6 skip + 보고. **"close 대상 REQ 없음" 한 줄로 끝내지 않는다** — `denominator` 의 크기와 교차가 0이 된 사유를 함께 적는다. 분모가 0이면 그 자체가 신호다 (`FR-NODE-198` 참조: enum 밖 status 로 쓰인 REQ 는 분모에 애초에 들어오지 않는다) |
 | `--close-reqs` + `eligible` 1건 이상 + 전이 0건 | **`TASK_DONE` 이 아니다.** `FAILED` 로 종료 + 보고 (§7.3) |
 | `--close-reqs` + 처분 대조 불일치 (`전이 성공 수 + 제외 수 ≠ scoped 크기`) | 그 실행은 **무효**. `FAILED` 로 종료 + 처분 없는 REQ 열거 |
@@ -653,6 +654,8 @@ GIT_INDEX_FILE=<tmp> git write-tree
 
 `--close-reqs` 면 이 단계의 끝에서 `_shared/kiwi/test-sufficiency.md` §4 대로 증거로 쓸 인용의 테스트 파일을 실행하고, 그 실행에서 통과한 테스트의 인용만 Phase 7.5 에 넘긴다 — 실패했거나 skip 되었거나 실행되지 않은 인용의 AC 는 gap 으로 남고, gap 이 남으면 `test-sufficiency-gap` 을 올린다. 도구는 인용을 읽을 뿐 테스트를 실행하지 않으므로, 바뀌지 않은 파일의 인용이나 `skip` 된 테스트의 인용이 이 실행 없이 증거가 되지 않게 한다.
 
+도구 결과의 `nonTest` 가운데 `evidenced=false` 인 AC 는 보고서에 사용자 확인 항목으로 적는다 — 사람이 해야 하는 확인이므로 `--auto` 로 풀지 않는다. `--close-reqs` 면 `evidenced=false` AC 를 가진 요구는 사용자 확인 항목이고, Phase 7.5 는 그 요구를 `verified` 로 쓰지 않는다 — `eligible` 에서 빼고 `excluded` 에 사유 `non-test-unevidenced` 로 계상한다(`_shared/kiwi/test-sufficiency.md` §4).
+
 채우기 서브에이전트(계약 §3)는 §0.1 의 시니어 fixer 와 별개로 새 테스트만 쓰는 두 번째 코드 작성자다. 그 diff 에도 §6.2 의 보존 스캔을 적용한다. `--dry-run` 이면 채우기와 재실행 없이 처음 결과만 보고한다 (계약 §3).
 
 결과는 `test_sufficiency.json`(계약 §5 형태)에 남긴다. `test-sufficiency-gap` 이 올라가면 이 실행은 사용자 결정을 기다리며, `TASK_DONE` 으로 끝나지 않고 Phase 7.5 승급에 들어가지 않는다.
@@ -703,7 +706,7 @@ pr_responded: true|false
 11. (`--close-reqs` 활성 시) REQ verified 전이 결과 — `closed_reqs.json` 인용 (transitioned / skipped / failed 통계 + 영향 REQ-ID 목록 + evidence 경로)
 12. 제외한 산문 전량 (`excluded_prose[]`) · 거부한 아티팩트 전량 (`refused_artifacts[]`) · 분류되지 않은 파일 전량 (`unclassified_files[]`) + 항등식 확인
 13. 리뷰 커버리지 대조 결과 (§12) — 라운드별 `review_denominator[]` 크기 · 파일별 `hunks_total`(서로 다른 hunk 내용 수) · 묶기 전 hunk 수 · 뺀 빈 줄 hunk 수 · 앵커 개수 · 무효 판정이 있었다면 어긋난 앵커 문자열
-14. 테스트 충분성 확인 결과 (§6.5.1) — `test_sufficiency.json` 의 verdict · 넘긴 범위 · 처음과 마지막 gap · 채우기로 더한 테스트
+14. 테스트 충분성 확인 결과 (§6.5.1) — `test_sufficiency.json` 의 verdict · 넘긴 범위 · 처음과 마지막 gap · 채우기로 더한 테스트 · `nonTest` 가운데 `evidenced=false` 인 AC(사용자 확인 항목)
 15. 메타 (실측 토큰, 시간)
 16. 클린 코드 라운드 결과 — 돈 라운드 수 · 고친 지적 · `dismissed`(사유) · `unresolved`(되돌린 수정의 실패 출력 포함 — `dismissed` 지적은 넣지 않는다) · 건너뛰었으면 그 사실과 이유
 17. 보장 범위(`guarantee_scope`) · 회차별 범위(`scope` · `scope_widen_reason`) · 회차별 `check_review_round` 판정

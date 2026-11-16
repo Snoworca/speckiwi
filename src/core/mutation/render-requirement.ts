@@ -1,7 +1,7 @@
 import { renderHeadingLine } from "../parser/heading-render.js";
 import { TYPE_PREFIX, type ChangeNoteRow, type EvidenceRow, type RequirementStatus, type RequirementType, type TraceLink } from "../types.js";
 import { todayStamp } from "../date-stamp.js";
-import { isExpiredCriterionText } from "../parser/ac-parser.js";
+import { isExpiredCriterionText, isNonTestCriterionText } from "../parser/ac-parser.js";
 import type { MutationResult } from "../types.js";
 import { mutationFail } from "./guards.js";
 
@@ -38,16 +38,22 @@ export interface RenderRequirementInput {
 }
 
 /**
- * @req FR-NODE-243 AC-1 — the guard every acceptance-criterion text writer calls. Text in the expired
- * grammar would expire the criterion with any date, no Change Notes reason and possibly no live
- * criterion left; only expire_acceptance_criterion may write the marker.
+ * @req FR-NODE-243 AC-1 @req FR-NODE-315 AC-4 — the guard every acceptance-criterion text writer
+ * calls. Text in the expired grammar would expire the criterion with any date, no Change Notes reason
+ * and possibly no live criterion left; text in the non-test grammar would take the criterion out of
+ * the test-sufficiency gaps with no recorded reason. Only their own tools write either marker.
  */
-export function refuseExpiredMarker<T = void>(label: string, texts: readonly string[]): MutationResult<T> | undefined {
-  if (!texts.some(isExpiredCriterionText)) return undefined;
-  return mutationFail(
-    "USAGE",
-    `${label} is written in the expired-criterion grammar; expire a criterion with expire_acceptance_criterion instead`
-  ) as MutationResult<T>;
+export function refuseToolOnlyMarkers<T = void>(label: string, texts: readonly string[]): MutationResult<T> | undefined {
+  if (texts.some(isExpiredCriterionText)) {
+    return mutationFail("USAGE", `${label} is written in the expired-criterion grammar; expire a criterion with expire_acceptance_criterion instead`) as MutationResult<T>;
+  }
+  if (texts.some(isNonTestCriterionText)) {
+    return mutationFail(
+      "USAGE",
+      `${label} is written in the non-test marker grammar; mark a criterion with mark_acceptance_criterion_non_test (CLI mark-ac-non-test) instead`
+    ) as MutationResult<T>;
+  }
+  return undefined;
 }
 
 /** The rows a new block's Change Notes holds: the given ones, or the one default creation row. */

@@ -23,6 +23,7 @@ import {
   APPEND_ACCEPTANCE_CRITERION_SCHEMA,
   EDIT_ACCEPTANCE_CRITERION_SCHEMA,
   EXPIRE_ACCEPTANCE_CRITERION_SCHEMA,
+  NON_TEST_MARK_SCHEMA,
   RENAME_SCOPE_SCHEMA,
   RETARGET_REQUIREMENTS_SCHEMA,
   registerMutationTools
@@ -298,6 +299,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   retarget_requirements: RETARGET_REQUIREMENTS_SCHEMA,
   // @req FR-NODE-243 AC-6
   expire_acceptance_criterion: EXPIRE_ACCEPTANCE_CRITERION_SCHEMA,
+  mark_acceptance_criterion_non_test: NON_TEST_MARK_SCHEMA,
+  unmark_acceptance_criterion_non_test: NON_TEST_MARK_SCHEMA,
   // @req FR-MCP-072 AC-1 AC-2
   edit_acceptance_criterion: EDIT_ACCEPTANCE_CRITERION_SCHEMA,
   append_acceptance_criterion: APPEND_ACCEPTANCE_CRITERION_SCHEMA,

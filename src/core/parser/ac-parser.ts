@@ -29,6 +29,25 @@ function expiredMarker(text: string): RegExpExecArray | null {
   return match && isCalendarDate(match[2]!) ? match : null;
 }
 
+// @req FR-PARSE-051 AC-1 — the non-test marker: one or more spaces and `[NON-TEST]` closing a line that
+// has text before it. Any other spelling stays part of an ordinary criterion's text.
+const NON_TEST_TEXT_RE = /^(.*\S)\s+\[NON-TEST\]$/;
+
+/** The text without the non-test marker, or null when `text` does not end in the marker grammar. */
+function withoutNonTestMarker(text: string): string | null {
+  return NON_TEST_TEXT_RE.exec(text.trim())?.[1] ?? null;
+}
+
+/** True when `text`, written after `AC-<n>:`, would be read back as a non-test criterion. */
+export function isNonTestCriterionText(text: string): boolean {
+  return withoutNonTestMarker(text) !== null;
+}
+
+/** The marker text the parser reads back as non-test; the one writer of that grammar. @req FR-NODE-315 AC-1 */
+export function nonTestCriterionText(text: string): string {
+  return `${text} [NON-TEST]`;
+}
+
 /** True when `text`, written after `AC-<n>:`, would be read back as an expired criterion. */
 export function isExpiredCriterionText(text: string): boolean {
   return expiredMarker(text) !== null;
@@ -77,7 +96,10 @@ export function parseAcceptanceCriteria(section?: SectionRange, filePath = "", r
     if (!match) return;
     // An unnumbered line keeps the position number it had before expired lines left this list.
     const id = match[2] ?? `AC-${criteria.length + expired.length + 1}`;
-    const text = match[3]!.trim();
+    const written = match[3]!.trim();
+    // @req FR-PARSE-051 AC-1 — the marker is read off first; a line that is also expired is expired only.
+    const unmarked = match[2] ? withoutNonTestMarker(written) : null;
+    const text = unmarked ?? written;
     const checked = match[1]?.toLowerCase() === "x";
     const lineNumber = section.contentStartLine + index;
     const marker = match[2] ? expiredMarker(text) : null;
@@ -85,7 +107,7 @@ export function parseAcceptanceCriteria(section?: SectionRange, filePath = "", r
       expired.push({ id, text: marker[1]!, checked, line: lineNumber, expiredOn: marker[2]!, ...(marker[3] ? { successor: marker[3] } : {}) });
       return;
     }
-    criteria.push({ id, text, checked, line: lineNumber });
+    criteria.push({ id, text, checked, line: lineNumber, ...(unmarked !== null ? { nonTest: true as const } : {}) });
   });
   return { criteria, expired, diagnostics };
 }

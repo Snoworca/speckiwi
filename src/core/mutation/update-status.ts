@@ -13,7 +13,7 @@ import { deriveSuccessorSlot, findIncomingTraceRows, findSupersedingRows } from 
 import type { RequirementRecord } from "../types.js";
 import { checkIndexRollupsWritableAt, syncIndexRollupsAfterWrite } from "./sync-index.js";
 import { withSrsMutationLock } from "./srs-lock.js";
-import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal } from "../workflow/release-readiness.js";
+import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal, unnamedNonTestCriteria } from "../workflow/release-readiness.js";
 import { todayStamp } from "../date-stamp.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { requirementReferenceRewrites } from "./requirement-references.js";
@@ -183,6 +183,14 @@ async function updateStatusUnlocked(root: ProjectRoot, input: UpdateStatusInput,
   // granular edits are refused and the row cannot be repaired. Release readiness already computed
   // this; consulting the same rule here moves the discovery from release time to the write.
   if (input.status === "verified") {
+    // @req FR-PARSE-051 AC-5 — a marked criterion is verified by the non-test row that names it.
+    const unnamed = unnamedNonTestCriteria(nextRecord);
+    if (unnamed.length > 0) {
+      return mutationFail(
+        "MUTATION_DENIED",
+        `Cannot mark ${input.id} verified: non-test criteria ${unnamed.join(", ")} have no evidence row that names them (a row whose Type is not test and whose Covers lists the criterion; all does not name it)`
+      );
+    }
     const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, nextRecord);
     if (unresolved.length > 0) return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved, root.root));
   }

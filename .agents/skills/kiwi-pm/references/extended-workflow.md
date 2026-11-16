@@ -286,7 +286,7 @@ kiwi-coder 실행이 끝나면 PM 이 결과를 `run` 에 확정한다. `run.cha
 
 `--no-final` 이 명시되면 본 절의 **요구 승급을 수행하지 않는다** (SKILL.md §1.5) — 한 요구가 여러 unit 에 걸칠 때 `all_done` 분모가 한 unit 의 몫이 되기 때문이다. 보고서 작성(§6.3)은 그대로 수행한다.
 
-**SDS 없는 실행**: `req_ids` 의 요구마다 `speckiwi coverage --tests --ids <그 요구>` (MCP `check_test_sufficiency`) 가 gap 을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 `implemented` 로 올리고, 나머지는 gap 과 함께 보고한다. `add_completed_work` 는 그 집합으로 기록하며 요약 종류는 `req-summary` 다. `--no-final` 이면 종전처럼 건너뛴다. 아래 의사코드가 두 경우를 함께 적는다 — `covered` 가 SDS 없는 실행의 coverage 조건이다.
+**SDS 없는 실행**: `req_ids` 의 요구마다 `speckiwi coverage --tests --ids <그 요구>` (MCP `check_test_sufficiency`) 가 gap 을 보고하지 않고 그것을 인용한 테스트가 통과한 요구만 `implemented` 로 올리고, 나머지는 gap 과 함께 보고한다. `nonTest` 에 실린 표식 AC 는 gap 이 아니어서 승급을 막지 않는다 — `implemented` 는 gap 만 보고 올리고, `evidenced=false` 인 미확인 비시험 AC 목록은 보고서에 적는다. `add_completed_work` 는 그 집합으로 기록하며 요약 종류는 `req-summary` 다. `--no-final` 이면 종전처럼 건너뛴다. 아래 의사코드가 두 경우를 함께 적는다 — `covered` 가 SDS 없는 실행의 coverage 조건이다.
 
 **문제**: kiwi-coder 는 `update_status(in_progress)` 만 호출한다. 한 SDS 가 여러 요구를 구현하고 한 요구가 여러 SDS 에 걸칠 수 있어 자식 시야에서는 `implemented` 승급을 판단할 수 없다. PM 이 실행이 끝난 뒤 요구 집합(`--sds` 면 SDS `@req` 집합, `--req-filter` 도 주면 그 ID)을 일괄 마무리한다.
 

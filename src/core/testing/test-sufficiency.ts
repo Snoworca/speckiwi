@@ -3,6 +3,7 @@ import { knownRequirements, loadSdsFile, readWorkspaceText } from "../sds/check-
 import type { LiteSdsDocument } from "../sds/lite-sds.js";
 import type { ParsedWorkspace, RequirementRecord } from "../types.js";
 import { resolveTargetSelection } from "../query/summary.js";
+import { namesNonTestCriterion } from "../workflow/release-readiness.js";
 import { DEFAULT_TEST_FILE_GLOBS, findTestFiles, indexTestCitations, type IgnoreRulesReason, type TestCitation } from "./test-citations.js";
 
 // @req FR-NODE-210 AC-2 AC-4 AC-5 @req FR-MCP-066
@@ -27,6 +28,17 @@ export interface CriterionCoverage {
   readonly acId: string;
   readonly cited: boolean;
   readonly citations: TestCitation[];
+  /** @req FR-PARSE-051 AC-3 — present only on a criterion marked non-test. */
+  readonly nonTest?: true;
+}
+
+/** @req FR-PARSE-051 AC-3 — a marked criterion: judged by the non-test rows that name it, never a gap. */
+export interface NonTestCriterion {
+  readonly requirementId: string;
+  readonly acId: string;
+  /** Ids of the evidence rows that name it (Type not `test`, Covers lists the id; `all` does not). */
+  readonly evidence: string[];
+  readonly evidenced: boolean;
 }
 
 export interface RequirementCoverage {
@@ -62,6 +74,8 @@ export interface TestSufficiencyReport {
   readonly sdsContracts: ContractCoverage[];
   /** Listed apart from `requirements` and never a gap or a pass. */
   readonly expiredCitations: ExpiredCitation[];
+  /** Present only when a criterion in scope is marked non-test, so an unmarked scope answers as before. */
+  readonly nonTest?: NonTestCriterion[];
   readonly gaps: {
     requirements: Array<{ requirementId: string; acIds: string[] }>;
     sdsContracts: Array<{ sdsAcId: string; reason: string }>;
@@ -130,9 +144,18 @@ export async function checkTestSufficiency(workspace: ParsedWorkspace, scope: Te
     requirementId: record.id,
     acs: record.acceptanceCriteria.map((criterion) => {
       const citations = index.acCitations(record.id, criterion.id);
-      return { acId: criterion.id, cited: citations.length > 0, citations };
+      return { acId: criterion.id, cited: citations.length > 0, citations, ...(criterion.nonTest === true ? { nonTest: true as const } : {}) };
     })
   }));
+
+  const nonTest: NonTestCriterion[] = resolved.value.records.flatMap((record) =>
+    record.acceptanceCriteria
+      .filter((criterion) => criterion.nonTest === true)
+      .map((criterion) => {
+        const evidence = record.verificationEvidence.filter((row) => namesNonTestCriterion(row, criterion.id)).map((row) => row.id);
+        return { requirementId: record.id, acId: criterion.id, evidence, evidenced: evidence.length > 0 };
+      })
+  );
 
   const expiredCitations: ExpiredCitation[] = resolved.value.records.flatMap((record) =>
     (record.expiredAcceptanceCriteria ?? []).flatMap((criterion) => {
@@ -157,7 +180,7 @@ export async function checkTestSufficiency(workspace: ParsedWorkspace, scope: Te
   });
 
   const requirementGaps = requirements
-    .map((item) => ({ requirementId: item.requirementId, acIds: item.acs.filter((ac) => !ac.cited).map((ac) => ac.acId) }))
+    .map((item) => ({ requirementId: item.requirementId, acIds: item.acs.filter((ac) => !ac.cited && ac.nonTest !== true).map((ac) => ac.acId) }))
     .filter((gap) => gap.acIds.length > 0);
   const contractGaps = sdsContracts
     .filter((item) => !item.cited)
@@ -180,6 +203,7 @@ export async function checkTestSufficiency(workspace: ParsedWorkspace, scope: Te
     requirements,
     sdsContracts,
     expiredCitations,
+    ...(nonTest.length > 0 ? { nonTest } : {}),
     gaps: { requirements: requirementGaps, sdsContracts: contractGaps },
     passed: requirementGaps.length === 0 && contractGaps.length === 0
   });

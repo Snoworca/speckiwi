@@ -177,7 +177,9 @@ result as `test_sufficiency.json`. When gaps remain, halt at
 and the delegation proceeds — `kiwi-srs-sync` reruns the same check right
 before it writes `verified`. A run that does not delegate (`--no-sync`,
 dry-run-only, or a blocking gate) does not run it. Under `--dry-run` it reports the
-first result without a fill, as contract §3 says.
+first result without a fill, as contract §3 says. When the result's `nonTest` lists a
+marked AC with `evidenced=false`, report that AC as a user confirmation item; the
+delegated `kiwi-srs-sync` does not write that requirement as `verified` either.
 
 After fix + regression success and the test-sufficiency check, delegate:
 

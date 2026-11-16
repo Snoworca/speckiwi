@@ -38,6 +38,9 @@ const EXPECTED_KINDS: Record<string, MutationToolKind> = {
   retarget_requirements: "workspace",
   // @req FR-NODE-243 AC-6 — expiring a criterion acts on one requirement id.
   expire_acceptance_criterion: "req-scoped",
+  // @req FR-NODE-315 AC-5 — marking or unmarking a criterion non-test acts on one requirement id.
+  mark_acceptance_criterion_non_test: "req-scoped",
+  unmark_acceptance_criterion_non_test: "req-scoped",
   // @req FR-MCP-049 AC-5 · FR-MCP-072 AC-1 AC-2 — each acts on one requirement id.
   add_related_doc: "req-scoped",
   add_change_note: "req-scoped",

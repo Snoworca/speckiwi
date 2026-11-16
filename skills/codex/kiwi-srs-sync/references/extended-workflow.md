@@ -85,7 +85,7 @@ Codex clarification gate 4옵션:
 1. add_requirement (new-feature / new-scope=(2)기존 scope 확장만) — 신규 REQ 생성
 2. append_section_note (update) — 기존 REQ AC 보강
 3. add_trace_link — code anchor 등록 (source: Requirement, target: Code, reference: src/x.ts:45-67, relation: implements)
-4. add_verification_evidence — 테스트 통과한 경우 type=test 로 등록. verified 로 쓸 REQ 는 등록 전에 `../../_shared/kiwi/test-sufficiency.md` 확인을 그 REQ 범위(`--ids`)로 먼저 돌리고, 도구가 AC 마다 돌려준 인용을 reference·covers 로 쓴다 — gap 이 남은 REQ 는 verified 로 쓰지 않는다 (`test-sufficiency-gap`)
+4. add_verification_evidence — 테스트 통과한 경우 type=test 로 등록. verified 로 쓸 REQ 는 등록 전에 `../../_shared/kiwi/test-sufficiency.md` 확인을 그 REQ 범위(`--ids`)로 먼저 돌리고, 도구가 AC 마다 돌려준 인용을 reference·covers 로 쓴다 — gap 이 남은 REQ 는 verified 로 쓰지 않는다 (`test-sufficiency-gap`). 도구 결과의 `nonTest` 에 `evidenced=false` 인 표식 AC 가 있는 REQ 는 그 AC 를 사용자 확인 항목으로 보고하고 verified 로 쓰지 않는다 (`--auto` 로 풀지 않는다)
 5. update_status — implemented / verified 전이 (§0번 사전 검증 통과한 것만)
 6. update_stability — draft→evolving 등 승급 시 (§0번 사전 검증 통과한 것만)
 7. add_completed_work — 변경 작업 자체를 작업 로그로 기록 (한 번에 묶어서)

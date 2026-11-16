@@ -7,7 +7,7 @@ import { assertOpensNoBlockBoundary, assertRequirementTitle } from "./block-pros
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { findSectionTable, loadRecordWithWorkspace, planMetadataWrite, planTableRowUpdate, sectionEndLine, type RowSection } from "./internal.js";
-import { acceptanceCriterionLine, refuseExpiredMarker } from "./render-requirement.js";
+import { acceptanceCriterionLine, refuseToolOnlyMarkers } from "./render-requirement.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { assertSafeMarkdownTableCells, tableCellText } from "./table-cell.js";
 import { todayStamp } from "../date-stamp.js";
@@ -265,12 +265,20 @@ async function replaceAcceptanceCriteriaUnlocked(root: ProjectRoot, input: Repla
     const opensSection = assertOpensNoBlockBoundary<GranularRequirementEditOutput>("acceptance criterion", item.text);
     if (opensSection) return opensSection;
   }
-  const forged = refuseExpiredMarker<GranularRequirementEditOutput>("acceptance criterion", input.items.map((item) => item.text));
+  const forged = refuseToolOnlyMarkers<GranularRequirementEditOutput>("acceptance criterion", input.items.map((item) => item.text));
   if (forged) return forged;
   const loaded = await loadRecordWithWorkspace(root, input.id);
   if (!loaded) return mutationFail("NOT_FOUND", `Requirement not found: ${input.id}`);
   const editable = assertEditable(loaded.record);
   if (editable) return editable as MutationResult<GranularRequirementEditOutput>;
+  // @req FR-NODE-315 AC-4 — replacing would drop each marker and the reason recorded with it, silently.
+  const marked = loaded.record.acceptanceCriteria.filter((criterion) => criterion.nonTest === true).map((criterion) => criterion.id);
+  if (marked.length > 0) {
+    return mutationFail(
+      "MUTATION_DENIED",
+      `${marked.join(", ")} of ${input.id} ${marked.length === 1 ? "is" : "are"} marked non-test; replacing the criteria would drop the marker, so unmark with unmark_acceptance_criterion_non_test first or edit one criterion with edit_acceptance_criterion`
+    );
+  }
   const range = sectionContentRange(loaded.file, loaded.record, "Acceptance Criteria");
   if (!range) return mutationFail("MUTATION_DENIED", "Acceptance Criteria section not found");
   const lines = ["", ...acceptanceCriteriaLines(loaded.file, loaded.record, input.items), ""];

@@ -18,6 +18,7 @@ import { normalizeSeedRows } from "../../src/core/mutation/seed-rows.js";
 import { repairRulesReferences } from "../../src/core/mutation/repair-rules-references.js";
 import { retarget } from "../../src/core/mutation/retarget.js";
 import { expireAcceptanceCriterion } from "../../src/core/mutation/expire-ac.js";
+import { markAcceptanceCriterionNonTest } from "../../src/core/mutation/non-test-ac.js";
 import { updateStability } from "../../src/core/mutation/update-stability.js";
 import { updateStatus } from "../../src/core/mutation/update-status.js";
 import { updateStepState } from "../../src/core/mutation/update-step-state.js";
@@ -495,6 +496,15 @@ const FILE_SITE_DECLARATIONS: readonly StampSite[] = [
     args: [ROOT_SLOT, { id: "FR-ARCH-001", acId: "AC-2", reason: "probe reason" }]
   },
   {
+    file: "src/core/mutation/non-test-ac.ts",
+    destination: "srs-file",
+    // The Change Notes row a non-test mark appends. @req FR-NODE-315 AC-1
+    pattern: String.raw`\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Marked AC-2 non-test\s*\|\s*probe reason\s*\|`,
+    fn: markAcceptanceCriterionNonTest as (...args: never[]) => unknown,
+    seed: "none",
+    args: [ROOT_SLOT, { id: "FR-ARCH-001", acId: "AC-2", reason: "probe reason" }]
+  },
+  {
     file: "src/core/mutation/repair-rules-references.ts",
     destination: "srs-file",
     // The Change Notes row a rules-reference repair appends.
@@ -607,6 +617,7 @@ const PRODUCTION_EXPORTS: Readonly<Record<string, unknown>> = {
   "src/core/mutation/update-stability.ts": updateStability,
   "src/core/mutation/retarget.ts": retarget,
   "src/core/mutation/expire-ac.ts": expireAcceptanceCriterion,
+  "src/core/mutation/non-test-ac.ts": markAcceptanceCriterionNonTest,
   "src/core/mutation/repair-rules-references.ts": repairRulesReferences,
   "src/core/mutation/claim-step.ts": claimStep,
   "src/core/mutation/update-step-state.ts": updateStepState,
@@ -664,7 +675,7 @@ function classifyReturn(value: unknown): { kind: CallerDestination; text: string
   throw new Error(`unclassifiable return value: ${Object.prototype.toString.call(value)}`);
 }
 
-/** Files whose probe actually ran a checked production call. `AC-5` asserts this covers all fourteen. */
+/** Files whose probe actually ran a checked production call. `AC-5` asserts this covers all fifteen. */
 const observedSites = new Set<string>();
 
 /**
@@ -839,7 +850,7 @@ function expectCallSucceeded(file: string, returned: unknown): void {
 /**
  * Runs ONE site at ONE instant and returns the stamp it produced.
  *
- * The same path serves all fourteen. The row contributes a production reference, static data, a seed
+ * The same path serves all fifteen. The row contributes a production reference, static data, a seed
  * name, a destination and a pattern; the workspace, the arguments' final values, the call, the success
  * check and the reading all belong to the framework.
  */
@@ -987,7 +998,7 @@ describe("FR-NODE-205 — every stamp site is EXECUTED, not merely scanned", () 
       // catches by walking `Reflect.ownKeys`.
       expect(() => structuredClone(inert)).not.toThrow();
     }
-    expect(ALL_SITES).toHaveLength(14);
+    expect(ALL_SITES).toHaveLength(15);
     // Judged when the snapshots were taken, against the DECLARATIONS — the only place reading them.
     expect(rowDefects, "a declared row is not inert data").toEqual([]);
   });
@@ -1015,13 +1026,13 @@ describe("FR-NODE-205 — every stamp site is EXECUTED, not merely scanned", () 
       const dated = stringsIn(ARGS_SNAPSHOT.get(site.file)).filter((text) => /\d{4}-\d{2}-\d{2}/.test(text));
       expect(dated, `${site.file} declares a date-shaped argument`).toEqual([]);
     }
-    expect(ARGS_SNAPSHOT.size).toBe(14);
+    expect(ARGS_SNAPSHOT.size).toBe(15);
   });
 
-  it("AC-5: the fourteen sites are all of them, and no file appears twice", () => {
-    expect(ALL_SITE_FILES).toHaveLength(14);
-    expect(new Set(ALL_SITE_FILES).size).toBe(14);
-    expect(FILE_SITES).toHaveLength(9);
+  it("AC-5: the fifteen sites are all of them, and no file appears twice", () => {
+    expect(ALL_SITE_FILES).toHaveLength(15);
+    expect(new Set(ALL_SITE_FILES).size).toBe(15);
+    expect(FILE_SITES).toHaveLength(10);
     expect(CALLER_SITES).toHaveLength(5);
   });
 
@@ -1057,11 +1068,11 @@ describe("FR-NODE-205 — every stamp site is EXECUTED, not merely scanned", () 
 });
 
 describe("FR-NODE-205 — the probes actually ran", () => {
-  it("AC-5: all fourteen probes executed — declaring the table is not measuring it", () => {
-    // Emptying the `it.each` argument leaves the table at fourteen rows and the census untouched, so
+  it("AC-5: all fifteen probes executed — declaring the table is not measuring it", () => {
+    // Emptying the `it.each` argument leaves the table at fifteen rows and the census untouched, so
     // nothing else in this file notices that no probe ever ran. This counts the runs.
     expect([...observedSites].sort()).toEqual([...ALL_SITE_FILES].sort());
-    expect(observedSites.size).toBe(14);
+    expect(observedSites.size).toBe(15);
   });
 });
 

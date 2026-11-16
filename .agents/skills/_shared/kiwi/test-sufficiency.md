@@ -10,6 +10,7 @@ The single source of the **test-sufficiency check** every workflow runs at its e
 - **SDS contract**: inside the test file the SDS Test Plan row names, write `SDS-AC-<n>` on the test line.
 - A test that verifies both writes both on one line.
 - `@req` comments in code are not an input of this check — the FR-FLOW-020 AC-3 exemption stands.
+- **Non-test AC**: an AC whose line ends with the `[NON-TEST]` marker is not cited — the tool leaves it out of `gaps` and lists it in `nonTest` as `{requirementId, acId, evidence, evidenced}`. `evidence` is the non-test evidence rows that name that AC (a row whose Type is not test and whose Covers lists the AC id), and `all` does not name it. With such a row, `evidenced=true`. Only the tools write the marker (MCP `mark_acceptance_criterion_non_test`, CLI `mark-ac-non-test`).
 
 ---
 
@@ -44,8 +45,8 @@ When the scope holds no requirement ID the check does not run and the result is 
    Pass `--sds` only when an SDS exists. The gap list is the **tool's output** — the agent does not read tests and decide gaps itself.
    **A caller running in a worktree points the check at that worktree** — when the check runs in a linked worktree, as a `parallel-waves.md` worker does, pass `workspaceRoot` = that worktree's absolute path to MCP `check_test_sufficiency`, or run the CLI with that worktree as cwd. An MCP bound to the host root cannot see the tests the worker just wrote and reports gaps that are not there, and even after step 3's fill adds tests in the worktree, step 4's rerun still reads the host and the phantom gap never closes. Step 3's fill writes in the same worktree.
    Called with a per-call `workspaceRoot` naming a linked worktree, MCP refuses an `sds` argument under `docs/spec` (a step `design.md`) — FR-MCP-064 AC-7; when a step check has to run that way, this one call is an exception to the MCP rule: run the CLI `speckiwi coverage --tests` with the worktree as cwd. A lite SDS under `docs/sds/` is not refused.
-2. With no gap the result is `pass`, and the check ends here.
-3. With gaps, spawn **one test-writing subagent**. Its input is the gap list (requirement ID, AC number and AC text; the SDS-AC and the file its Test Plan row names) and the relevant code paths. It **adds** tests whose test line cites the missing `<REQ-ID> AC-<n>` / `SDS-AC-<n>`. It must not delete, weaken or edit an existing test, and it does not change production code. It runs the tests it added — a new test that fails against the current code is neither fixed nor deleted; it is reported as a defect, and the AC it cites counts as a gap in step 5. The caller checks from the diff that the fill only added new tests — if it deleted or edited an existing test line, changed a production file, or introduced a mock, that diff is not used as citation ground and the result is recorded as `gap`. When the caller's skill has a preservation scan or a mock check, it applies them to this diff as well.
+2. With no gap the result is `pass`, and the check ends here. `nonTest` takes no part in this verdict.
+3. With gaps, spawn **one test-writing subagent**. Its input is the gap list (requirement ID, AC number and AC text; the SDS-AC and the file its Test Plan row names) and the relevant code paths. It **adds** tests whose test line cites the missing `<REQ-ID> AC-<n>` / `SDS-AC-<n>`. It must not delete, weaken or edit an existing test, and it does not change production code. The fill subagent does not touch `nonTest` — a marked AC is not a gap, so it adds no test for it and changes neither the marker nor its evidence rows. It runs the tests it added — a new test that fails against the current code is neither fixed nor deleted; it is reported as a defect, and the AC it cites counts as a gap in step 5. The caller checks from the diff that the fill only added new tests — if it deleted or edited an existing test line, changed a production file, or introduced a mock, that diff is not used as citation ground and the result is recorded as `gap`. When the caller's skill has a preservation scan or a mock check, it applies them to this diff as well.
 4. Rerun the tool (`check_test_sufficiency` / `speckiwi coverage --tests`) over the same scope.
 5. If gaps remain (including the ACs a new test that failed in step 3 cites), raise gate `test-sufficiency-gap` — it is critical and `--auto` does not lift it. A requirement whose gaps remain is not written as `verified`.
 
@@ -63,6 +64,8 @@ A caller that writes `verified` runs this check **before** it registers evidence
 
 **A citation must be a test that passed** — the tool reads citations and never runs a test. So a caller that writes `verified` runs the test files of the citations it will use as evidence before it registers the evidence, and uses only the citations of tests that passed in that run. A citation whose test failed, was skipped or did not run leaves its AC a gap, and a remaining gap raises `test-sufficiency-gap` as in step 5 of §3.
 
+**A non-test AC is judged by its named evidence, not by a citation.** A marked AC gets no test row. For a `nonTest` AC with `evidenced=true`, the non-test evidence rows its `evidence` names are that AC's evidence, so the caller checks that AC. A caller that writes `verified` reports each `nonTest` AC with `evidenced=false` as a user confirmation item and does not write that requirement as `verified`. The check is one a person must make, so `--auto` does not lift it, and the agent does not write an evidence row as if it had made that check itself. `update_status verified` also refuses, naming each marked AC without named evidence.
+
 ---
 
 ## 5. Result record
@@ -70,10 +73,10 @@ A caller that writes `verified` runs this check **before** it registers evidence
 The caller records the result in its artifacts as `test_sufficiency`.
 
 ```json
-{ "verdict": "pass|gap|no-scope", "scope": { "ids": [], "target": null, "sds": null }, "gaps_first": [], "fill": { "attempted": false, "tests_added": [], "failing_new_tests": [] }, "gaps_final": [] }
+{ "verdict": "pass|gap|no-scope", "scope": { "ids": [], "target": null, "sds": null }, "gaps_first": [], "fill": { "attempted": false, "tests_added": [], "failing_new_tests": [] }, "gaps_final": [], "non_test": [] }
 ```
 
-The final report of an orchestrating skill (`kiwi-pipeline`, `kiwi-wave-master`, `kiwi-orchestrator`) states this `verdict`.
+`non_test` copies the `nonTest` of the last tool result as it is. The final report of an orchestrating skill (`kiwi-pipeline`, `kiwi-wave-master`, `kiwi-orchestrator`) states this `verdict` and the `non_test` entries with `evidenced=false`.
 
 ---
 

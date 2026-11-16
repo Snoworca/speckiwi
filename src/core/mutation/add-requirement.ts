@@ -14,7 +14,7 @@ import type { Diagnostic, MutationResult, ParsedWorkspace, Priority, ProjectRoot
 import { mutationFail, mutationOk } from "./guards.js";
 import { getWorkMode } from "./work-mode.js";
 import { mutationEnvelopeFromPlan } from "./envelope.js";
-import { DEFAULT_REQUIREMENT_STABILITY, defaultChangeNotes, prefixForType, refuseExpiredMarker, renderRequirementBlock, traceRowCells, type RenderRequirementInput } from "./render-requirement.js";
+import { DEFAULT_REQUIREMENT_STABILITY, defaultChangeNotes, prefixForType, refuseToolOnlyMarkers, renderRequirementBlock, traceRowCells, type RenderRequirementInput } from "./render-requirement.js";
 import { refuseDiscardedTraceTargets, refuseDiscardedTraceTargetsBeforeLock } from "./add-trace.js";
 import { normalizeSeedRows, type ChangeNotesSurface } from "./seed-rows.js";
 import { assertOpensNoBlockBoundary, assertPromotableBlock, assertRequirementTitle } from "./block-prose.js";
@@ -22,7 +22,7 @@ import { assertSafeMarkdownTableCells } from "./table-cell.js";
 import { checkIndexRollupsWritableAt, syncIndexRollupsAfterWrite } from "./sync-index.js";
 import { allocateRequirementIdFromStatusCache } from "../status-cache.js";
 import { withSrsMutationLock } from "./srs-lock.js";
-import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal } from "../workflow/release-readiness.js";
+import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal, unnamedNonTestCriteria } from "../workflow/release-readiness.js";
 import { checkRequirementIdAvailable, type RequirementIdAvailability } from "./requirement-id-availability.js";
 
 export interface AddRequirementInput extends Omit<RenderRequirementInput, "id" | "type" | "target" | "changeNotes"> {
@@ -112,7 +112,7 @@ function assertProseOpensNoSection(input: ResolvedAddRequirementInput): Mutation
     if (opensBoundary) return opensBoundary;
   }
   // supersede_requirement writes its successor through this call, so this one guard covers both.
-  const forged = refuseExpiredMarker<AddRequirementOutput>("acceptanceCriteria", input.acceptanceCriteria);
+  const forged = refuseToolOnlyMarkers<AddRequirementOutput>("acceptanceCriteria", input.acceptanceCriteria);
   if (forged) return forged;
   // `title` is the fifth caller-supplied string on this call and was the only one left open. It is
   // written into `### ID — <title>`, so a newline in it puts the remainder at column zero; measured,
@@ -527,6 +527,14 @@ async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteS
   // Compared case-insensitively so a block reading `Verified` cannot dodge the gate on spelling; the
   // parser does not normalise Status, and an exact match let that through.
   if (String(stepRecord.status ?? "").trim().toLowerCase() === "verified") {
+    // @req FR-PARSE-051 AC-5 — the same naming rule as update_status, so promotion is no way around it.
+    const unnamed = unnamedNonTestCriteria(stepRecord);
+    if (unnamed.length > 0) {
+      return mutationFail(
+        "MUTATION_DENIED",
+        `Cannot promote ${input.id} as verified: non-test criteria ${unnamed.join(", ")} have no evidence row that names them (a row whose Type is not test and whose Covers lists the criterion; all does not name it)`
+      ) as MutationResult<AddRequirementOutput>;
+    }
     const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, stepRecord);
     if (unresolved.length > 0) {
       return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved, root.root)) as MutationResult<AddRequirementOutput>;

@@ -27,6 +27,7 @@ import { registerScopes } from "../../core/mutation/register-scopes.js";
 import { renameScope } from "../../core/mutation/rename-scope.js";
 import { retargetSelection } from "../../core/mutation/retarget.js";
 import { expireAcceptanceCriterion } from "../../core/mutation/expire-ac.js";
+import { markAcceptanceCriterionNonTest, unmarkAcceptanceCriterionNonTest } from "../../core/mutation/non-test-ac.js";
 import { initProject } from "../../core/bootstrap/init-project.js";
 import { applyWorkflowMutation, defaultWorkflowOwner, type WorkflowMutationInput, type WorkflowMutationKind } from "../../core/workflow/mutation.js";
 import { applyRequirementIdCollisionRepair, type RequirementIdCollisionRepairApplyInput, type RequirementOccurrenceIdentity } from "../../core/mutation/repair-requirement-id.js";
@@ -218,6 +219,15 @@ export const EXPIRE_ACCEPTANCE_CRITERION_SCHEMA = {
   ignoreLock: z.boolean().optional()
 };
 
+/** @req FR-NODE-315 AC-1 AC-3 AC-5 — server.ts lists it, the handler checks it; mark and unmark take the same arguments. */
+export const NON_TEST_MARK_SCHEMA = {
+  id: z.string(),
+  acId: z.string().describe("the live criterion, e.g. AC-2"),
+  reason: z.string(),
+  dryRun: z.boolean().optional(),
+  ignoreLock: z.boolean().optional()
+};
+
 /** @req FR-MCP-072 AC-1 — server.ts lists it, the handler checks it. */
 export const EDIT_ACCEPTANCE_CRITERION_SCHEMA = {
   id: z.string(),
@@ -340,6 +350,24 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
     ),
     { kind: "req-scoped" }
   );
+  // @req FR-NODE-315 AC-1 AC-3 AC-5
+  for (const [name, mutate] of [
+    ["mark_acceptance_criterion_non_test", markAcceptanceCriterionNonTest],
+    ["unmark_acceptance_criterion_non_test", unmarkAcceptanceCriterionNonTest]
+  ] as const) {
+    server.registerTool(name, async (input) =>
+      missingRequiredArguments(name, NON_TEST_MARK_SCHEMA, input) ??
+      resultToMcp(
+        await mutate(await root(deps, input), {
+          id: String(input.id),
+          acId: String(input.acId),
+          reason: typeof input.reason === "string" ? input.reason : "",
+          ...mutationOptions(input)
+        })
+      ),
+      { kind: "req-scoped" }
+    );
+  }
   // @req FR-MCP-072 AC-1 AC-3
   server.registerTool("edit_acceptance_criterion", async (input) =>
     missingRequiredArguments("edit_acceptance_criterion", EDIT_ACCEPTANCE_CRITERION_SCHEMA, input) ??

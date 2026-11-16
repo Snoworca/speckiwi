@@ -761,6 +761,7 @@ To change to `verified`, all of the following conditions must be satisfied.
 5. The Verification Evidence table has at least one evidence row.
 6. The `Reference` value of the evidence row is not empty.
 7. Where possible, each AC is covered in the `Covers` column of the evidence either directly or by `all`.
+8. Every live criterion marked `[NON-TEST]` is named by an evidence row whose `Type` is not `Test` and whose `Covers` lists that criterion; `all` does not name it. The tool refuses `verified` otherwise and names the criterion.
 
 ---
 
@@ -1014,6 +1015,8 @@ Acceptance Criteria must be written as a task list.
 5. In the `verified` status, every AC must be `- [x]`.
 6. Deleting an AC in order to meet the `verified` conditions is forbidden. When the criterion has changed, record the reason in `Change Notes`. Expiring an AC for that purpose is forbidden as well: expire a criterion only when it no longer describes intended behaviour.
 7. A live AC longer than 4,000 characters is reported as `SRS-W083`: it usually carries design prose or several conditions. Split it into atomic conditions with `edit_acceptance_criterion` and `append_acceptance_criterion`, and move design prose to Implementation Notes. The warning never blocks a write, and no write route refuses an AC for its length.
+8. An AC judges a result this repository produces. Another system's behaviour belongs to that system's requirement: move it there and expire the original criterion naming that requirement as successor (§21.7).
+9. A declared limitation or a scope statement is not an AC: write it in `Rationale` or `Implementation Notes`, or in the scope document's `Out of Scope`.
 
 ### 21.4 Functional Requirement AC Example
 
@@ -1055,6 +1058,20 @@ A criterion whose behaviour moved to another requirement, or was dropped, keeps 
 5. A test line that still cites an expired criterion is listed by test sufficiency as an expired citation, and is not coverage. A `Covers` cell that names one is history, not stale evidence.
 6. A successor named in the marker must be another requirement that exists and has not been withdrawn under §30. The tool refuses to write any other successor, and validation reports one found in a document as `SRS-E012`, like a dangling trace link.
 
+### 21.8 Non-test Acceptance Criteria
+
+A criterion that this repository's automated tests cannot reproduce, such as a check against a real external service or one that needs a person to look, is marked non-test:
+
+```md
+- [x] AC-3: Sign-in completes against the production authorization server. [NON-TEST]
+```
+
+1. The marker is written and removed only by the tool: `mark_acceptance_criterion_non_test` (CLI `speckiwi mark-ac-non-test <id> <acId> --reason <text>`) appends it and a Change Notes row `Marked AC-{N} non-test` carrying the required reason in the same patch, and `unmark_acceptance_criterion_non_test` (CLI `speckiwi unmark-ac-non-test`) removes it with an `Unmarked AC-{N} non-test` row. Both refuse a `verified` requirement. A marker typed by hand has the same grammar and is read the same way, so a hand edit bypasses the reason record; do not type one.
+2. The grammar is `AC-{N}: <text> [NON-TEST]`: one or more spaces and `[NON-TEST]` closing a line with text before it. Any other spelling is part of an ordinary criterion's text. A line that is also expired (§21.7) is expired only.
+3. Mark only a check this repository's automated tests cannot reproduce. A check a test could make is not a non-test criterion, whatever the test would cost to write.
+4. Test sufficiency leaves a marked criterion out of its gaps and lists it under `nonTest` with the evidence rows that name it. A row names it when its `Type` is not `Test` and its `Covers` lists the criterion; `all` does not name it (§22.3). The kind of check, such as manual, inspection or demo, is the row's `Type`, not a second marker.
+5. Rewording a marked criterion keeps the marker. Replacing all criteria of a block that holds one is refused until it is unmarked, because the replacement would drop the marker and its recorded reason.
+
 ---
 
 ## 22. Verification Evidence Rules
@@ -1090,6 +1107,7 @@ A criterion whose behaviour moved to another requirement, or was dropped, keeps 
 2. Numbers increase from 1 within a Requirement Block.
 3. Use `AC-1`, `AC-2`, `all`, or `-` in `Covers`.
 4. In the `verified` status, `Covers = all`, or having every AC covered by evidence, is recommended.
+5. `all` does not cover a criterion marked `[NON-TEST]` (§21.8): name it in `Covers` of a non-test row.
 
 ### 22.4 Evidence Reference Rules
 

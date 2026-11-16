@@ -7,7 +7,7 @@
 // stay in the command.
 import type { AcceptanceCriterion, ExpiredAcceptanceCriterion, EvidenceRow, RequirementRecord } from "../types.js";
 import type { TestSufficiencyReport } from "../testing/test-sufficiency.js";
-import { coversAcceptanceCriterion } from "../workflow/release-readiness.js";
+import { coversAcceptanceCriterion, namesNonTestCriterion } from "../workflow/release-readiness.js";
 import { COMPLETION_STATUS, waveNumber, type EventStatus, type WavesEvent } from "./journal-schema.js";
 import { waveReadiness, type WorkGraph, type WorkGraphNode } from "./wave-declaration.js";
 import { isWaveStateLine } from "./waves-journal.js";
@@ -98,7 +98,11 @@ function acState(ref: string, byId: ReadonlyMap<string, StateRecord>, cited: Rea
   const covered = record !== undefined && record.verificationEvidence.some((row) => coversAcceptanceCriterion(row, acId));
   const expired = expiredCriterion !== undefined && live === undefined;
   const citedValue = cited === null ? null : cited.has(ref);
-  const done = live !== undefined && checked && covered && citedValue !== false;
+  // @req FR-PARSE-051 AC-6 — a marked criterion is done by the non-test row that names it, not by a citation.
+  const done =
+    live?.nonTest === true
+      ? checked && record !== undefined && record.verificationEvidence.some((row) => namesNonTestCriterion(row, acId))
+      : live !== undefined && checked && covered && citedValue !== false;
   return { ref, checked, covered, cited: citedValue, expired, done };
 }
 
