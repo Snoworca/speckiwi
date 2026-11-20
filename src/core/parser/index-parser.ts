@@ -9,6 +9,7 @@ import type {
   StatusSummaryEntry,
   StepStateEntry,
   StepStateMode,
+  CodeCommentMode,
   StepStateParseResult,
   TargetEntry,
   TextFile
@@ -22,6 +23,7 @@ const STEP_STATUS_ENUM = new Set<string>(["active", "merging", "merged", "abando
 const STEP_MODE_ENUM = new Set<string>(WORK_MODES);
 const STEP_MODE_RE = /^\s*Mode:\s*(.*)$/;
 const STEP_ACTIVE_TASK_RE = /^\s*Active Task:\s*(.*)$/;
+export const STEP_CODE_COMMENTS_RE = /^\s*Code Comments:\s*(.*)$/;
 
 // @req FR-PARSE-026 @req FR-PARSE-031 @req FR-PARSE-032
 export function parseStepState(lines: readonly string[]): StepStateParseResult {
@@ -49,8 +51,13 @@ export function parseStepState(lines: readonly string[]): StepStateParseResult {
   const metaCount = table ? table.startLine - 1 : lines.length;
   let modeRaw: string | undefined;
   let activeTaskRaw: string | undefined;
+  let codeCommentsRaw: string | undefined;
   for (let i = 0; i < metaCount; i += 1) {
     const l = lines[i] ?? "";
+    if (codeCommentsRaw === undefined) {
+      const m = STEP_CODE_COMMENTS_RE.exec(l);
+      if (m) codeCommentsRaw = (m[1] ?? "").trim();
+    }
     if (modeRaw === undefined) {
       const m = STEP_MODE_RE.exec(l);
       if (m) modeRaw = (m[1] ?? "").trim();
@@ -70,8 +77,12 @@ export function parseStepState(lines: readonly string[]): StepStateParseResult {
   // The Active Task line is meaningful for the task-scoped modes (vibe and tdd).
   const activeTask = mode === "vibe" || mode === "tdd" ? activeTaskRaw : undefined;
 
+  // @req IR-CLI-121 AC-1 — fail-open like the mode: anything but off reads as on.
+  const codeComments: CodeCommentMode = codeCommentsRaw === "off" ? "off" : "on";
+
   return Object.assign(entries, {
     mode,
+    codeComments,
     ...(activeTask !== undefined ? { activeTask } : {}),
     ...(modeInvalid ? { modeInvalid: true } : {})
   }) as StepStateParseResult;

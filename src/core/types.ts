@@ -513,6 +513,9 @@ export type StepStateStatus = "active" | "merging" | "merged" | "abandoned";
 /** @req FR-MCP-076 — the work modes, the one list the MCP tool, the CLI and the state.md parser read. */
 export const WORK_MODES = ["sdd", "vibe", "wait", "tdd"] as const;
 export type StepStateMode = (typeof WORK_MODES)[number];
+/** @req IR-CLI-121 — the code-comment setting: on (the default) or off, kept in state.md. */
+export const CODE_COMMENT_MODES = ["on", "off"] as const;
+export type CodeCommentMode = (typeof CODE_COMMENT_MODES)[number];
 
 export interface StepStateEntry {
   step: string;
@@ -529,6 +532,7 @@ export type StepStateParseResult = StepStateEntry[] & {
   mode: StepStateMode;
   activeTask?: string;
   modeInvalid?: boolean;
+  codeComments: CodeCommentMode;
 };
 
 export interface StepListEntry {

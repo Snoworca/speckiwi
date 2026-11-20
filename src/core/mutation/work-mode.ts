@@ -5,7 +5,9 @@ import { parseMarkdownTable } from "../parser/table.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertSafeStateCell } from "./table-cell.js";
-import { WORK_MODES, type MutationResult, type ProjectRoot, type StepStateMode, type TextFile } from "../types.js";
+import { CODE_COMMENT_MODES, WORK_MODES, type CodeCommentMode, type MutationResult, type ProjectRoot, type StepStateMode, type TextFile } from "../types.js";
+import { oneOf } from "../closed-values.js";
+import { STEP_CODE_COMMENTS_RE } from "../parser/index-parser.js";
 
 // @req FR-NODE-050 @req FR-NODE-071
 /**
@@ -22,6 +24,8 @@ import { WORK_MODES, type MutationResult, type ProjectRoot, type StepStateMode, 
 export interface WorkMode {
   mode: StepStateMode;
   activeTask?: string;
+  /** @req IR-CLI-121 AC-4 — the code-comment setting, read from the same block. */
+  codeComments: CodeCommentMode;
 }
 
 export interface SetWorkModeInput {
@@ -47,12 +51,12 @@ export async function getWorkMode(root: ProjectRoot): Promise<WorkMode> {
   const workspace = await parseWorkspace(root);
   const stateFile = workspace.stateFile;
   if (!stateFile) {
-    return { mode: "wait" };
+    return { mode: "wait", codeComments: "on" };
   }
   const parsed = parseStepState(stateFile.lines);
   return parsed.activeTask !== undefined && (parsed.mode === "vibe" || parsed.mode === "tdd")
-    ? { mode: parsed.mode, activeTask: parsed.activeTask }
-    : { mode: parsed.mode };
+    ? { mode: parsed.mode, activeTask: parsed.activeTask, codeComments: parsed.codeComments }
+    : { mode: parsed.mode, codeComments: parsed.codeComments };
 }
 
 // @req FR-NODE-050
@@ -161,4 +165,37 @@ export async function setWorkMode(
     value.activeTask = input.activeTask;
   }
   return mutationOk<SetWorkModeValue>(value);
+}
+
+export interface SetCodeCommentsValue {
+  codeComments: CodeCommentMode;
+  written: boolean;
+}
+
+/** @req IR-CLI-121 AC-3 — the refusal of a value outside CODE_COMMENT_MODES, naming the value and the set. */
+export function codeCommentsRefusal(value: string): ReturnType<typeof mutationFail> | undefined {
+  if ((CODE_COMMENT_MODES as readonly string[]).includes(value)) return undefined;
+  return mutationFail("USAGE", `Invalid code comments setting: ${value}; expected ${oneOf(CODE_COMMENT_MODES)}`);
+}
+
+/**
+ * @req IR-CLI-121 AC-2 AC-3 — `Code Comments: <value>` in the metadata block: an existing line is
+ * replaced; otherwise the line goes under the Mode / Active Task lines, or above the table. No other
+ * line changes. Without state.md the write is refused, as setWorkMode refuses it.
+ */
+export async function setCodeComments(root: ProjectRoot, input: { codeComments: string; dryRun?: boolean }): Promise<MutationResult<SetCodeCommentsValue>> {
+  const refusal = codeCommentsRefusal(input.codeComments);
+  if (refusal) return refusal;
+  const stateFile = (await parseWorkspace(root)).stateFile;
+  if (!stateFile) return mutationFail("NOT_FOUND", "docs/spec/steps/state.md not found");
+  const limit = metadataEndLine(stateFile);
+  const text = `Code Comments: ${input.codeComments}`;
+  const existing = findMetadataField(stateFile, limit, STEP_CODE_COMMENTS_RE);
+  const anchor = Math.max(findMetadataField(stateFile, limit, /^\s*Mode:\s*/), findMetadataField(stateFile, limit, /^\s*Active Task:\s*/));
+  const operation: PatchOperation =
+    existing >= 1
+      ? { type: "replaceLine", line: existing, original: stateFile.lines[existing - 1] ?? "", replacement: text }
+      : { type: "insertLines", line: anchor >= 1 ? anchor + 1 : limit, lines: [text] };
+  const applied = await applyPatchPlan(createPatchPlan(stateFile, [operation]), { dryRun: input.dryRun ?? false });
+  return mutationOk<SetCodeCommentsValue>({ codeComments: input.codeComments as CodeCommentMode, written: applied.written });
 }

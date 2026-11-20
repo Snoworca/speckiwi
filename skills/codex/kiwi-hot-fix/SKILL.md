@@ -40,6 +40,7 @@ For covered workflow artifact flows, use official SpecKiwi workflow tools before
 | §0.8 | Use `.kiwi/sessions/{run-id}/` and `docs/analysis/kiwi-hot-fix-{run-id}/` for resumable state and evidence. |
 | §0.9 | **`--mini` / `--loops N` option SSOT**. This skill follows `../_shared/kiwi/loop-option.md` v1.0. `--mini` = verify/improve loop round cap 3; `--loops N` = round cap N (integer ≥1). If both are given, **`--loops` wins (warn)**. Orthogonal to `--max` (compose). On reaching the cap, report residual findings (no safety-gate bypass) |
 | §0.10 note | `--mini`/`--loops N` propagate to the `$kiwi-srs-sync` delegation (see Sync Delegation in `references/extended-workflow.md`; loop-option.md §6) |
+| §0.CC | **Code comments (FR-FLOW-234).** Before writing code, read `codeComments` from MCP `get_work_mode` (CLI `speckiwi mode --json` without MCP; `on` when absent). With `off`, follow `_shared/kiwi/code-comments.md`: write no explanatory comment, and still write the `@req` and task-name tags, the AC citations on test lines and directive comments. Change the setting only when the user asks |
 
 ### `--auto` critical_gates[]
 

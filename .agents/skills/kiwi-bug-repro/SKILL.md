@@ -30,6 +30,7 @@ The normal path for recording the closing event is MCP `workflow_pipeline_emit`.
 | §0.7 | **`--auto` option SSOT.** This skill follows `../_shared/kiwi/auto-option.md` v1.0. Its `critical_gates[]` are declared in §0.G. An unreadable or insufficient input and a failure to reproduce stop under `--auto` too — only the user holds the missing content, environment, version, input and steps. Any other question that needs a judgement (for example two equally fitting places for the reproduction test) is a business decision, which the decision committee settles under `--auto`. |
 | §0.8 | **`--mini` / `--loops N` option SSOT.** Follows `../_shared/kiwi/loop-option.md` v1.0. This skill has no verify-improve loop, so both are the documented no-op of that file's §5 — they never change the per-stage attempt caps of §3. |
 | §0.9 | **`--max` / `--model`.** `--max` adds one independent cause-analysis subagent to §2, and `--auto --max` makes the decision committee five. Stages and attempt caps are unchanged. Subagents inherit the current session model; `--model <name>` overrides it. |
+| §0.CC | **Code comments (FR-FLOW-234).** Before writing code, read `codeComments` from MCP `get_work_mode` (CLI `speckiwi mode --json` without MCP; `on` when absent). With `off`, follow `_shared/kiwi/code-comments.md`: write no explanatory comment, and still write the `@req` and task-name tags, the AC citations on test lines and directive comments. Change the setting only when the user asks |
 
 ### §0.G — `--auto` critical_gates[] declaration
 

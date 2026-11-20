@@ -220,8 +220,9 @@ const DIVERGENCES: readonly Divergence[] = [
     tool: "get_work_mode",
     args: {},
     read: (payload) => val(payload),
-    host: { mode: "wait" },
-    worktree: { mode: "tdd", activeTask: STEP }
+    // IR-CLI-121 AC-4 — the code-comment setting is reported beside the mode.
+    host: { mode: "wait", codeComments: "on" },
+    worktree: { mode: "tdd", activeTask: STEP, codeComments: "on" }
   },
   {
     tool: "check_vibe_gate",

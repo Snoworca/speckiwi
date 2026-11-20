@@ -536,7 +536,7 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
   "skills/claude": {
     "kiwi-bug-repro body": {
       "file": "kiwi-bug-repro/SKILL.md",
-      "digest": "ea2ab5b4486922e1"
+      "digest": "3ceecec2b24863f8"
     },
     "kiwi-orchestrator §5.3": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -586,7 +586,7 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
   "skills/codex": {
     "kiwi-bug-repro body": {
       "file": "kiwi-bug-repro/SKILL.md",
-      "digest": "2f4db70de986e227"
+      "digest": "b2fd5d53a33dc7a3"
     },
     "kiwi-orchestrator §5.3": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -640,7 +640,7 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
   "skills/etc": {
     "kiwi-bug-repro body": {
       "file": "kiwi-bug-repro/SKILL.md",
-      "digest": "3c8a6536a51503fc"
+      "digest": "172735068636a658"
     },
     "kiwi-orchestrator §5.3": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -694,7 +694,7 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
   ".agents/skills": {
     "kiwi-bug-repro body": {
       "file": "kiwi-bug-repro/SKILL.md",
-      "digest": "2f4db70de986e227"
+      "digest": "b2fd5d53a33dc7a3"
     },
     "kiwi-orchestrator §5.3": {
       "file": "kiwi-orchestrator/SKILL.md",

@@ -42,6 +42,8 @@
 
 **워커는 SRS 를 쓰지 않고 `docs/spec/` · `docs/sds/` · `kiwi/pipeline.jsonl` · `kiwi/waves.jsonl` 에 쓰지 않는다.** SRS 쓰기가 워커에 가면 막는 장치가 없는 경합이 넷 생긴다: 요구 ID 카운터와 SRS 락이 root 마다 따로이고, 같은 root 에서도 SRS 락은 기다리지 않고 즉시 실패하며, `kiwi-srs` 가 전역 상태인 활성 target 을 바꾸고, 워커 워크트리의 `@req` 해소 테스트는 그 워크트리의 SRS 로 판정한다. 워커의 SRS mutation 은 `--defer-srs-mutation` 큐에 적히고 호스트가 재생한다(PW-10).
 
+**코드 주석 설정(FR-FLOW-234)**: 워커가 부르는 `kiwi-coder` 는 코드를 쓰기 전에 `get_work_mode` 의 `codeComments` 를 직접 읽으므로 dispatch 카드에 따로 싣지 않는다. `off` 이면 워커는 `_shared/kiwi/code-comments.md` 를 따라 설명 주석을 쓰지 않고, `@req`·작업 이름 태그와 시험 줄의 AC 인용, 지시 주석은 그대로 쓴다.
+
 ---
 
 ## 2. 동시성 — 병렬이 기본이고 `--serial` 은 모든 분기를 하나씩

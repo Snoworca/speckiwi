@@ -58,6 +58,7 @@ wave 의 실행 절차 — (`--sds` 면) SDS 작성, stage 계산, 워커 dispat
 | §0.15 | **병렬 wave 실행 SSOT**. 본 스킬은 `../_shared/kiwi/parallel-waves.md` v1.0.0 을 따른다 — 역할과 쓰기 소유, 동시성과 `--serial`, wave 의존과 stage, 계약이 올리는 게이트, stage 한 번의 순서(PW-1 ~ PW-17), 재개. `R-ORCH` 의 3.c ~ 3.n 은 그 순서의 단계이며, 본 문서는 그 사이에 끼우는 자기 훅(3.c′ · 3.m)과 자기 분모(§12)만 적는다. |
 | §0.17 | **SDS 는 opt-in**. 사용자가 `--sds` 를 주거나 말로 요청할 때만 R-ORCH 가 wave 마다 SDS 를 쓰고(`parallel-waves.md` PW-2) R-STEP 이 `kiwi-tdd` 에 `--sds` 를 넘긴다 — opt-in 이 없으면 SDS 를 쓰지 않고 SDS 로 구현하지도 않는다. wave 는 선언 파일 `waves/waves.json` 의 항목(`requirements[]`)으로 구현된다. `docs/sds/` 에 SDS 가 있다는 것만으로는 요청이 아니다 |
 | §0.16 | **테스트 충분성 SSOT**. 본 스킬은 `../_shared/kiwi/test-sufficiency.md` 를 따른다 — 승급 단계 직전(§14)과 모든 rung 의 종료 코드 리뷰 hop 뒤(§4.5.1 · §V.final-verify)에 부르고, 절차를 다시 적지 않는다. |
+| §0.CC | **코드 주석 설정 (FR-FLOW-234)**. 워커가 부르는 `kiwi-coder` 가 코드를 쓰기 전에 MCP `get_work_mode` 의 `codeComments` 를 직접 읽으므로(값이 없으면 `on`) dispatch 카드에 따로 싣지 않는다. `off` 이면 워커는 `_shared/kiwi/code-comments.md` 를 따른다: 설명 주석은 쓰지 않고, `@req`·작업 이름 태그와 시험 줄의 AC 인용, 지시 주석은 그대로 쓴다. 설정은 사용자가 요청할 때만 바꾼다 |
 
 ## 0.I 격리(isolation) — 워커는 wave 마다 자기 워크트리에서 돈다
 

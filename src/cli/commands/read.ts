@@ -2,7 +2,7 @@ import { SAFETY_BYPASS_OPTION_HELP } from "../safety-bypass-options.js";
 import { InvalidArgumentError, type Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
-import { getWorkMode, setWorkMode, workModeRefusal, workModesText } from "../../core/mutation/work-mode.js";
+import { getWorkMode, setCodeComments, setWorkMode, workModeRefusal, workModesText } from "../../core/mutation/work-mode.js";
 import { claimStep } from "../../core/mutation/claim-step.js";
 import { updateStepState } from "../../core/mutation/update-step-state.js";
 import { scaffoldStep } from "../../core/mutation/scaffold-step.js";
@@ -12,7 +12,7 @@ import { synthesizeStepSrs } from "../../core/mutation/synthesis.js";
 import { getDiagnosticDefinition } from "../../core/diagnostic-registry.js";
 import { markMutationCommands } from "../input-json.js";
 import { mutationFail, mutationOk } from "../../core/mutation/guards.js";
-import { PRIORITY_LEVELS, RISK_LEVELS } from "../../core/types.js";
+import { CODE_COMMENT_MODES, PRIORITY_LEVELS, RISK_LEVELS } from "../../core/types.js";
 import { renderReadOnlyToolNames, SEARCH_BEHAVIOR, toolSpecs, type ToolSpec } from "../../mcp/schemas.js";
 import { BILINGUAL_SEARCH_EXAMPLE, BILINGUAL_SEARCH_RULE } from "../../core/bootstrap/templates.js";
 import { validateWorkspace } from "../../core/validator/validate-workspace.js";
@@ -826,6 +826,25 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       if (!result.ok) command.setOptionValue("exitCode", exitCodeFor("MUTATION_DENIED"));
     });
 
+  // @req IR-CLI-121 — read or set the code-comment setting over the same state.md block; a CLI-only
+  // write, because the setting is the user's preference and agents only read it (get_work_mode).
+  command
+    .command("comments")
+    .argument("[value]", `set to ${CODE_COMMENT_MODES.join(" or ")}; without it, show the current setting`)
+    .option("--dry-run", "preview the change without writing")
+    .option("--json", "JSON output")
+    .action(async (value, options) => {
+      const json = Boolean(options.json) || command.opts().json;
+      const root = await resolveProjectRoot(process.cwd(), command.opts().root);
+      if (value === undefined) {
+        output(context, { json }, mutationOk({ codeComments: (await getWorkMode(root)).codeComments }));
+        return;
+      }
+      const result = await setCodeComments(root, { codeComments: value, ...(options.dryRun ? { dryRun: true } : {}) });
+      output(context, { json }, result);
+      if (!result.ok) command.setOptionValue("exitCode", exitCodeFor(result.error?.code === "USAGE" ? "USAGE" : "MUTATION_DENIED"));
+    });
+
   // @req IR-CLI-049 @req IR-CLI-072 — CI-wireable work-mode gate. Wire as a remote required status
   // check to block unsynthesized vibe/tdd commits (and tdd commits with no written acceptance
   // contract, FR-PARSE-042) where local hooks can be bypassed.
@@ -1204,7 +1223,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
 
   // `mode` is the one mutation command declared among the read commands, so it is marked here
   // rather than by registerMutationCommands. @req IR-CLI-101
-  markMutationCommands(command.commands.filter((sub) => sub.name() === "mode"));
+  markMutationCommands(command.commands.filter((sub) => sub.name() === "mode" || sub.name() === "comments"));
 }
 
 // @req IR-CLI-074 — commander collector for repeatable options (e.g. --touches-req).

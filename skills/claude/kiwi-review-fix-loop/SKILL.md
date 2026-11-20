@@ -78,6 +78,7 @@ description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌�
 | §0.15 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. §0.G5 finding 4분류 매핑 (immediate_fix / declared_limit / discussion_needed / rejected) 및 §0.12 keep/drop 가드레일 (차단 kept → 자동수정, 기록 kept → 선언된 한계로 자동 보고, dropped → 자동 보고, residual → 사용자 결정) 은 본 스킬 고유 finding 분류 정책으로 유지된다 — SSOT 는 게이트 결정 채널만 정규화. 본 스킬의 `critical_gates[]` 는 §0.G8 (아래) 참조 |
 | §0.16 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 차단 kept finding 이 남았으면 잔여 보고로 끝내지 않고 차단·기록 목록과 함께 `NEEDS_USER` 로 멈춘다(안전 게이트 불우회, §6.4). 스킬 기본 상한의 숫자는 §6.4 가 정한다 |
 | §0.17 | **기존 구조 불가침** (kiwi-coder §0.20 정합). fix 로 green 을 만들기 위한 **기존 테스트 파일 삭제**, **기존 테스트 케이스 제거**, **기존 단언 약화**, **기존 public 심볼의 삭제·시그니처 변경**, **비-테스트 기존 파일의 삭제·이동**을 모두 **금지**한다 — 본 스킬은 kiwi-coder 를 거치지 않는 코드 변경 경로이므로, 여기서 보존 규약이 빠지면 그 우회로가 그대로 열린다. 판정 기준은 kiwi-coder §0.20.1~§0.20.3 를 그대로 따른다. 탐지·차단 = **보존 스캔** 절 (§6) + §0.G8 `existing-test-weakened-or-deleted` / `existing-public-contract-change` / `existing-file-deleted-or-moved` |
+| §0.CC | **코드 주석 설정 (FR-FLOW-234)**. 코드를 쓰기 전에 MCP `get_work_mode` 의 `codeComments` 를 읽는다(MCP 가 없으면 CLI `speckiwi mode --json`, 값이 없으면 `on`). `off` 이면 `_shared/kiwi/code-comments.md` 를 따른다: 리뷰어는 주석이 없거나 부족한 것을 finding 으로 내지 않고, fixer 는 설명 주석을 더하지 않으며, `@req`·작업 이름 태그와 시험 줄의 AC 인용, 지시 주석은 그대로 쓴다. 설정은 사용자가 요청할 때만 바꾼다 |
 
 ### §0.G — 핵심 게이트 결정표
 

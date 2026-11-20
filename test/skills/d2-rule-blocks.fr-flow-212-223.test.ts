@@ -261,21 +261,21 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
     "skills/claude": [
       "kiwi-wave-master/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t6\te86c695c:1 4a85b919:1 cb3f91d5:1 85587d51:1 4cec756b:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 실행 규칙 (FR-FLOW-223)\t12\t5da8b034:1 d470a9c8:1 127a027d:1 7a8e1dfd:1 db49f1fc:1 8572077e:1 f21e0e3e:1 568767c7:1 5caf7ff4:1 e0b01cbf:1 fac5f71d:1 cb3f91d5:1",
-      "kiwi-wave-master/SKILL.md\t## 0. 공통 규약 (SSOT)\t19\t3cd39375:1 4199ba45:1 fe348441:1 7d99bd73:1 fc6a2bd8:1 33a029ee:1 ba3ebd05:1 afe834b6:1 587b08c9:1 48422008:1 c1647e3f:1 638bf0f8:1 e70721cf:1 ca2c20b2:1 1809db0f:1 30f641d3:1 daf30c1a:1 ce59393d:1 cb3f91d5:1",
+      "kiwi-wave-master/SKILL.md\t## 0. 공통 규약 (SSOT)\t20\t3cd39375:1 4199ba45:1 fe348441:1 7d99bd73:1 fc6a2bd8:1 33a029ee:1 ba3ebd05:1 afe834b6:1 587b08c9:1 48422008:1 c1647e3f:1 638bf0f8:1 e70721cf:1 ca2c20b2:1 1809db0f:1 30f641d3:1 daf30c1a:1 ce59393d:1 5e367ded:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 8. 에픽 이슈 진입 모드 (FR-FLOW-214)\t2\tc8458038:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 11 워크트리 절차 — 만들고, 그 안에서 일하고, 되돌려준다\t24\t00774939:1 f7ae9a66:1 0ec32875:1 45df90ed:1 f1b90184:1 65b4276d:1 f1b90184:1 bc16d203:1 17e2fde5:1 4ded5dd1:1 9d700098:1 a67beca6:1 db22b050:1 f1b90184:1 c8a7bc8a:1 f1b90184:1 9cd5430b:1 a370d569:1 9c678472:1 f1b90184:1 2696b5f1:1 f1b90184:1 d8781f29:1 ff86bb18:1"
     ],
     "skills/codex": [
       "kiwi-wave-master/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t6\te86c695c:1 4a85b919:1 cb3f91d5:1 85587d51:1 a578ac2c:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 실행 규칙 (FR-FLOW-223)\t12\t5da8b034:1 d470a9c8:1 127a027d:1 7a8e1dfd:1 db49f1fc:1 8572077e:1 f21e0e3e:1 568767c7:1 5caf7ff4:1 e0b01cbf:1 fac5f71d:1 cb3f91d5:1",
-      "kiwi-wave-master/SKILL.md\t## 0. 공통 규약 (SSOT)\t19\t3cd39375:1 4199ba45:1 f86041b0:1 7d99bd73:1 fc6a2bd8:1 267a7ab9:1 ba3ebd05:1 afe834b6:1 59cee1ef:1 c9741018:1 43e322fe:1 e478d331:1 001f66b8:1 ac01d9dc:1 89e01f2b:1 30f641d3:1 49677d25:1 ce59393d:1 cb3f91d5:1",
+      "kiwi-wave-master/SKILL.md\t## 0. 공통 규약 (SSOT)\t20\t3cd39375:1 4199ba45:1 f86041b0:1 7d99bd73:1 fc6a2bd8:1 267a7ab9:1 ba3ebd05:1 afe834b6:1 59cee1ef:1 c9741018:1 43e322fe:1 e478d331:1 001f66b8:1 ac01d9dc:1 89e01f2b:1 30f641d3:1 49677d25:1 ce59393d:1 5e367ded:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 8. 에픽 이슈 진입 모드 (FR-FLOW-214)\t2\tc8458038:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 11 워크트리 절차 — 만들고, 그 안에서 일하고, 되돌려준다\t24\tcf8d33f5:1 56367194:1 0ec32875:1 45df90ed:1 f1b90184:1 65b4276d:1 f1b90184:1 bc16d203:1 17e2fde5:1 4ded5dd1:1 9d700098:1 a67beca6:1 db22b050:1 f1b90184:1 c8a7bc8a:1 f1b90184:1 9cd5430b:1 a370d569:1 9c678472:1 f1b90184:1 2696b5f1:1 f1b90184:1 d8781f29:1 ff86bb18:1"
     ],
     "skills/etc": [
       "kiwi-wave-master/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)\t6\te86c695c:1 4a85b919:1 cb3f91d5:1 98047d4a:1 a578ac2c:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 실행 규칙 (FR-FLOW-223)\t12\t5da8b034:1 d470a9c8:1 127a027d:1 7a8e1dfd:1 db49f1fc:1 8572077e:1 f21e0e3e:1 568767c7:1 5caf7ff4:1 e0b01cbf:1 fac5f71d:1 cb3f91d5:1",
-      "kiwi-wave-master/SKILL.md\t## 0. 공통 규약 (SSOT)\t19\t3cd39375:1 4199ba45:1 f86041b0:1 7d99bd73:1 fc6a2bd8:1 267a7ab9:1 ba3ebd05:1 afe834b6:1 59cee1ef:1 c9741018:1 43e322fe:1 e478d331:1 001f66b8:1 ac01d9dc:1 89e01f2b:1 30f641d3:1 49677d25:1 ce59393d:1 cb3f91d5:1",
+      "kiwi-wave-master/SKILL.md\t## 0. 공통 규약 (SSOT)\t20\t3cd39375:1 4199ba45:1 f86041b0:1 7d99bd73:1 fc6a2bd8:1 267a7ab9:1 ba3ebd05:1 afe834b6:1 59cee1ef:1 c9741018:1 43e322fe:1 e478d331:1 001f66b8:1 ac01d9dc:1 89e01f2b:1 30f641d3:1 49677d25:1 ce59393d:1 5e367ded:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 8. 에픽 이슈 진입 모드 (FR-FLOW-214)\t2\tc8458038:1 cb3f91d5:1",
       "kiwi-wave-master/SKILL.md\t## 11 워크트리 절차 — 만들고, 그 안에서 일하고, 되돌려준다\t24\tcf8d33f5:1 56367194:1 0ec32875:1 45df90ed:1 f1b90184:1 65b4276d:1 f1b90184:1 bc16d203:1 17e2fde5:1 4ded5dd1:1 9d700098:1 a67beca6:1 db22b050:1 f1b90184:1 c8a7bc8a:1 f1b90184:1 9cd5430b:1 a370d569:1 9c678472:1 f1b90184:1 2696b5f1:1 f1b90184:1 d8781f29:1 ff86bb18:1"
     ]

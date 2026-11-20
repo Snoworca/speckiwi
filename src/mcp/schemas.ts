@@ -319,7 +319,7 @@ export const toolSpecs: readonly ToolSpec[] = [
   readSpec("summary", mcp("summarize_target", `Rolls up one named release or milestone: counts by status and stability, blockers and warnings, requirements whose evidence is missing, new-work candidates and the completed-work rows attached. Ask it when the name is already known and the detail behind the counts is what you need. Read-only. ${MCP_READ_DIAGNOSTICS_SENTENCE}`), "summarizeTarget"),
   readSpec("explain", undefined, "explainDiagnostic", { args: { code: { type: "string" } } }),
   // FR-MCP-052 — the mode node hosts the get_work_mode read tool (the argument-less CLI read).
-  readSpec("mode", mcp("get_work_mode", "Reports the persisted work mode (`sdd`, `vibe`, `tdd` or `wait`) and the Active Task recorded beside it, falling open to `wait` when the state document is absent or unreadable rather than failing the call. Read-only."), "workMode", {
+  readSpec("mode", mcp("get_work_mode", "Reports the persisted work mode (`sdd`, `vibe`, `tdd` or `wait`) and the Active Task recorded beside it, falling open to `wait` when the state document is absent or unreadable rather than failing the call, and the code-comment setting `codeComments` (`off` only when the state document says so, otherwise `on`), which the user sets with `speckiwi comments`. Read-only."), "workMode", {
     args: { value: { type: "string", optional: true } },
     // IR-CLI-107 AC-4 — CLI-side only: the get_work_mode input schema lives in server.ts and does not take it.
     options: [opt("--task <name>", "task")]
@@ -618,6 +618,8 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
+  // @req IR-CLI-121 AC-5 — CLI only: the user sets the code-comment setting; agents read it through get_work_mode.
+  mutationSpec("comments", undefined, "workspace", "setCodeComments", [DRY_RUN]),
   mutationSpec("update-field", undefined, "workspace", "updateField", [
     opt("--field <field>", "field"),
     opt("--value <value>", "value"),

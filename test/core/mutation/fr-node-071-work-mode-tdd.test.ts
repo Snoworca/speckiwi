@@ -90,6 +90,7 @@ describe("FR-NODE-071 work-mode model supports the tdd mode", () => {
     expect(persisted).toMatch(/^\s*Active Task:\s*T-VIBE-01\s*$/m);
 
     const workMode = await getWorkMode(root);
-    expect(workMode).toEqual({ mode: "vibe", activeTask: "T-VIBE-01" });
+    // IR-CLI-121 AC-4 — the code-comment setting is reported beside the mode.
+    expect(workMode).toEqual({ mode: "vibe", activeTask: "T-VIBE-01", codeComments: "on" });
   });
 });

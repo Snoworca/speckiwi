@@ -44,6 +44,7 @@ description: "긴급 버그·운영 이슈에 대해 SRS→pm→coder 풀 파이
 | §0.14 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `--auto` 는 자식 `kiwi-srs-sync` 호출에 **`--auto` 만 전파**하며 `--auto-apply` / `--yes-all` 는 자동으로 추가하지 않는다 — 사용자가 직접 그 플래그를 지정한 경우에만 전파 (SSOT §7.1). `kiwi-srs-sync` 는 `--auto` 단독으로도 dry-run 선행과 critical_gates HALT (예: apply-all 비가역 MCP mutation) 를 유지하므로 부모 `--auto` 만으로 사용자 승인 게이트가 우회되지 않는다. 모든 런타임 변형(claude/codex/etc)이 동일한 안전 전파 계약을 따른다. `--auto-apply` / `--yes-all` 와의 의미 분리는 SSOT §11.1 참조. 본 스킬의 `critical_gates[]` 는 §0.G6 (아래) 참조 |
 | §0.15 | **`--mini` / `--loops N` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/loop-option.md` v1.0 을 따른다. `--mini` = 검증-개선 루프 라운드 상한 3, `--loops N` = 라운드 상한 N(정수 ≥1). 동시 지정 시 **`--loops` 우선(경고)**. `--max` 와 직교(조합). 상한 도달 시 잔여 finding 보고(안전 게이트 불우회) |
 | §6.2 참고 | `--mini`/`--loops N` 는 kiwi-srs-sync 위임에 전파 (loop-option.md §6) |
+| §0.CC | **코드 주석 설정 (FR-FLOW-234)**. 코드를 쓰기 전에 MCP `get_work_mode` 의 `codeComments` 를 읽는다(MCP 가 없으면 CLI `speckiwi mode --json`, 값이 없으면 `on`). `off` 이면 `_shared/kiwi/code-comments.md` 를 따른다: 설명 주석은 쓰지 않고, `@req`·작업 이름 태그와 시험 줄의 AC 인용, 지시 주석은 그대로 쓴다. 설정은 사용자가 요청할 때만 바꾼다 |
 
 ### §0.G — 핵심 게이트 결정표
 

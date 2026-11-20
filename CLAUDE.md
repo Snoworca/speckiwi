@@ -28,7 +28,7 @@ Code, contracts, SRS acceptance criteria and safety boundaries get the full bar:
 - **Comments**: `@req` references must resolve (mechanical); a why-comment on a safety gate is checked once at write time; a comment that restates the code is deleted.
 - Stop on evidence, not round count: recorded CRITICAL and HIGH catches came from mutation testing and adversarial execution, not from extra uniform review rounds (research 19).
 
-# SpecKiwi SRS workflow v1.12
+# SpecKiwi SRS workflow v1.13
 Written by speckiwi 5.7.0.
 
 This repository uses `docs/spec/` as the required source of truth for requirements.
@@ -65,6 +65,7 @@ Work-mode and the TDD First (tdd) workflow:
 5. In tdd mode the rule "do not implement behavior not covered by an SRS requirement" is satisfied for step-scoped work by the step's acceptance lines plus the mandatory post-hoc promotion, and in vibe mode by the step SRS synthesized before the commit (item 7); body-scope work keeps the sdd rules in this document.
 6. Edits to existing body requirements and large architecture changes stay in sdd mode — never route them through a tdd step.
 7. When the mode is `vibe`, code may come first for the Active Task, so the TDD principle and the stop-and-ask rule above do not hold that task back; the step SRS MUST still be synthesized (MCP `synthesize_step_srs`, or CLI `speckiwi step synthesize <task>` when MCP is unavailable) before the commit that lands the task; `check_vibe_gate` (CLI `speckiwi vibe-gate check`) only confirms that the Active Task's step directory exists, not that the synthesis ran. Switch to vibe only when the user asks for it.
+When `get_work_mode` reports `codeComments: off`, write no explanatory comment in code you write or change: keep the `@req` and task-name trace tags (the tag alone on its line), the `<REQ-ID> AC-<n>` citations on test lines and the directive comments a language or tool needs, and leave existing comments in place. Change the setting (`speckiwi comments on|off`) only when the user asks.
 
 Scope SRS document naming:
 1. A scope SRS document is named `docs/spec/{NN}.{scope-slug}.srs.md`, where `{NN}` is a two-digit ordering number. The full rules are in `docs/rule/SRS-MD-Rules-v2.7.0.md` §5.2.
@@ -81,7 +82,7 @@ Agents MUST NOT:
 
 Parallel worktrees that agreed their Requirement ID numbers beforehand pass the agreed free number to MCP `add_requirement` as `requirementId` (CLI `add-requirement --requirement-id`); the tool checks it against this checkout only, so the agreement itself is what keeps worktrees apart.
 
-When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. Normal target-scoped SRS mutations go through MCP only: the `speckiwi` CLI diagnoses installation, version and configuration (see the tool check above) and is not a normal replacement for an MCP mutation. Three target-scoped SRS mutations may use the CLI: registering an unregistered target, which the target workflow below names, and renaming a target (`speckiwi rename-target`) or setting a target's status (`speckiwi set-target-status`), which have no MCP tool; the CLI forms this block gives for work-mode, step and repair commands are for when MCP is unavailable. CLI reads remain available for lookup while MCP is being repaired.
+When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. Normal target-scoped SRS mutations go through MCP only: the `speckiwi` CLI diagnoses installation, version and configuration (see the tool check above) and is not a normal replacement for an MCP mutation. Three target-scoped SRS mutations may use the CLI: registering an unregistered target, which the target workflow below names, and renaming a target (`speckiwi rename-target`) or setting a target's status (`speckiwi set-target-status`), which have no MCP tool; the code-comment setting is CLI-only too (`speckiwi comments`), because the user sets it and agents only read it; the CLI forms this block gives for work-mode, step and repair commands are for when MCP is unavailable. CLI reads remain available for lookup while MCP is being repaired.
 
 Per-call workspace root:
 1. The MCP server binds once, at startup, to the nearest directory at or above its working directory that holds `docs/spec/00.index.md` — never the home directory — and writes SRS only there.

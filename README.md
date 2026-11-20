@@ -672,6 +672,7 @@ The work mode is stored in `docs/spec/steps/state.md`. A new project starts in `
 speckiwi mode                                    # show the current work mode (sdd | vibe | wait | tdd)
 speckiwi mode tdd                                # switch mode (sdd, vibe, wait, or tdd)
 speckiwi mode vibe --task <name>                 # vibe or tdd, with the Active Task the vibe gate checks
+speckiwi comments off                            # agents stop writing explanatory code comments (on | off)
 speckiwi step claim <name> --touches-scope APP   # claim a step before writing it
 speckiwi step scaffold <name>                    # create the intent.md stub with its ## Acceptance section
 speckiwi step scaffold <name> --sds              # also create the step SDS stub
@@ -682,6 +683,8 @@ speckiwi step promote <id> --from-step <name> --to-scope APP   # promote into a 
 speckiwi step update-state <name> --status merged              # mark the step merged
 speckiwi vibe-gate check                         # CI check for the Active Task
 ```
+
+**`speckiwi comments off`** keeps a second setting in the same file (`Code Comments: off`; without it, `on`). Agents then write no explanatory comments in the code they write or change, but still write the `@req` and task-name tags, the `<REQ-ID> AC-<n>` citations on test lines and the directive comments a tool needs. `speckiwi comments` alone shows the setting, and `get_work_mode` reports it as `codeComments`. Only the CLI changes it.
 
 `vibe-gate check` fails while the Active Task has no step directory under `docs/spec/steps/`. In `tdd`, it also fails while that step has no acceptance lines. It does not check that the synthesis ran, and with no Active Task it never fails.
 
@@ -1676,6 +1679,7 @@ git tag srs-v1.0.0-baseline
 speckiwi mode                                    # 현재 작업 모드 표시(sdd | vibe | wait | tdd)
 speckiwi mode tdd                                # 모드 전환(sdd, vibe, wait, tdd)
 speckiwi mode vibe --task <name>                 # vibe나 tdd로 전환하면서 vibe-gate가 확인할 Active Task 지정
+speckiwi comments off                            # 에이전트가 코드 설명 주석을 쓰지 않음(on | off)
 speckiwi step claim <name> --touches-scope APP   # step을 쓰기 전에 선점
 speckiwi step scaffold <name>                    # ## Acceptance 절이 있는 intent.md 뼈대 생성
 speckiwi step scaffold <name> --sds              # step SDS 뼈대도 생성
@@ -1686,6 +1690,8 @@ speckiwi step promote <id> --from-step <name> --to-scope APP   # scope 문서로
 speckiwi step update-state <name> --status merged              # step을 병합됨으로 표시
 speckiwi vibe-gate check                         # Active Task에 대한 CI 검사
 ```
+
+**`speckiwi comments off`**는 같은 파일에 두 번째 설정을 남깁니다(`Code Comments: off`, 줄이 없으면 `on`). 그러면 에이전트는 자기가 쓰거나 고치는 코드에 설명 주석을 쓰지 않습니다. 다만 `@req`·작업 이름 태그, 시험 줄의 `<REQ-ID> AC-<n>` 인용, 도구가 요구하는 지시 주석은 그대로 씁니다. `speckiwi comments`만 실행하면 현재 설정을 보여 주고, `get_work_mode`는 이 값을 `codeComments`로 알려 줍니다. 설정은 CLI로만 바꿉니다.
 
 `vibe-gate check`는 Active Task의 step 디렉터리가 `docs/spec/steps/` 아래에 없으면 실패합니다. `tdd`에서는 그 step에 수용 기준 줄이 없을 때도 실패합니다. 합성을 실행했는지는 확인하지 않으며, Active Task가 없으면 절대 실패하지 않습니다.
 

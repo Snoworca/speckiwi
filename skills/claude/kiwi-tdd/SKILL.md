@@ -33,6 +33,7 @@ Phase 2 에서 쓴 acceptance 줄은 Phase 3 에서 테스트로 옮기기 전�
 | §0.10 | **코드 추적성은 후행(post-promote)·비차단**. 코드 Trace Links(`add_trace_link` Code anchor)·`@req` 태그는 Phase 6 promote가 body REQ ID를 확정한 **뒤에만** 복원한다 — Phase 2/4 부착은 금지한다. Code anchor가 **권위** traceability SSOT, `@req` breadcrumb는 **보조**이며 둘 다 **비차단**이다(누락·stale이 promote를 막지 않고 FR-NODE-074 EVIDENCE_REQUIRED 게이트와 **분리**). FR-FLOW-020 관례를 재사용하고, 태그 형식·면제는 kiwi-coder §0.17만 인용한다(운영 훅 수입 금지). |
 | §0.11 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. 본 스킬의 `critical_gates[]` 는 §0.AG (아래) 참조 — 표를 선언했으므로 공용 안전 기본값(`auto-option.md` §1) 에 따른 `--auto` **비활성**은 더 이상 적용되지 않는다. |
 | §0.12 | **step SDS 는 opt-in**. design.md 는 사용자가 `--sds` 를 주거나 말로 요청할 때만 쓴다 — opt-in 이 없으면 SDS 를 쓰지 않고 SDS 로 구현하지도 않는다. 기본 계약은 intent.md `## Acceptance` 다(§2.3). |
+| §0.CC | **코드 주석 설정 (FR-FLOW-234)**. 코드를 쓰기 전에 MCP `get_work_mode` 의 `codeComments` 를 읽는다(MCP 가 없으면 CLI `speckiwi mode --json`, 값이 없으면 `on`). `off` 이면 `_shared/kiwi/code-comments.md` 를 따른다: 설명 주석은 쓰지 않고, `@req`·작업 이름 태그와 시험 줄의 AC 인용, 지시 주석은 그대로 쓴다. 설정은 사용자가 요청할 때만 바꾼다 |
 
 ### §0.AG — `--auto` critical_gates[] 선언
 

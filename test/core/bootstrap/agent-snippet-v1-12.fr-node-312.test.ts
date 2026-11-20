@@ -12,9 +12,10 @@ const PARALLEL_LINE =
 
 describe("FR-NODE-312 — agent instruction block 1.12", () => {
   // @req FR-NODE-312 AC-10
-  it("raises the block to 1.12", () => {
-    expect(AGENT_INSTRUCTION_VERSION).toBe("1.12");
-    expect(renderAgentInstructionSnippet().split("\n")[0]).toBe(`${AGENT_INSTRUCTION_HEADING_PREFIX}1.12`);
+  // The block has moved on since 1.12 (FR-FLOW-234 raised it to 1.13); the heading carries the current version.
+  it("raised the block past 1.11, and the heading carries the current version", () => {
+    expect(AGENT_INSTRUCTION_VERSION).not.toBe("1.11");
+    expect(renderAgentInstructionSnippet().split("\n")[0]).toBe(`${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`);
   });
 
   // @req FR-NODE-312 AC-10
@@ -31,9 +32,9 @@ describe("FR-NODE-312 — agent instruction block 1.12", () => {
   });
 
   // @req FR-NODE-312 AC-10
-  it.each(["CLAUDE.md", "AGENTS.md"])("the repository's own %s carries the 1.12 block", async (file) => {
+  it.each(["CLAUDE.md", "AGENTS.md"])("the repository's own %s carries the current block with the parallel line", async (file) => {
     const text = await readFile(repo(file), "utf8");
-    expect(text).toContain(`${AGENT_INSTRUCTION_HEADING_PREFIX}1.12`);
+    expect(text).toContain(`${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`);
     expect(text).toContain(PARALLEL_LINE);
   });
 });

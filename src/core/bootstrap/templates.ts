@@ -37,7 +37,8 @@ export interface AgentInstructionOptions {
 // project carries no MCP setting or skills of its own.
 // @req FR-NODE-312 — v1.12 says the ID rule is about existing ids and lets parallel worktrees pass an
 // agreed free number to add_requirement.
-export const AGENT_INSTRUCTION_VERSION = "1.12";
+// @req FR-FLOW-234 — v1.13 says what codeComments off means and lists `speckiwi comments` as CLI-only.
+export const AGENT_INSTRUCTION_VERSION = "1.13";
 // @req FR-FLOW-207 AC-1/AC-2/AC-3/AC-4 — the one wording of the bilingual search rule. The agent
 // instruction block, the shipped skills, the MCP tool description and the CLI help all state it, so a
 // search for a requirement written in the other language still finds it; one constant keeps them equal.
@@ -567,6 +568,8 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     // @req FR-NODE-225 AC-5 — vibe was listed as a mode but never defined, so an agent in it either
     // refused to work or broke the "not covered by an SRS requirement" rule below.
     "7. When the mode is `vibe`, code may come first for the Active Task, so the TDD principle and the stop-and-ask rule above do not hold that task back; the step SRS MUST still be synthesized (MCP `synthesize_step_srs`, or CLI `speckiwi step synthesize <task>` when MCP is unavailable) before the commit that lands the task; `check_vibe_gate` (CLI `speckiwi vibe-gate check`) only confirms that the Active Task's step directory exists, not that the synthesis ran. Switch to vibe only when the user asks for it.",
+    // @req FR-FLOW-234 AC-4 — the user's code-comment setting, read with the mode (IR-CLI-121).
+    "When `get_work_mode` reports `codeComments: off`, write no explanatory comment in code you write or change: keep the `@req` and task-name trace tags (the tag alone on its line), the `<REQ-ID> AC-<n>` citations on test lines and the directive comments a language or tool needs, and leave existing comments in place. Change the setting (`speckiwi comments on|off`) only when the user asks.",
     "",
     // @req FR-NODE-088 — without this the block is the whole instruction set for an agent that runs no
     // kiwi-* skill, and it carried no allocation rule at all. An agent then picks a number by copying
@@ -590,7 +593,7 @@ export function renderAgentInstructionSnippet(options: AgentInstructionOptions =
     // @req FR-FLOW-179 AC-6 — this block is installed into a consumer's own instructions, so a
     // blanket "if MCP is unavailable, use the CLI" shipped every consumer the opposite of what the
     // bundled skills say three lines into their own banner. Reads stay; mutations do not.
-    "When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. Normal target-scoped SRS mutations go through MCP only: the `speckiwi` CLI diagnoses installation, version and configuration (see the tool check above) and is not a normal replacement for an MCP mutation. Three target-scoped SRS mutations may use the CLI: registering an unregistered target, which the target workflow below names, and renaming a target (`speckiwi rename-target`) or setting a target's status (`speckiwi set-target-status`), which have no MCP tool; the CLI forms this block gives for work-mode, step and repair commands are for when MCP is unavailable. CLI reads remain available for lookup while MCP is being repaired.",
+    "When SpecKiwi MCP tools are available, agents MUST use them for requirement lookup and safe SRS updates. Normal target-scoped SRS mutations go through MCP only: the `speckiwi` CLI diagnoses installation, version and configuration (see the tool check above) and is not a normal replacement for an MCP mutation. Three target-scoped SRS mutations may use the CLI: registering an unregistered target, which the target workflow below names, and renaming a target (`speckiwi rename-target`) or setting a target's status (`speckiwi set-target-status`), which have no MCP tool; the code-comment setting is CLI-only too (`speckiwi comments`), because the user sets it and agents only read it; the CLI forms this block gives for work-mode, step and repair commands are for when MCP is unavailable. CLI reads remain available for lookup while MCP is being repaired.",
     "",
     // @req REL-MCP-005 AC-8 — the argument is useless to an agent that is never told which families
     // take it, and dangerous to one that assumes the answer came from the root it meant.

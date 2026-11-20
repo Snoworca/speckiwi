@@ -719,8 +719,10 @@ describe("FR-FLOW-110 — the resolved-skill reader", () => {
         "worktree-lane",
         // @req FR-FLOW-188 AC-1 — the shared parallel-waves contract is cited from §0.13.
         "parallel-waves",
-        // @req FR-FLOW-186 AC-4 — the test-sufficiency contract is cited last, from §0.14.
-        "test-sufficiency"
+        // @req FR-FLOW-186 AC-4 — the test-sufficiency contract is cited from §0.14.
+        "test-sufficiency",
+        // @req FR-FLOW-234 AC-3 — the code-comments contract is cited last, from §0.CC.
+        "code-comments"
       ]);
     }
   });

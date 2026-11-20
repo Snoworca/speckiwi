@@ -42,6 +42,8 @@ Every `{artifact_root}` below is replaced by that argument.
 
 **A worker writes neither the SRS nor `docs/spec/`, `docs/sds/`, `kiwi/pipeline.jsonl` or `kiwi/waves.jsonl`.** SRS writes in a worker open four races no mechanism stops: the requirement ID counter and the SRS lock are per root; within one root the SRS lock fails at once instead of waiting; `kiwi-srs` changes the active target, which is global state; and the `@req` resolution test in a worker's worktree judges against that worktree's SRS. A worker's SRS mutations are written to its `--defer-srs-mutation` queue and the host replays them (PW-10).
 
+**Code comments (FR-FLOW-234)**: the `kiwi-coder` a worker runs reads `codeComments` from `get_work_mode` before it writes code, so the dispatch card does not carry it. With `off` the worker follows `_shared/kiwi/code-comments.md`: no explanatory comment, while the `@req` and task-name tags, the AC citations on test lines and directive comments are still written.
+
 ---
 
 ## 2. Concurrency — parallel by default, `--serial` runs every fan-out one at a time

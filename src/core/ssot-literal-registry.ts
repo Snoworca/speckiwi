@@ -55,7 +55,7 @@ export const SSOT_LITERAL_REGISTRY: readonly SsotLiteralEntry[] = [
     role: "current",
     // The heading always carries a version suffix, which is what makes an older one recognisable.
     shape: /# SpecKiwi SRS workflow v(\d+(?:\.\d+)*)/g,
-    value: "1.12"
+    value: "1.13"
   },
   {
     name: "BUNDLED_SRS_RULES_FILENAME",
@@ -206,6 +206,12 @@ export const SSOT_LITERAL_REGISTRY: readonly SsotLiteralEntry[] = [
     module: "src/core/types.ts",
     role: "not-an-ssot",
     reason: "Same as REQUIREMENT_STATUSES: wait and tdd are ordinary words in criteria, and the mode a project is in is read from state.md, not quoted from this list."
+  },
+  {
+    name: "CODE_COMMENT_MODES",
+    module: "src/core/types.ts",
+    role: "not-an-ssot",
+    reason: "Its members on and off are ordinary words in criteria; the setting a project has is read from state.md, not quoted from this list."
   },
   {
     name: "LEGACY_STABILITY_LEVELS",

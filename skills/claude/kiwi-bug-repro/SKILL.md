@@ -28,6 +28,7 @@ description: "보고된 버그를 고치기 전에 확인하고 재현하는 스
 | §0.7 | **`--auto` 옵션 SSOT**. 본 스킬은 `_shared/kiwi/auto-option.md` v1.0 을 따른다. `critical_gates[]` 는 §0.G. 읽을 수 없거나 모자란 입력과 재현 실패는 `--auto` 에서도 멈춘다. 빠진 내용·환경·버전·입력·절차는 사용자만 안다. 그 밖에 판단이 필요한 질문(예: 재현 테스트를 둘 곳이 둘로 갈림)은 business-decision 이므로 `--auto` 면 결정 위원회가 정한다. |
 | §0.8 | **`--mini` / `--loops N` 옵션 SSOT**. `_shared/kiwi/loop-option.md` v1.0 을 따른다. 본 스킬에는 검증-개선 루프가 없으므로 둘은 그 문서 §5 의 문서화된 no-op 이다. §3 의 단계별 시도 상한은 바꾸지 않는다. |
 | §0.9 | **`--max` / `--model`**. `--max` 는 §2 에 독립 원인 분석 서브에이전트 1개를 더하고, `--auto --max` 면 결정 위원회가 5인이다. 단계와 시도 상한은 그대로다. 서브에이전트는 현재 세션 모델을 상속하고 `--model <name>` 이 그 모델을 바꾼다. |
+| §0.CC | **코드 주석 설정 (FR-FLOW-234)**. 코드를 쓰기 전에 MCP `get_work_mode` 의 `codeComments` 를 읽는다(MCP 가 없으면 CLI `speckiwi mode --json`, 값이 없으면 `on`). `off` 이면 `_shared/kiwi/code-comments.md` 를 따른다: 설명 주석은 쓰지 않고, `@req`·작업 이름 태그와 시험 줄의 AC 인용, 지시 주석은 그대로 쓴다. 설정은 사용자가 요청할 때만 바꾼다 |
 
 ### §0.G `--auto` critical_gates[] 선언
 
