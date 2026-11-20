@@ -2096,7 +2096,10 @@ export function registerOrchestrateCommands(command: Command, context: CliContex
           { schema_version: CURRENT_WAVES_SCHEMA_VERSION, run_id: runId, engine: "kiwi-orchestrator", verb: "abort-run", event: "result", wave: "all", abort_gate: options.reason },
           options.dryRun === true
         );
-        if (!outcome.written && options.dryRun !== true) {
+        // @req FR-NODE-320 AC-1 AC-2 — a dry run writes nothing, but the validation it ran is the real
+        // call's: an error there is the refusal the real call would return, not a preview that passes.
+        const refusedByValidation = options.dryRun === true && outcome.diagnostics.some((entry) => entry.severity === "error");
+        if (!outcome.written && (options.dryRun !== true || refusedByValidation)) {
           // @req FR-NODE-197 AC-1/AC-3 — the cause decides the gate, and the refusal says the run
           // lock is still held. Reporting contention as invariant drift sent the operator after a
           // corrupted journal; refusing without mentioning the lock left the run wedged behind a
