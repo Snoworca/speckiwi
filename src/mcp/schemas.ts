@@ -335,7 +335,7 @@ export const toolSpecs: readonly ToolSpec[] = [
   readSpec("attention", undefined, "attentionQueue"),
   readSpec("commands", undefined, "renderCommandCatalog"),
   // Container command with no own handler; hosts the collision-repair "diagnose" tool (CLI in repair.ts).
-  readSpec("links", mcp("diagnose_requirement_id_collisions", "Finds every duplicate Requirement ID in the workspace and, for each, the occurrences that carry it with their file, heading line and block hash — the three coordinates a repair plan must name. The lines inside each occurrence's own block that mention the id come back under `blockReferences`. Read-only."), "diagnoseRequirementIdCollisions"),
+  readSpec("links", mcp("diagnose_requirement_id_collisions", "Finds every duplicate Requirement ID in the workspace and, for each, the occurrences that carry it with their file, heading line and block hash — the three coordinates a repair plan must name. The lines inside each occurrence's own block that mention the id come back under `blockReferences`; code and test lines that name it under `codeReferences` and completed-work history lines under `historyReferences`, both report-only, with how the files were searched under `codeSearch`. Read-only."), "diagnoseRequirementIdCollisions"),
   readSpec("check", undefined, "checkLinks"),
   // Container command with no own handler; hosts the v3 list-steps MCP tool. `step validate` (below) is
   // the second `validate` node and carries the validate_step MCP tool.

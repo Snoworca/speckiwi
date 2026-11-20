@@ -186,6 +186,15 @@ export const DEFAULT_TEST_FILE_GLOBS: readonly string[] = Object.freeze([
 ]);
 
 /**
+ * @req FR-NODE-313 AC-1 — the files that can cite a requirement in code: source files by extension,
+ * plus every test file. Searched through `findTestFiles`, so the repository's ignore rules apply.
+ */
+export const CODE_AND_TEST_FILE_GLOBS: readonly string[] = Object.freeze([
+  ...["ts", "tsx", "mts", "cts", "js", "jsx", "mjs", "cjs", "py", "go", "java", "kt", "kts", "scala", "cs", "rs", "rb", "php", "swift", "c", "h", "cc", "cpp", "hpp"].map((extension) => `**/*.${extension}`),
+  ...DEFAULT_TEST_FILE_GLOBS
+]);
+
+/**
  * A glob over workspace-relative POSIX paths: `**` spans directories (a leading `**` + `/` may match
  * none, a trailing `/` + `**` needs at least one more segment), `*` and `?` stay inside one segment.
  */

@@ -1,4 +1,5 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { diagnostic, summarizeDiagnostics } from "../diagnostic.js";
 import { createTextFileSnapshot } from "../fs/read-text.js";
 import { isStalePatchError } from "../patch/apply-patch.js";
@@ -15,6 +16,7 @@ import { requirementReferenceRewrites, type RequirementReferenceRewrite } from "
 import { withSrsMutationLock } from "./srs-lock.js";
 import { checkRequirementIdAvailable, nextFreeRequirementId } from "./requirement-id-availability.js";
 import { isRequirementType } from "../schema.js";
+import { CODE_AND_TEST_FILE_GLOBS, findTestFiles, type IgnoreRulesReason } from "../testing/test-citations.js";
 
 export interface RequirementOccurrenceIdentity {
   filePath: string;
@@ -519,15 +521,61 @@ async function assertFreshPlans(plans: PatchPlan[]): Promise<void> {
   }
 }
 
+/** @req FR-NODE-313 AC-1 AC-4 — a diagnosed group also lists the code, test and history lines naming its id. */
+export interface DiagnosedRequirementIdCollisionGroup extends RequirementIdCollisionGroup {
+  codeReferences: RequirementReferenceLine[];
+  historyReferences: RequirementReferenceLine[];
+}
+
+/** @req FR-NODE-313 AC-2 AC-3 — how the code and test files were found, and what to do with what they hold. */
+export interface RequirementIdCodeSearch {
+  filesSearched: number;
+  ignoreRules: "git" | "none";
+  ignoreRulesReason: IgnoreRulesReason | null;
+  note: string;
+}
+
+const CODE_REFERENCES_NOTE =
+  "codeReferences and historyReferences are reported only and never edited: a line citing a duplicate id may mean either requirement, so a person decides which one each line means and changes it by hand.";
+
+/** Every line of the files that names the id by the standalone-id rule, sorted by path and line. */
+function namingLines(files: ReadonlyArray<{ relativePath: string; lines: readonly string[] }>, id: string): RequirementReferenceLine[] {
+  return files
+    .flatMap((file) => file.lines.flatMap((line, index) => (namesId(line, id) ? [{ filePath: file.relativePath, line: index + 1, excerpt: line.trim().slice(0, 160) }] : [])))
+    .sort((left, right) => left.filePath.localeCompare(right.filePath) || left.line - right.line);
+}
+
 export async function diagnoseRequirementIdCollisions(root: ProjectRoot): Promise<{
   ok: true;
-  value: { groups: RequirementIdCollisionGroup[]; written: false };
+  value: { groups: DiagnosedRequirementIdCollisionGroup[]; codeSearch?: RequirementIdCodeSearch; written: false };
   diagnostics: Diagnostic[];
   diagnosticsSummary: ReturnType<typeof summarizeDiagnostics>;
 }> {
   const workspace = await parseWorkspace(root);
   const diagnostics = duplicateDiagnostics(workspace);
-  return { ok: true, value: { groups: toGroups(workspace, diagnostics), written: false }, diagnostics, diagnosticsSummary: summarizeDiagnostics(diagnostics) };
+  const groups = toGroups(workspace, diagnostics);
+  const summary = summarizeDiagnostics(diagnostics);
+  // @req FR-NODE-313 AC-5 — no duplicate, no code search: the answer is what it always was.
+  if (groups.length === 0) return { ok: true, value: { groups: [], written: false }, diagnostics, diagnosticsSummary: summary };
+  // @req FR-NODE-313 AC-2 — the one ignore-aware search the test-sufficiency check uses, not a second walker.
+  const search = await findTestFiles(root.root, CODE_AND_TEST_FILE_GLOBS);
+  // One file at a time, as the test-sufficiency check reads them: opening all at once ran out of file
+  // handles (EMFILE) past about 8,190 files.
+  const codeFiles: Array<{ relativePath: string; lines: string[] }> = [];
+  for (const relativePath of search.files) {
+    codeFiles.push({ relativePath, lines: (await readFile(path.join(root.root, relativePath), "utf8")).split(/\r?\n/) });
+  }
+  const history = workspace.completedWorkLogFile ? [workspace.completedWorkLogFile] : [];
+  return {
+    ok: true,
+    value: {
+      groups: groups.map((group) => ({ ...group, codeReferences: namingLines(codeFiles, group.duplicateId), historyReferences: namingLines(history, group.duplicateId) })),
+      codeSearch: { filesSearched: search.files.length, ignoreRules: search.ignoreRules, ignoreRulesReason: search.ignoreRulesReason, note: CODE_REFERENCES_NOTE },
+      written: false
+    },
+    diagnostics,
+    diagnosticsSummary: summary
+  };
 }
 
 export async function planRequirementIdCollisionRepair(root: ProjectRoot, input: RequirementIdCollisionRepairPlanInput): Promise<MutationResult<RequirementIdCollisionRepairPlan>> {
