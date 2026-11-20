@@ -13,7 +13,7 @@ import { mutationFail, mutationOk } from "./guards.js";
 import { withMutationEnvelope } from "./envelope.js";
 import { requirementReferenceRewrites, type RequirementReferenceRewrite } from "./requirement-references.js";
 import { withSrsMutationLock } from "./srs-lock.js";
-import { checkRequirementIdAvailable } from "./requirement-id-availability.js";
+import { checkRequirementIdAvailable, nextFreeRequirementId } from "./requirement-id-availability.js";
 import { isRequirementType } from "../schema.js";
 
 export interface RequirementOccurrenceIdentity {
@@ -171,26 +171,14 @@ function prefixBase(id: string): string | null {
   return match?.[1] ?? null;
 }
 
+/**
+ * @req FR-NODE-312 AC-7 @req FR-NODE-316 AC-2 — the shared allocator: above the series maximum, the
+ * first number no SRS document mentions, so the plan's in-use check accepts the candidate.
+ */
 function allocateNextId(workspace: ParsedWorkspace, duplicateId: string): string | null {
   const base = prefixBase(duplicateId);
-  if (!base) return null;
-  const used = workspace.records
-    .map((record) => new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d{3,4})$`).exec(record.id)?.[1])
-    .filter((value): value is string => Boolean(value))
-    .map((value) => Number.parseInt(value, 10));
-  // @req FR-NODE-312 AC-7 — above the series maximum, the first number no SRS document mentions, so the
-  // plan's in-use check accepts the candidate. The search stops at 9999, the last number the ID pattern
-  // allows: a series that already holds it has no next number, and the loop would otherwise never end.
-  const scope = scopeOf(duplicateId);
-  for (let number = Math.max(0, ...used) + 1; number <= LAST_REQUIREMENT_NUMBER; number += 1) {
-    const id = `${base}${String(number).padStart(3, "0")}`;
-    if (checkRequirementIdAvailable(workspace, { id, scope }).ok) return id;
-  }
-  return null;
+  return base ? nextFreeRequirementId(workspace, base.slice(0, -1), scopeOf(duplicateId)) : null;
 }
-
-/** The last number SRS-MD Rules §11.2 allows in a Requirement ID (`[0-9]{3,4}`). */
-const LAST_REQUIREMENT_NUMBER = 9999;
 
 function scopeOf(id: string): string {
   return /^[A-Z]+-([A-Z0-9][A-Z0-9-]{1,24})-[0-9]{3,4}$/.exec(id)?.[1] ?? "";

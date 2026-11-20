@@ -23,7 +23,7 @@ import { checkIndexRollupsWritableAt, syncIndexRollupsAfterWrite } from "./sync-
 import { allocateRequirementIdFromStatusCache } from "../status-cache.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { collectEvidenceReferenceIssuesForRecord, describeEvidenceRefusal, unnamedNonTestCriteria } from "../workflow/release-readiness.js";
-import { checkRequirementIdAvailable, type RequirementIdAvailability } from "./requirement-id-availability.js";
+import { checkRequirementIdAvailable, nextFreeRequirementId, noFreeRequirementIdMessage, type RequirementIdAvailability } from "./requirement-id-availability.js";
 
 export interface AddRequirementInput extends Omit<RenderRequirementInput, "id" | "type" | "target" | "changeNotes"> {
   type: RequirementType;
@@ -76,13 +76,19 @@ function chosenIdRefusal<T>(availability: Extract<RequirementIdAvailability, { o
 
 type ResolvedAddRequirementInput = NormalizedAddRequirementInput & { target: string };
 
-export function generateNextRequirementId(workspace: ParsedWorkspace, type: RequirementType, scopePrefix: string): string {
-  const prefix = prefixForType(type);
-  const used = workspace.records
-    .map((record) => new RegExp(`^${prefix}-${scopePrefix}-(\\d{3,4})$`).exec(record.id)?.[1])
-    .filter((value): value is string => Boolean(value))
-    .map((value) => Number.parseInt(value, 10));
-  return `${prefix}-${scopePrefix}-${String((Math.max(0, ...used) || 0) + 1).padStart(3, "0")}`;
+/**
+ * @req FR-NODE-316 AC-1 AC-2 AC-4 — the next free id of a type and scope by the one allocator, which
+ * skips a number any SRS document mentions; null when the series has no free number up to 9999.
+ */
+export function generateNextRequirementId(workspace: ParsedWorkspace, type: RequirementType, scopePrefix: string): string | null {
+  return nextFreeRequirementId(workspace, `${prefixForType(type)}-${scopePrefix}`, scopePrefix);
+}
+
+/** @req FR-NODE-316 AC-4 — a series with no free number left is refused, never given an id the pattern forbids. */
+function seriesFullFailure(type: RequirementType, scopePrefix: string): MutationResult<AddRequirementOutput> {
+  const series = `${prefixForType(type)}-${scopePrefix}`;
+  const message = noFreeRequirementIdMessage(series);
+  return mutationFail("GENERATED_ID_COLLISION", message, [diagnostic("SRS-E032", "error", message, {}, { series })]) as MutationResult<AddRequirementOutput>;
 }
 
 /**
@@ -394,11 +400,15 @@ async function addRequirementUnlocked(root: ProjectRoot, input: NormalizedAddReq
   }
   const cacheAllocation = chosenId === undefined ? await allocateRequirementIdFromStatusCache(root, workspace, resolvedInput.type, resolvedInput.scope) : { id: undefined, diagnostics: [] };
   const diagnostics = [...cacheAllocation.diagnostics];
-  let id = chosenId ?? cacheAllocation.id ?? generateNextRequirementId(workspace, resolvedInput.type, resolvedInput.scope);
-  if (chosenId === undefined && workspace.records.some((record) => record.id === id)) {
-    diagnostics.push(diagnostic("SRS-W065", "warning", `SRS status cache ignored: cached Requirement ID already exists: ${id}`, { filePath: "kiwi/.status.json" }, { reason: "cached-id-collision", requirementId: id, fallback: "full-workspace-parse" }));
+  // @req FR-NODE-316 AC-2 AC-3 — a generated id passes the rule a chosen one passes: no SRS document may
+  // mention it. The cache knows only the series counter, so its candidate is checked here, not trusted.
+  const isFree = (latest: ParsedWorkspace, candidate: string) => checkRequirementIdAvailable(latest, { id: candidate, type: resolvedInput.type, scope: resolvedInput.scope }).ok;
+  let id: string | null = chosenId ?? cacheAllocation.id ?? generateNextRequirementId(workspace, resolvedInput.type, resolvedInput.scope);
+  if (chosenId === undefined && id !== null && !isFree(workspace, id)) {
+    diagnostics.push(diagnostic("SRS-W065", "warning", `SRS status cache ignored: cached Requirement ID is already used or mentioned: ${id}`, { filePath: "kiwi/.status.json" }, { reason: "cached-id-collision", requirementId: id, fallback: "full-workspace-parse" }));
     id = generateNextRequirementId(workspace, resolvedInput.type, resolvedInput.scope);
   }
+  if (id === null) return seriesFullFailure(resolvedInput.type, resolvedInput.scope);
   // The rollup sync runs after the write; whether it can be written is settled first, so a refusal
   // leaves nothing written instead of failing after the requirement block is already in the document.
   const rollupRefusal = await checkIndexRollupsWritableAt(root);
@@ -411,9 +421,10 @@ async function addRequirementUnlocked(root: ProjectRoot, input: NormalizedAddReq
     if (chosenId !== undefined) {
       const availability = checkChosen(latestWorkspace);
       if (!availability.ok) return chosenIdRefusal(availability);
-    } else if (latestWorkspace.records.some((record) => record.id === id)) {
+    } else if (!isFree(latestWorkspace, id)) {
       if (attempt === 0) {
         id = generateNextRequirementId(latestWorkspace, resolvedInput.type, resolvedInput.scope);
+        if (id === null) return seriesFullFailure(resolvedInput.type, resolvedInput.scope);
         continue;
       }
       return generatedIdConflictFailure(id, relativePath);

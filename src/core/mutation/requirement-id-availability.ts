@@ -61,6 +61,30 @@ export function checkRequirementIdAvailable(workspace: ParsedWorkspace, request:
   return { ok: true };
 }
 
+/** The last number SRS-MD Rules §11.2 allows in a Requirement ID (`[0-9]{3,4}`). */
+const LAST_REQUIREMENT_NUMBER = 9999;
+
+/**
+ * @req FR-NODE-316 AC-1 AC-2 AC-4 — the one allocator of a fresh Requirement ID in a series such as
+ * `FR-ARCH`: above the series maximum, the lowest number the in-use rule above finds free, so a number
+ * an SRS document already mentions is skipped and allocation and the caller-chosen check cannot
+ * disagree. Null when no number up to 9999 is free: the pattern allows no further number.
+ */
+export function nextFreeRequirementId(workspace: ParsedWorkspace, series: string, scope: string): string | null {
+  const own = new RegExp(`^${series.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-([0-9]{3,4})$`);
+  const used = workspace.records.map((record) => own.exec(record.id)?.[1]).flatMap((value) => (value === undefined ? [] : [Number.parseInt(value, 10)]));
+  for (let number = Math.max(0, ...used) + 1; number <= LAST_REQUIREMENT_NUMBER; number += 1) {
+    const id = `${series}-${String(number).padStart(3, "0")}`;
+    if (checkRequirementIdAvailable(workspace, { id, scope }).ok) return id;
+  }
+  return null;
+}
+
+/** @req FR-NODE-316 AC-4 — why nextFreeRequirementId found nothing, said once for every caller. */
+export function noFreeRequirementIdMessage(series: string): string {
+  return `No Requirement ID can be allocated in the series ${series}: no number above the series maximum up to 9999 is free, or ${series} does not form a valid Requirement ID (SRS-MD Rules §11.2)`;
+}
+
 function unavailable(id: string, check: RequirementIdCheck, detail: string): { ok: false; check: RequirementIdCheck; message: string } {
   return { ok: false, check, message: `Requirement ID ${id} is not available (check: ${check}): ${detail}` };
 }

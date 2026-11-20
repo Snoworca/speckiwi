@@ -18,6 +18,8 @@ import { planMetadataWrite } from "./internal.js";
 import { requirementReferenceRewrites } from "./requirement-references.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { assertSafeMarkdownTableCell } from "./table-cell.js";
+import { noFreeRequirementIdMessage } from "./requirement-id-availability.js";
+import { prefixForType } from "./render-requirement.js";
 
 /**
  * FR-NODE-060 — single-metadata-field edits handled by simple line replacement. `type`
@@ -130,6 +132,10 @@ async function migrateTypeOrScope(
   }
   const newScope = input.field === "scope" ? input.value : loaded.record.scope;
   const newId = generateNextRequirementId(workspace, newType, newScope);
+  // @req FR-NODE-316 AC-4
+  if (newId === null) {
+    return mutationFail("GENERATED_ID_COLLISION", noFreeRequirementIdMessage(`${prefixForType(newType)}-${newScope}`)) as MutationResult<UpdateFieldOutput>;
+  }
   const oldId = loaded.record.id;
   const plannedMove: PlannedMove = { oldId, newId, filePath: loaded.file.relativePath };
 
