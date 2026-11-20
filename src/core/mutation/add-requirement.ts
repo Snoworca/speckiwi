@@ -14,6 +14,7 @@ import type { Diagnostic, MutationResult, ParsedWorkspace, Priority, ProjectRoot
 import { REQUIREMENT_STATUSES, REQUIREMENT_TYPES, STABILITY_LEVELS } from "../types.js";
 import { oneOf } from "../closed-values.js";
 import { mutationFail, mutationOk } from "./guards.js";
+import { priorityRiskRefusal } from "./priority-risk.js";
 import { getWorkMode } from "./work-mode.js";
 import { mutationEnvelopeFromPlan } from "./envelope.js";
 import { DEFAULT_REQUIREMENT_STABILITY, defaultChangeNotes, prefixForType, refuseToolOnlyMarkers, renderRequirementBlock, traceRowCells, type RenderRequirementInput } from "./render-requirement.js";
@@ -343,6 +344,9 @@ async function addRequirementUnlocked(root: ProjectRoot, input: NormalizedAddReq
   const resolvedInput: ResolvedAddRequirementInput = { ...input, target: resolvedTarget };
   const stabilityFailure = assertKnownStabilityInput(input);
   if (stabilityFailure) return stabilityFailure;
+  // @req FR-NODE-319 AC-1 AC-2 — checked at the entry, as the status above is (FR-NODE-198).
+  const closedValue = priorityRiskRefusal(input);
+  if (closedValue) return closedValue;
   // FR-NODE-174 AC-7 — renderRequirementBlock writes these fields verbatim into the block, so a
   // heading inside one of them opens a section the caller never declared. Measured: a statement
   // carrying `#### Verification Evidence` replaced the table the gate had just judged, and a

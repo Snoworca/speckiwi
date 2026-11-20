@@ -2,8 +2,8 @@ import { diagnostic } from "../diagnostic.js";
 import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { replaceHeadingTitle } from "../parser/heading-render.js";
-import { PRIORITY_LEVELS, RISK_LEVELS, type MutationResult, type ProjectRoot, type RequirementRecord, type TextFile } from "../types.js";
-import { oneOf } from "../closed-values.js";
+import type { MutationResult, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
+import { priorityRiskRefusal } from "./priority-risk.js";
 import { assertOpensNoBlockBoundary, assertRequirementTitle } from "./block-prose.js";
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
@@ -180,14 +180,10 @@ async function updateRequirementFieldsUnlocked(root: ProjectRoot, input: UpdateR
   if (editable) return editable as MutationResult<GranularRequirementEditOutput>;
 
   const tableCells: Record<string, string> = {};
-  if (input.priority !== undefined) {
-    if (!PRIORITY_LEVELS.includes(input.priority as never)) return mutationFail("USAGE", `unknown priority: ${input.priority}; expected ${oneOf(PRIORITY_LEVELS)}`);
-    tableCells.Priority = input.priority;
-  }
-  if (input.risk !== undefined) {
-    if (!RISK_LEVELS.includes(input.risk as never)) return mutationFail("USAGE", `unknown risk: ${input.risk}; expected ${oneOf(RISK_LEVELS)}`);
-    tableCells.Risk = input.risk;
-  }
+  const closedValue = priorityRiskRefusal(input);
+  if (closedValue) return closedValue;
+  if (input.priority !== undefined) tableCells.Priority = input.priority;
+  if (input.risk !== undefined) tableCells.Risk = input.risk;
   if (input.tags !== undefined) tableCells.Tags = input.tags.join(", ") || "-";
   if (input.relatedDocs !== undefined) tableCells["Related Docs"] = input.relatedDocs.join(", ") || "-";
   if (input.verificationMethod !== undefined) tableCells["Verification Method"] = input.verificationMethod;
