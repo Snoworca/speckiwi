@@ -140,7 +140,7 @@ Translate each `AC-<n>` line of `## Acceptance` into a failing test whose title 
 
 ### 2.5 Phase 4 — green
 
-Make the tests pass with the smallest implementation, without touching the tests. Weakening a test because it is hard to pass is absolutely forbidden (§0.5) — when the contract is wrong, revise the acceptance line (supersede the SDS under `--sds`) and restart from red. During green, record the newly defined/edited **production file paths as the touched list** (Phase 6's traceability step cites these paths), and leave the FR-FLOW-020 vibe-style active step **task-name** trace tag as a breadcrumb on the code (no canonical REQ-ID yet — reconciled in Phase 6).
+Make the tests pass with the smallest implementation, without touching the tests. Weakening a test because it is hard to pass is absolutely forbidden (§0.5) — when the contract is wrong, revise the acceptance line (supersede the SDS under `--sds`) and restart from red. During green, record the newly defined/edited **production file paths as the touched list** (Phase 6's traceability step cites these paths), and leave the FR-FLOW-020 vibe-style active step **task-name** trace tag `@step <task-name>: AC-<n>[ AC-<m>…]` as a breadcrumb on the code, carrying the step AC numbers that code implements whatever `codeComments` says (`_shared/kiwi/code-comments.md` §2) (no canonical REQ-ID yet — reconciled in Phase 6).
 
 ### 2.6 Phase 5 — regression
 
@@ -179,7 +179,7 @@ When the review hop ends in any status other than `TASK_DONE` (`NEEDS_USER` or `
 4. Promote into body scope via `promote_step_requirement` (MCP) or `speckiwi step promote <id> --from-step <task> --to-scope <scope>` (CLI fallback). **A block with zero verification evidence is refused with EVIDENCE_REQUIRED in tdd mode** — fill in the evidence and retry (no bypass).
 5. **Traceability restoration (post-promote, non-gating, §0.10)** — apply only after promote confirms the body Requirement ID (never attach at Phase 2/4):
    - (a) Add the **authoritative Trace Links Code anchor** (traceability SSOT) on the promoted body requirement via `add_trace_link(type=code, relation=implements, reference=<Phase 4 touched production file>)`. One row per file when several were touched.
-   - (b) Reconcile the Phase 4 production code's vibe-style **task-name** trace tag to the final promoted REQ-ID and leave it as the `@req <REQ-ID>` **auxiliary breadcrumb** — following the **FR-FLOW-020** convention, citing **kiwi-coder §0.17** for tag format/exemption only (single-line format, test-file exemption, placement; no operational-hook import).
+   - (b) Reconcile the Phase 4 production code's vibe-style **task-name** trace tag to the final promoted REQ-ID and leave it as the `@req <REQ-ID> AC-<n>` **auxiliary breadcrumb**, carrying the promoted requirement's AC numbers — following the **FR-FLOW-020** convention, citing **kiwi-coder §0.17** for tag format/exemption only (single-line format, test-file exemption, placement; no operational-hook import).
    - (c) Both are **non-gating** — a missing or stale code Trace Link or `@req` never blocks promote and is separate from the EVIDENCE_REQUIRED gate (§0.10). Remember the Code anchor is **authoritative** and `@req` is the **auxiliary breadcrumb**.
 
 ### 2.8 Phase 7 — wrap-up

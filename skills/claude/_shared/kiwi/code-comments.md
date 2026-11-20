@@ -1,6 +1,6 @@
 # kiwi code-comments v1.0.0
 
-코드 설명 주석을 끄는 설정의 뜻을 정하는 SSOT (FR-FLOW-234). 설정은 사용자가 CLI `speckiwi comments on|off` 로 바꾸고(IR-CLI-121), 에이전트는 MCP `get_work_mode` 응답의 `codeComments` 로 읽기만 한다(MCP 가 없으면 CLI `speckiwi mode --json`). 값이 없으면 `on` 이다. 에이전트는 사용자가 요청할 때만 이 설정을 바꾼다. 코드를 쓰거나 고치는 스킬은 코드를 쓰기 전에 `codeComments` 를 읽고, 이 문서를 경로로 인용하며 규칙을 다시 적지 않는다.
+코드 설명 주석을 끄는 설정의 뜻을 정하는 SSOT (FR-FLOW-234). 이 설정의 목적은 설명 주석을 쓰지 않아 토큰 소비를 줄이는 것이다. 추적 태그의 AC 번호는 설정과 관계없이 남는다. 설정은 사용자가 CLI `speckiwi comments on|off` 로 바꾸고(IR-CLI-121), 에이전트는 MCP `get_work_mode` 응답의 `codeComments` 로 읽기만 한다(MCP 가 없으면 CLI `speckiwi mode --json`). 값이 없으면 `on` 이다. 에이전트는 사용자가 요청할 때만 이 설정을 바꾼다. 코드를 쓰거나 고치는 스킬은 코드를 쓰기 전에 `codeComments` 를 읽고, 이 문서를 경로로 인용하며 규칙을 다시 적지 않는다.
 
 ## 1. `off` 일 때 쓰지 않는 것 (omit)
 
@@ -13,8 +13,8 @@
 
 ## 2. `off` 여도 그대로 쓰는 것 (keep)
 
-- `@req <REQ-ID>` 추적 태그와 kiwi-tdd 의 작업 이름(task-name) 태그. 태그 줄에는 태그만 두고 설명 문장을 붙이지 않는다.
-- 시험 줄의 `<REQ-ID> AC-<n>` 인용과 `SDS-AC-<n>` 인용. 시험 충분성이 이 줄을 읽는다(`_shared/kiwi/test-sufficiency.md`).
+- 추적 태그 `@req <REQ-ID> AC-<n>[ AC-<m>…]`. 그 코드가 구현하는 AC 번호를 설정과 관계없이(on 이든 off 든) 늘 함께 쓰고, 한 줄에 REQ-ID 하나만 둔다(형식·위치·중복 처리는 `kiwi-coder` §0.17). step 작업(vibe, `kiwi-tdd`)의 작업 이름(task-name) 태그는 `@step <task-name>: AC-<n>[ AC-<m>…]` 로 그 step 의 AC 번호를 함께 쓴다(`speckiwi step synthesize` 가 이 표식을 읽는다). vibe step 에 acceptance 줄이 아직 없으면 인용할 AC 번호가 없으므로 `@step <task-name>:` 만 쓴다. `off` 이면 태그 줄에는 태그와 AC 번호만 두고 설명 문장을 붙이지 않는다.
+- 시험 줄의 `<REQ-ID> AC-<n>` 인용과 `SDS-AC-<n>` 인용. 어떤 상황에서도 빼지 않는다. 시험 충분성이 이 줄을 읽는다(`_shared/kiwi/test-sufficiency.md`).
 - 언어·도구가 요구하는 지시 주석: `// eslint-disable-next-line`, `// @ts-expect-error`, `# type: ignore`, `@req-lint: ignore`, shebang, 라이선스 머리글처럼 동작·빌드·검사에 필요한 것.
 
 ## 3. 이미 있는 주석 (existing)

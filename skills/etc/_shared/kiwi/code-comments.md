@@ -1,6 +1,6 @@
 # kiwi code-comments v1.0.0
 
-The single source of what the code-comment setting means (FR-FLOW-234). The user changes the setting with the CLI `speckiwi comments on|off` (IR-CLI-121); the agent only reads it, as `codeComments` in the MCP `get_work_mode` answer (the CLI `speckiwi mode --json` when MCP is unavailable). Without a value it is `on`. The agent changes the setting only when the user asks. A skill that writes or changes code reads `codeComments` before it writes code, cites this path, and does not restate the rules.
+The single source of what the code-comment setting means (FR-FLOW-234). The setting exists to save tokens by not writing explanatory comments; the AC numbers in trace tags stay whatever the setting. The user changes the setting with the CLI `speckiwi comments on|off` (IR-CLI-121); the agent only reads it, as `codeComments` in the MCP `get_work_mode` answer (the CLI `speckiwi mode --json` when MCP is unavailable). Without a value it is `on`. The agent changes the setting only when the user asks. A skill that writes or changes code reads `codeComments` before it writes code, cites this path, and does not restate the rules.
 
 ## 1. What `off` leaves out (omit)
 
@@ -13,8 +13,8 @@ The agent writes no **explanatory comment** in code it writes or changes:
 
 ## 2. What is still written with `off` (keep)
 
-- The `@req <REQ-ID>` trace tags and the kiwi-tdd task-name tags. The tag line carries the tag alone, with no explanatory sentence.
-- The `<REQ-ID> AC-<n>` and `SDS-AC-<n>` citations on test lines. The test-sufficiency check reads those lines (`_shared/kiwi/test-sufficiency.md`).
+- The trace tag `@req <REQ-ID> AC-<n>[ AC-<m>…]`, carrying the AC numbers the code implements whatever the setting (`on` or `off`), one REQ-ID per line (format, placement and dedupe in `kiwi-coder` §0.17). For step work (vibe, `kiwi-tdd`) the task-name tag is `@step <task-name>: AC-<n>[ AC-<m>…]`, carrying the step's AC numbers (`speckiwi step synthesize` reads this marker). When a vibe step has no acceptance lines yet, there is no AC number to cite, so write `@step <task-name>:` alone. With `off` the tag line carries the tag and its AC numbers alone, with no explanatory sentence.
+- The `<REQ-ID> AC-<n>` and `SDS-AC-<n>` citations on test lines, never left out. The test-sufficiency check reads those lines (`_shared/kiwi/test-sufficiency.md`).
 - The directive comments a language or tool needs: `// eslint-disable-next-line`, `// @ts-expect-error`, `# type: ignore`, `@req-lint: ignore`, a shebang, a license header, and anything else the code's behaviour, build or checks depend on.
 
 ## 3. Comments already there (existing)

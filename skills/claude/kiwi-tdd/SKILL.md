@@ -134,7 +134,7 @@ MCP `get_work_mode`(가용 시 우선) 또는 CLI `speckiwi mode`로 현재 모�
 
 ### 2.5 Phase 4 — green
 
-테스트를 수정하지 않은 채 최소 구현으로 통과시킨다. 통과가 어렵다고 테스트를 약화하는 것은 절대 금지(§0.5) — 계약이 틀렸다면 acceptance 줄을 고치고(`--sds` 면 SDS supersede) red부터 재시작. green 동안 새로 정의·수정한 **프로덕션 파일 경로를 touched 목록으로 기록**하고(Phase 6 추적성 스텝이 이 경로들을 인용), 코드에는 FR-FLOW-020 vibe식 active step **task-name** trace 태그를 breadcrumb로 남긴다(canonical REQ-ID는 아직 없음 — Phase 6에서 reconcile).
+테스트를 수정하지 않은 채 최소 구현으로 통과시킨다. 통과가 어렵다고 테스트를 약화하는 것은 절대 금지(§0.5) — 계약이 틀렸다면 acceptance 줄을 고치고(`--sds` 면 SDS supersede) red부터 재시작. green 동안 새로 정의·수정한 **프로덕션 파일 경로를 touched 목록으로 기록**하고(Phase 6 추적성 스텝이 이 경로들을 인용), 코드에는 FR-FLOW-020 vibe식 active step **task-name** trace 태그 `@step <task-name>: AC-<n>[ AC-<m>…]` 를 그 코드가 구현하는 step AC 번호와 함께 breadcrumb로 남긴다(canonical REQ-ID는 아직 없음 — Phase 6에서 reconcile; AC 번호는 `codeComments` 와 관계없이 늘 쓴다, `_shared/kiwi/code-comments.md` §2).
 
 ### 2.6 Phase 5 — 회귀
 
@@ -173,7 +173,7 @@ Skill({ skill: "kiwi-review-fix-loop", args: "--base {step_window_base} --head {
 4. `promote_step_requirement`(MCP) 또는 `speckiwi step promote <id> --from-step <task> --to-scope <scope>`(CLI fallback)로 body scope에 승격한다. **검증 증거 0건이면 tdd 모드에서 EVIDENCE_REQUIRED로 거부된다** — 거부 시 증거를 채우고 재시도한다(우회 금지).
 5. **추적성 복원 (post-promote, 비차단, §0.10)** — promote가 body Requirement ID를 확정한 **후에만** 적용한다(Phase 2/4에서는 부착 금지):
    - (a) 승격된 body 요구에 `add_trace_link(type=code, relation=implements, reference=<Phase 4 touched 프로덕션 파일>)`를 호출해 **권위 Trace Links Code anchor**(traceability SSOT)를 남긴다. 여러 파일을 만졌으면 파일마다 1행씩.
-   - (b) Phase 4 프로덕션 코드의 vibe식 **task-name** trace 태그를 최종 승격 REQ-ID로 **reconcile(재조정)**해 `@req <REQ-ID>` **보조 breadcrumb**로 남긴다 — **FR-FLOW-020** 관례를 따르되, 태그 형식·면제(단일 라인 형식·테스트 파일 면제·부착 위치)는 **kiwi-coder §0.17**만 인용한다(운영 훅 수입 금지).
+   - (b) Phase 4 프로덕션 코드의 vibe식 **task-name** trace 태그를 최종 승격 REQ-ID로 **reconcile(재조정)**해 승격된 요구의 AC 번호를 단 `@req <REQ-ID> AC-<n>` **보조 breadcrumb**로 남긴다 — **FR-FLOW-020** 관례를 따르되, 태그 형식·면제(단일 라인 형식·테스트 파일 면제·부착 위치)는 **kiwi-coder §0.17**만 인용한다(운영 훅 수입 금지).
    - (c) 둘 다 **비차단**이다 — code Trace Link나 `@req`의 누락·stale은 promote를 막지 않으며 EVIDENCE_REQUIRED 게이트와 분리된다(§0.10). Code anchor가 **권위**, `@req`는 **보조 breadcrumb**임을 기억한다.
 
 ### 2.8 Phase 7 — 마무리

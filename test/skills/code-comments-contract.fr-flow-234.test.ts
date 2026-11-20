@@ -39,6 +39,22 @@ describe("FR-FLOW-234 AC-1 AC-2 — the shared contract in each tree", () => {
       expect(reqBullet).not.toMatch(/쓰지 않|not write|never write|omit/i);
     });
 
+    // @req FR-FLOW-234 AC-1 — user request 2026-11-20: "ac 번호는 어떤 상황에서도 반드시 주석으로 남겨야 합니다".
+    it(`${tree}: trace tags carry the AC numbers whatever the setting, and the purpose is saving tokens`, async () => {
+      const text = await read(`skills/${tree}/${CONTRACT}`);
+      const korean = tree === "claude";
+      expect(text.split("\n## ")[0]).toMatch(korean ? /토큰/ : /token/i);
+      const keep = section(text, "keep");
+      const reqBullet = keep.split("\n").find((line) => line.includes("`@req <REQ-ID> AC-<n>")) ?? "";
+      expect(reqBullet.startsWith(korean ? "- 추적 태그 `@req <REQ-ID> AC-<n>[ AC-<m>…]`" : "- The trace tag `@req <REQ-ID> AC-<n>[ AC-<m>…]`"), reqBullet.slice(0, 60)).toBe(true);
+      expect(reqBullet).toContain(korean ? "설정과 관계없이" : "whatever the setting");
+      expect(reqBullet).toContain("`@step <task-name>: AC-<n>");
+      // A vibe step may have no acceptance lines yet; the AC numbers then arrive with the @req tag after promotion.
+      expect(reqBullet).toContain(korean ? "acceptance 줄이 아직 없으면" : "has no acceptance lines yet");
+      expect(keep).toContain(korean ? "어떤 상황에서도 빼지 않는다" : "never left out");
+      expect(text).not.toMatch(/AC 번호(를|는)? ?(빼|생략)|(omit|drop|leave out)\w* the AC|without (the |its )?AC/i);
+    });
+
     // @req FR-FLOW-234 AC-2
     it(`${tree}: existing comments stay, a comment the change made untrue may be fixed, and on is unchanged`, async () => {
       const text = await read(`skills/${tree}/${CONTRACT}`);
@@ -75,9 +91,48 @@ describe("FR-FLOW-234 AC-3 — every code-writing skill reads the setting and ci
   }
 });
 
+describe("FR-FLOW-020 AC-1 AC-2 AC-4 — the tag format carries AC numbers", () => {
+  const CODER = "kiwi-coder/SKILL.md";
+  /** The backtick span in a §0.17.n row that starts with the given prefix. */
+  const span = (text: string, row: string, prefix: string): RegExp => {
+    const line = text.split("\n").find((candidate) => candidate.startsWith(`| ${row} |`)) ?? "";
+    const found = [...line.matchAll(/`([^`]+)`/g)].map((match) => match[1] ?? "").find((body) => body.startsWith(prefix));
+    expect(found, `${row} regex starting ${prefix}`).toBeDefined();
+    return new RegExp(found ?? "");
+  };
+
+  for (const tree of TREES) {
+    // @req FR-FLOW-020 AC-1
+    it(`${tree}: the §0.17.3 tag regex takes AC tokens and still refuses a code line or a tag without AC`, async () => {
+      const tag = span(await read(`skills/${tree}/${CODER}`), "§0.17.3", "^\\s*(");
+      for (const ok of ["// @req FR-X-001 AC-1", "# @req FR-X-001 AC-1 AC-3", " * @req FR-X-001 AC-2 (legacy)", "  // @req IR-CLI-121 AC-12 */"]) expect(tag.test(ok), ok).toBe(true); // @req-lint: ignore — sample tag lines for the regex
+      for (const bad of ["// @req FR-X-001", "let x=1; // @req FR-X-001 AC-1", "// @req FR-X-001 FR-Y-002 AC-1", "// @req FR-X-001 AC-"]) expect(tag.test(bad), bad).toBe(false); // @req-lint: ignore — sample tag lines for the regex
+    });
+
+    // @req FR-FLOW-020 AC-1
+    it(`${tree}: the §0.17.5 dedupe regex reads the REQ-ID and its AC numbers from a loose line, and a missing AC goes on a new line`, async () => {
+      const text = await read(`skills/${tree}/${CODER}`);
+      const lenient = span(text, "§0.17.5", "@req\\s+(");
+      const match = lenient.exec("/** @req FR-X-001 AC-1 AC-2 @param y */"); // @req-lint: ignore — sample tag line for the regex
+      expect(match?.[1]).toBe("FR-X-001");
+      expect((match?.[2] ?? "").trim().split(/\s+/)).toEqual(["AC-1", "AC-2"]);
+      const row = text.split("\n").find((candidate) => candidate.startsWith("| §0.17.5 |")) ?? "";
+      expect(row).toContain("(REQ-ID, AC 번호) 쌍");
+      expect(row).toContain("새 줄");
+    });
+
+    // @req FR-FLOW-020 AC-2 AC-4
+    it(`${tree}: kiwi-tdd writes the step tag with AC numbers and reconciles it to @req with AC numbers`, async () => {
+      const text = await read(`skills/${tree}/kiwi-tdd/SKILL.md`);
+      expect(text).toContain("`@step <task-name>: AC-<n>");
+      expect(text).toContain("`@req <REQ-ID> AC-<n>");
+    });
+  }
+});
+
 describe("FR-FLOW-234 AC-4 — the root instruction block 1.13", () => {
   const OFF_LINE =
-    "When `get_work_mode` reports `codeComments: off`, write no explanatory comment in code you write or change: keep the `@req` and task-name trace tags (the tag alone on its line), the `<REQ-ID> AC-<n>` citations on test lines and the directive comments a language or tool needs, and leave existing comments in place. Change the setting (`speckiwi comments on|off`) only when the user asks.";
+    "When `get_work_mode` reports `codeComments: off`, write no explanatory comment in code you write or change: keep the trace tags with the AC numbers the code implements (`@req <REQ-ID> AC-<n>`, or `@step <task-name>: AC-<n>` for step work; the tag alone on its line), the `<REQ-ID> AC-<n>` citations on test lines and the directive comments a language or tool needs, and leave existing comments in place. Trace tags carry those AC numbers whatever the setting. Change the setting (`speckiwi comments on|off`) only when the user asks.";
 
   // @req FR-FLOW-234 AC-4
   it("raises the block to 1.13 and carries the off rule", () => {
