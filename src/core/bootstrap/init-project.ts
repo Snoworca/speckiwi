@@ -1,5 +1,6 @@
 import type { Dirent } from "node:fs";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
+import { withFilePath } from "../fs/read-text.js";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import type { MutationResult, ProjectRoot } from "../types.js";
@@ -468,7 +469,8 @@ export async function upsertAgentInstruction(
   let fileExists = true;
   let existing = "";
   try {
-    existing = await readFile(filePath, "utf8");
+    // @req FR-NODE-290 AC-2 — Node names no file when an agent file (AGENTS.md, CLAUDE.md) is a directory; attach it (FR-NODE-091).
+    existing = await readFile(filePath, "utf8").catch(withFilePath(filePath));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     fileExists = false;

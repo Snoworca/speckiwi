@@ -9,6 +9,7 @@ import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerRepairCommands } from "./commands/repair.js";
 import { registerSyncAppendixCommand } from "./commands/sync-appendix.js";
 import { usageRecoveryForCommand, writeCliStructuredError } from "./errors.js";
+import { pathMissingFromMessage } from "../core/fs/error-path.js";
 import { attachInputJsonHelp, expandInputJsonArgv, tryRenderHelpJson } from "./input-json.js";
 
 /**
@@ -75,6 +76,7 @@ const FILESYSTEM_WRITE_SYSCALLS: ReadonlySet<string> = new Set(["rename", "write
 interface UnhandledError {
   code?: string;
   message?: string;
+  path?: unknown;
   syscall?: string;
   cause?: { syscall?: string };
 }
@@ -151,13 +153,16 @@ export async function main(argv: string[], io: CliIo): Promise<number> {
       writeCliStructuredError(io, "CLI_USAGE_ERROR", maybeCode.message ?? "command failed", { recovery: usageRecoveryForCommand(commandPathFromArgv(argv, command)) });
       return exitCode;
     }
+    // @req FR-NODE-290 AC-1 AC-3 — the path goes beside the message, never into it: the class is
+    // decided by the message as Node wrote it, with its code and syscall.
+    const missingPath = pathMissingFromMessage(maybeCode as UnhandledError);
     if (jsonMode(argv, command)) {
       const classified = classifyUnhandledError(maybeCode);
-      writeCliStructuredError(io, classified.code, maybeCode.message ?? "command failed", { recovery: { command: classified.recoveryCommand } });
+      writeCliStructuredError(io, classified.code, maybeCode.message ?? "command failed", { recovery: { command: classified.recoveryCommand }, ...(missingPath === undefined ? {} : { path: missingPath }) });
       return classified.exitCode;
     }
     if (maybeCode.message) {
-      io.stderr.write(`${maybeCode.message}\n`);
+      io.stderr.write(missingPath === undefined ? `${maybeCode.message}\n` : `${maybeCode.message} (${missingPath})\n`);
     }
     return exitCode;
   }

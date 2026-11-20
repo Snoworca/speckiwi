@@ -13,24 +13,26 @@ export interface CliStructuredError {
   error: {
     code: string;
     message: string;
+    /** @req FR-NODE-290 AC-1 — the path a filesystem error carries and its message does not name. */
+    path?: string;
   };
   diagnostics: Diagnostic[];
   diagnosticsSummary: ReturnType<typeof summarizeDiagnostics>;
   recovery?: CliRecoveryHint;
 }
 
-export function cliStructuredError(code: string, message: string, options: { diagnostics?: Diagnostic[]; recovery?: CliRecoveryHint } = {}): CliStructuredError {
+export function cliStructuredError(code: string, message: string, options: { diagnostics?: Diagnostic[]; recovery?: CliRecoveryHint; path?: string } = {}): CliStructuredError {
   const diagnostics = options.diagnostics ?? [];
   return {
     ok: false,
-    error: { code, message },
+    error: options.path === undefined ? { code, message } : { code, message, path: options.path },
     diagnostics,
     diagnosticsSummary: summarizeDiagnostics(diagnostics),
     ...(options.recovery ? { recovery: options.recovery } : {})
   };
 }
 
-export function writeCliStructuredError(io: CliIo, code: string, message: string, options: { diagnostics?: Diagnostic[]; recovery?: CliRecoveryHint } = {}): void {
+export function writeCliStructuredError(io: CliIo, code: string, message: string, options: { diagnostics?: Diagnostic[]; recovery?: CliRecoveryHint; path?: string } = {}): void {
   writeJson(io, cliStructuredError(code, message, options));
 }
 

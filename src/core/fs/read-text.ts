@@ -20,7 +20,7 @@ export function createTextFileSnapshot(text: string, stats?: Pick<Stats, "mtimeM
  * the error has none. The message and the code stay exactly what Node wrote: the CLI boundary
  * classifies an unhandled failure by them, and rewording the message moved a failure to another class.
  */
-function withFilePath(filePath: string): (error: NodeJS.ErrnoException) => never {
+export function withFilePath(filePath: string): (error: NodeJS.ErrnoException) => never {
   return (error) => {
     if (error.path === undefined) error.path = filePath;
     throw error;

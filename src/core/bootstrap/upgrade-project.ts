@@ -12,6 +12,7 @@ import { discoverSrsDocuments, discoverSrsFiles, srsDocumentFiles } from "../par
 import { findMetadataTableRange, isRulesMetadataRow } from "./index-metadata.js";
 import { BUNDLED_SDS_RULES_FILENAME, BUNDLED_SRS_RULES_FILENAME, renderIndexRulesRow } from "./templates.js";
 import { bundledVersionFor, refreshRulesPointers, rewriteRulesReferences, scanRulesReferences, scanSpecRulesPointers } from "./rules-references.js";
+import { pathMissingFromMessage } from "../fs/error-path.js";
 
 // @req FR-NODE-091
 //
@@ -374,9 +375,10 @@ async function readSrsDocuments(root: ProjectRoot): Promise<{ files: TextFile[] 
   const indexExists = await stat(path.join(root.root, ...INDEX_RELATIVE_PATH.split("/"))).then(() => true, () => false);
   return (indexExists ? discoverSrsFiles(root) : discoverSrsDocuments(root)).then(
     (set) => ({ files: srsDocumentFiles(set) }),
-    (error: NodeJS.ErrnoException) => ({
-      failure: error.path === undefined || error.message.includes(error.path) ? error.message : `${error.message} (${error.path})`
-    })
+    (error: NodeJS.ErrnoException) => {
+      const missing = pathMissingFromMessage(error);
+      return { failure: missing === undefined ? error.message : `${error.message} (${missing})` };
+    }
   );
 }
 
