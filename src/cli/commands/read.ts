@@ -2,7 +2,7 @@ import { SAFETY_BYPASS_OPTION_HELP } from "../safety-bypass-options.js";
 import { InvalidArgumentError, type Command } from "commander";
 import { resolveProjectRoot } from "../../core/project-root.js";
 import { parseWorkspace } from "../../core/parser/workspace-parser.js";
-import { getWorkMode, setWorkMode } from "../../core/mutation/work-mode.js";
+import { getWorkMode, setWorkMode, workModeRefusal, workModesText } from "../../core/mutation/work-mode.js";
 import { claimStep } from "../../core/mutation/claim-step.js";
 import { updateStepState } from "../../core/mutation/update-step-state.js";
 import { scaffoldStep } from "../../core/mutation/scaffold-step.js";
@@ -792,13 +792,12 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     });
 
   // @req IR-CLI-048 @req IR-CLI-071 — read or switch the work mode over docs/spec/steps/state.md.
-  const validModes = new Set<StepStateMode>(["sdd", "vibe", "wait", "tdd"]);
   command
     .command("mode")
     // `mode <value>` writes docs/spec/steps/state.md, so it is a mutation command even though it
     // is declared here among the read commands for discoverability. It marks itself rather than
     // being named in a list somewhere else, which is the drift IR-CLI-101 closes. @req IR-CLI-101
-    .argument("[value]", "switch target: sdd, vibe, wait, or tdd")
+    .argument("[value]", `switch target: ${workModesText()}`)
     .option("--task <name>", "with vibe or tdd, the Active Task the vibe gate evaluates")
     .option("--json", "JSON output")
     .action(async (value, options) => {
@@ -815,8 +814,9 @@ export function registerReadCommands(command: Command, context: CliContext): voi
         output(context, { json }, mutationOk(await getWorkMode(root)));
         return;
       }
-      if (!validModes.has(value as StepStateMode)) {
-        output(context, { json }, mutationFail("INVALID_MODE", `Invalid mode: ${value} (expected sdd, vibe, wait, or tdd)`));
+      const refusal = workModeRefusal(value);
+      if (refusal) {
+        output(context, { json }, refusal);
         command.setOptionValue("exitCode", exitCodeFor("USAGE"));
         return;
       }

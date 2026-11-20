@@ -202,6 +202,12 @@ export const SSOT_LITERAL_REGISTRY: readonly SsotLiteralEntry[] = [
     reason: "Same as REQUIREMENT_STATUSES."
   },
   {
+    name: "WORK_MODES",
+    module: "src/core/types.ts",
+    role: "not-an-ssot",
+    reason: "Same as REQUIREMENT_STATUSES: wait and tdd are ordinary words in criteria, and the mode a project is in is read from state.md, not quoted from this list."
+  },
+  {
     name: "LEGACY_STABILITY_LEVELS",
     module: "src/core/types.ts",
     role: "not-an-ssot",

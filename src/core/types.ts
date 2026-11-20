@@ -510,7 +510,9 @@ export interface RequirementFilter {
 
 // ── v3.0.0 step-state infrastructure ──────────────────────────────────
 export type StepStateStatus = "active" | "merging" | "merged" | "abandoned";
-export type StepStateMode = "sdd" | "vibe" | "wait" | "tdd";
+/** @req FR-MCP-076 — the work modes, the one list the MCP tool, the CLI and the state.md parser read. */
+export const WORK_MODES = ["sdd", "vibe", "wait", "tdd"] as const;
+export type StepStateMode = (typeof WORK_MODES)[number];
 
 export interface StepStateEntry {
   step: string;

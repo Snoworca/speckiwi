@@ -5,7 +5,7 @@ import { parseMarkdownTable } from "../parser/table.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { assertSafeStateCell } from "./table-cell.js";
-import type { MutationResult, ProjectRoot, StepStateMode, TextFile } from "../types.js";
+import { WORK_MODES, type MutationResult, type ProjectRoot, type StepStateMode, type TextFile } from "../types.js";
 
 // @req FR-NODE-050 @req FR-NODE-071
 /**
@@ -70,6 +70,20 @@ function findMetadataField(stateFile: TextFile, limit: number, regex: RegExp): n
     if (regex.test(stateFile.lines[line - 1] ?? "")) return line;
   }
   return -1;
+}
+
+/**
+ * @req FR-MCP-076 AC-2 — the refusal of a mode outside WORK_MODES, for set_work_mode and `speckiwi mode`
+ * alike; `undefined` for a mode it takes. The wording is the one both surfaces wrote by hand before.
+ */
+export function workModeRefusal(mode: string): ReturnType<typeof mutationFail> | undefined {
+  if ((WORK_MODES as readonly string[]).includes(mode)) return undefined;
+  return mutationFail("INVALID_MODE", `Invalid mode: ${mode} (expected ${workModesText()})`);
+}
+
+/** `sdd, vibe, wait, or tdd`, from WORK_MODES: the refusal and the CLI help say it the same way. */
+export function workModesText(): string {
+  return `${WORK_MODES.slice(0, -1).join(", ")}, or ${WORK_MODES[WORK_MODES.length - 1]}`;
 }
 
 // @req FR-NODE-050

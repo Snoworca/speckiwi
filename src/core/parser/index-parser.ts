@@ -13,12 +13,13 @@ import type {
   TargetEntry,
   TextFile
 } from "../types.js";
+import { WORK_MODES } from "../types.js";
 import { parseMarkdownTable, parseMarkdownTableResult, parseMetadataRows, splitTableRow } from "./table.js";
 import { classifyDocumentLines, maskInlineComments, type ClassifyOptions } from "./document-lines.js";
 import { findMarkdownLinks } from "./markdown-links.js";
 
 const STEP_STATUS_ENUM = new Set<string>(["active", "merging", "merged", "abandoned"]);
-const STEP_MODE_ENUM = new Set<string>(["sdd", "vibe", "wait", "tdd"]);
+const STEP_MODE_ENUM = new Set<string>(WORK_MODES);
 const STEP_MODE_RE = /^\s*Mode:\s*(.*)$/;
 const STEP_ACTIVE_TASK_RE = /^\s*Active Task:\s*(.*)$/;
 

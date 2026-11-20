@@ -9,7 +9,7 @@ import path from "node:path";
 import { z } from "zod";
 import { acceptedSectionsText } from "../core/rules/section-allowlist.js";
 import { oneOf } from "../core/closed-values.js";
-import { PRIORITY_LEVELS, REQUIREMENT_STATUSES, REQUIREMENT_TYPES, RISK_LEVELS, STABILITY_LEVELS } from "../core/types.js";
+import { PRIORITY_LEVELS, REQUIREMENT_STATUSES, REQUIREMENT_TYPES, RISK_LEVELS, STABILITY_LEVELS, WORK_MODES } from "../core/types.js";
 import { STEP_STATE_STATUSES } from "../core/mutation/update-step-state.js";
 import { SDS_STATUS_ORDER } from "../core/mutation/set-sds-status.js";
 import { TARGET_TYPES } from "../core/target-types.js";
@@ -566,7 +566,7 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   set_sds_status: { task: z.string(), status: z.string().describe(oneOf(SDS_STATUS_ORDER)), dryRun: z.boolean().optional() },
   // FR-MCP-052 — work-mode tools (get_work_mode is read-only; set_work_mode is a workspace mutation).
   get_work_mode: {},
-  set_work_mode: { mode: z.string(), activeTask: z.string().optional(), dryRun: z.boolean().optional() },
+  set_work_mode: { mode: z.string().describe(oneOf(WORK_MODES)), activeTask: z.string().optional(), dryRun: z.boolean().optional() },
   // FR-MCP-054 — read-only synthesis-presence gate probe (mirrors `speckiwi vibe-gate check`).
   check_vibe_gate: {},
   // FR-MCP-065 — one lite SDS file's diagnostics and summary (mirrors `speckiwi sds check`).

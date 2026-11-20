@@ -7,6 +7,7 @@
 
 import { normalizeFilterReference } from "../query/filter.js";
 import { PROBE_FIELD_IDS, type ProbeFieldId, type RouteProbe } from "./route.js";
+import { WORK_MODES } from "../types.js";
 
 /**
  * A requirement record as the routing probe reads it — the subset of `RequirementRecord` S3, S3c and S4
@@ -222,7 +223,8 @@ export function parseRouteProbe(json: unknown): RouteProbe {
   const emptyDenominator = readActiveTarget !== undefined && !readActiveTarget;
 
   const s1 = values.get("S1");
-  const mode = s1 && typeof s1.mode === "string" && ["sdd", "vibe", "wait", "tdd"].includes(s1.mode) ? (s1.mode as RouteProbe["mode"]) : undefined;
+  // @req FR-MCP-076 — no cast: a mode added to WORK_MODES and not to RouteProbe fails to compile here.
+  const mode: RouteProbe["mode"] | undefined = s1 && typeof s1.mode === "string" ? WORK_MODES.find((value) => value === s1.mode) : undefined;
   const modeSource = s1 && typeof s1.source === "string" && ["mcp", "cli", "default-wait"].includes(s1.source) ? (s1.source as RouteProbe["modeSource"]) : undefined;
 
   const s3 = values.get("S3");

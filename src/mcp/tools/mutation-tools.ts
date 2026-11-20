@@ -14,8 +14,7 @@ import { updateStepState } from "../../core/mutation/update-step-state.js";
 import { synthesizeStepSrs } from "../../core/mutation/synthesis.js";
 import { scaffoldStep } from "../../core/mutation/scaffold-step.js";
 import { setSdsStatus } from "../../core/mutation/set-sds-status.js";
-import { setWorkMode } from "../../core/mutation/work-mode.js";
-import { mutationFail } from "../../core/mutation/guards.js";
+import { setWorkMode, workModeRefusal } from "../../core/mutation/work-mode.js";
 import type { RequirementType, StepStateMode } from "../../core/types.js";
 import { supersedeRequirement } from "../../core/mutation/supersede-requirement.js";
 import { setActiveTarget, setTargetDescription } from "../../core/mutation/set-active-target.js";
@@ -775,9 +774,8 @@ export function registerMutationTools(server: McpServerHandle, deps: McpDependen
   // FR-MCP-052 — set_work_mode mirrors `speckiwi mode <value>` (IR-CLI-048/071 enum guard included).
   server.registerTool("set_work_mode", async (input) => {
     const mode = String(input.mode);
-    if (!["sdd", "vibe", "wait", "tdd"].includes(mode)) {
-      return resultToMcp(mutationFail("INVALID_MODE", `Invalid mode: ${mode} (expected sdd, vibe, wait, or tdd)`));
-    }
+    const refusal = workModeRefusal(mode);
+    if (refusal) return resultToMcp(refusal);
     return resultToMcp(
       await setWorkMode(await root(deps, input), {
         mode: mode as StepStateMode,
