@@ -11,6 +11,8 @@ import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { classifyStabilityTransition, type StabilityTransitionWarning } from "./stability-transition.js";
 import { deriveSuccessorSlot, findIncomingTraceRows } from "../trace-search.js";
 import type { MutationResult, ProjectRoot, RequirementRecord, Stability } from "../types.js";
+import { STABILITY_LEVELS } from "../types.js";
+import { oneOf } from "../closed-values.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { todayStamp } from "../date-stamp.js";
 
@@ -99,7 +101,7 @@ async function updateStabilityUnlocked(
   input: UpdateStabilityInput
 ): Promise<MutationResult<UpdateStabilityOutput>> {
   if (!isCanonicalStability(input.stability)) {
-    return mutationFail("USAGE", `Invalid stability: ${input.stability}`);
+    return mutationFail("USAGE", `Invalid stability: ${input.stability}; expected ${oneOf(STABILITY_LEVELS)}`);
   }
   if (input.reason !== undefined) {
     if (input.reason.length > MAX_REASON_LENGTH) {

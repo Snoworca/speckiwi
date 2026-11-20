@@ -10,6 +10,8 @@ import {
   type PrdCursorRequest
 } from "../../core/prd/files.js";
 import { z } from "zod";
+import { oneOf } from "../../core/closed-values.js";
+import { PRD_CURSOR_VERDICTS } from "../../core/prd/ledger.js";
 import type { Result } from "../../core/result.js";
 import type { McpDependencies, McpServerHandle } from "../adapter.js";
 import { mcpSuccess, resultToMcp } from "../errors.js";
@@ -45,7 +47,7 @@ export const PRD_TOOL_SCHEMAS = {
     runId: z.string().describe("lower-case run ID; names the ledger kiwi/prd/<runId>.jsonl"),
     direction: z.enum(["prd-to-srs", "srs-to-prd"]).describe("prd-to-srs walks the PRD items (default); srs-to-prd walks the requirements and criteria of target").optional(),
     target: z.string().describe("the target srs-to-prd walks").optional(),
-    verdict: z.string().describe("next: the verdict for the current item; skip one only with deferred and a note").optional(),
+    verdict: z.string().describe(`next: the verdict for the current item; skip one only with deferred and a note. prd-to-srs takes ${oneOf(PRD_CURSOR_VERDICTS["prd-to-srs"])}; srs-to-prd takes ${oneOf(PRD_CURSOR_VERDICTS["srs-to-prd"])}`).optional(),
     note: z.string().optional(),
     refs: z.array(z.string()).optional(),
     index: z.number().int().positive().describe("seek: the 1-based item to show").optional()

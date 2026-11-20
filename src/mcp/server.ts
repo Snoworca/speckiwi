@@ -8,6 +8,10 @@ import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { acceptedSectionsText } from "../core/rules/section-allowlist.js";
+import { oneOf } from "../core/closed-values.js";
+import { PRIORITY_LEVELS, REQUIREMENT_STATUSES, REQUIREMENT_TYPES, RISK_LEVELS, STABILITY_LEVELS } from "../core/types.js";
+import { STEP_STATE_STATUSES } from "../core/mutation/update-step-state.js";
+import { SDS_STATUS_ORDER } from "../core/mutation/set-sds-status.js";
 import { TARGET_TYPES } from "../core/target-types.js";
 import { REPORT_PATH_TOKEN_REGEX } from "../core/completed-work/report-paths.js";
 import { createTestMcpServer, WRITE_TOOL_WORKSPACE_ROOT_REFUSAL, type McpDependencies, type McpServerHandle, type McpToolHandler } from "./adapter.js";
@@ -157,8 +161,9 @@ function orchestrateToolSchemas(): Record<string, Record<string, z.ZodTypeAny>> 
       const field = option.required ? base : base.optional();
       // @req IR-MCP-011 AC-4 — the schema is one flat object, so an argument some actions refuse says
       // so on its field; the encoder refuses it for the others.
-      const scope = optionScopeText(binding, option);
-      shape[option.dest] = scope ? field.describe(scope) : field;
+      // @req FR-MCP-075 AC-2 — and an argument closed by a constant names its values.
+      const text = [optionScopeText(binding, option), option.values ? oneOf(option.values) : undefined].filter((part) => part !== undefined).join("; ");
+      shape[option.dest] = text ? field.describe(text) : field;
     }
     out[binding.tool] = shape;
   }
@@ -329,7 +334,7 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   // @req FR-MCP-049 AC-3
   add_related_doc: ADD_RELATED_DOC_SCHEMA,
   add_change_note: ADD_CHANGE_NOTE_SCHEMA,
-  update_status: { id: z.string(), status: z.string(), reason: z.string().max(500).optional(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
+  update_status: { id: z.string(), status: z.string().describe(oneOf(REQUIREMENT_STATUSES)), reason: z.string().max(500).optional(), dryRun: z.boolean().optional(), ignoreLock: z.boolean().optional() },
   update_stability: {
     id: z.string(),
     stability: z.enum(["draft", "evolving", "stable", "frozen", "deprecated"]),
@@ -356,8 +361,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     id: z.string(),
     title: z.string().optional(),
     statement: z.string().optional(),
-    priority: z.string().optional(),
-    risk: z.string().optional(),
+    priority: z.string().describe(oneOf(PRIORITY_LEVELS)).optional(),
+    risk: z.string().describe(oneOf(RISK_LEVELS)).optional(),
     tags: z.array(z.string()).optional(),
     relatedDocs: z.array(z.string()).optional(),
     verificationMethod: z.string().optional(),
@@ -412,7 +417,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     ignoreLock: z.boolean().optional()
   },
   add_requirement: {
-    type: z.string(),
+    // @req FR-MCP-075 AC-2 — the values each closed argument takes, read from its guard's constant.
+    type: z.string().describe(oneOf(REQUIREMENT_TYPES)),
     scope: z.string(),
     target: z.string().optional(),
     // @req FR-NODE-312 AC-1 — a free id the caller chose; omitted, the next id of the series.
@@ -422,11 +428,11 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     statement: z.string().optional(),
     acceptanceCriteria: z.array(z.string()),
     checkedAcceptanceCriteria: z.array(z.string()).optional(),
-    status: z.string().optional(),
+    status: z.string().describe(oneOf(REQUIREMENT_STATUSES)).optional(),
     priority: z.string().optional(),
     tags: z.array(z.string()).optional(),
     risk: z.string().optional(),
-    stability: z.string().optional(),
+    stability: z.string().describe(oneOf(STABILITY_LEVELS)).optional(),
     verificationMethod: z.string().optional(),
     githubIssue: z.string().optional(),
     relatedDocs: z.array(z.string()).optional(),
@@ -549,7 +555,7 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     supersede: z.string().optional(),
     dryRun: z.boolean().optional()
   },
-  update_step_state: { step: z.string(), status: z.string().optional(), dependsOn: z.string().optional(), acknowledged: z.boolean().optional(), dryRun: z.boolean().optional() },
+  update_step_state: { step: z.string(), status: z.string().describe(oneOf(STEP_STATE_STATUSES)).optional(), dependsOn: z.string().optional(), acknowledged: z.boolean().optional(), dryRun: z.boolean().optional() },
   list_steps: { step: z.string().optional(), target: z.string().optional() },
   // FR-MCP-053 — step SRS synthesis mutation tool (forwards to the FR-NODE-041/073 core engine).
   synthesize_step_srs: { task: z.string(), dryRun: z.boolean().optional() },
@@ -557,7 +563,7 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   // `sds` is read by the handler (FR-NODE-080 AC-5); undeclared, the protocol dropped it and a
   // mutation tool now refuses it (FR-NODE-281 AC-7).
   scaffold_step: { task: z.string(), target: z.string().optional(), sds: z.boolean().optional(), dryRun: z.boolean().optional() },
-  set_sds_status: { task: z.string(), status: z.string(), dryRun: z.boolean().optional() },
+  set_sds_status: { task: z.string(), status: z.string().describe(oneOf(SDS_STATUS_ORDER)), dryRun: z.boolean().optional() },
   // FR-MCP-052 — work-mode tools (get_work_mode is read-only; set_work_mode is a workspace mutation).
   get_work_mode: {},
   set_work_mode: { mode: z.string(), activeTask: z.string().optional(), dryRun: z.boolean().optional() },
@@ -584,7 +590,7 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
     acceptanceCriteria: z.array(z.string()),
     // FR-NODE-176 — the successor's type decides its ID prefix; optional so an existing caller that
     // sends none keeps minting the `functional` successor it always did.
-    type: z.string().optional(),
+    type: z.string().describe(oneOf(REQUIREMENT_TYPES)).optional(),
     successorId: z.string().optional(),
     reason: z.string().optional(),
     dryRun: z.boolean().optional()

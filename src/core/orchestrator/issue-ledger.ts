@@ -8,6 +8,7 @@
 // the duplication audit's `issue:{id}` discharge.
 
 import { issueRowWave } from "./issue-row.js";
+import { oneOf } from "../closed-values.js";
 
 /** §8's closed classification list. Every issue receives exactly one. */
 export const ISSUE_CLASSES = ["local-defect", "missing-task", "design-gap", "new-wave-required", "design-contradiction", "out-of-run"] as const;
@@ -117,7 +118,7 @@ function resolves(proof: ResolutionProof, resolution: ResolutionSet): boolean {
 /** @req FR-NODE-123 AC-5 — the classification comes from the closed six-value list. */
 export function openIssue(ledger: IssueRow[], row: IssueRow): LedgerResult {
   const violations: LedgerViolation[] = [];
-  if (!isIssueClass(row.class)) violations.push({ code: "issue-class-invalid", issueId: row.issueId, detail: `classification ${row.class ?? "(none)"} is outside the closed list` });
+  if (!isIssueClass(row.class)) violations.push({ code: "issue-class-invalid", issueId: row.issueId, detail: `classification ${row.class ?? "(none)"} is outside the closed list; expected ${oneOf(ISSUE_CLASSES)}` });
   if (ledger.some((existing) => existing.issueId === row.issueId)) violations.push({ code: "issue-id-duplicate", issueId: row.issueId, detail: "the ledger already carries this issue id" });
   return result(violations);
 }
@@ -126,7 +127,7 @@ export function openIssue(ledger: IssueRow[], row: IssueRow): LedgerResult {
 export function planIssue(ledger: IssueRow[], id: string, issueClass: string): LedgerResult {
   const violations: LedgerViolation[] = [];
   if (!ledger.some((row) => row.issueId === id)) violations.push({ code: "issue-not-found", issueId: id, detail: "no such issue in the ledger" });
-  if (!isIssueClass(issueClass)) violations.push({ code: "issue-class-invalid", issueId: id, detail: `classification ${issueClass} is outside the closed list` });
+  if (!isIssueClass(issueClass)) violations.push({ code: "issue-class-invalid", issueId: id, detail: `classification ${issueClass} is outside the closed list; expected ${oneOf(ISSUE_CLASSES)}` });
   return result(violations);
 }
 
@@ -150,7 +151,7 @@ export function deferIssue(ledger: IssueRow[], id: string, reason: string): Ledg
   const violations: LedgerViolation[] = [];
   if (!ledger.some((row) => row.issueId === id)) violations.push({ code: "issue-not-found", issueId: id, detail: "no such issue in the ledger" });
   if (!(DEFERRAL_REASON_CLASSES as readonly string[]).includes(reason)) {
-    violations.push({ code: "deferral-reason-invalid", issueId: id, detail: `deferral reason ${reason} is outside the closed reason_class vocabulary` });
+    violations.push({ code: "deferral-reason-invalid", issueId: id, detail: `deferral reason ${reason} is outside the closed reason_class vocabulary; expected ${oneOf(DEFERRAL_REASON_CLASSES)}` });
   }
   return result(violations);
 }

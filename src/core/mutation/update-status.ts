@@ -1,6 +1,8 @@
 import { applyPatchPlans } from "../patch/apply-patch-plans.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import type { MutationResult, ProjectRoot, RequirementStatus } from "../types.js";
+import { REQUIREMENT_STATUSES } from "../types.js";
+import { oneOf } from "../closed-values.js";
 import { isRequirementStatus } from "../schema.js";
 import { parseRequirementHeading } from "../parser/block-scanner.js";
 import { renderHeadingLine } from "../parser/heading-render.js";
@@ -119,7 +121,7 @@ function citingMarkers(records: readonly RequirementRecord[], id: string): strin
  * `orchestrate replay` calls it on every deferred call before it applies the first.
  */
 export function statusInputRefusal(input: Pick<UpdateStatusInput, "status" | "reason">): MutationResult | undefined {
-  if (!isRequirementStatus(input.status)) return mutationFail("USAGE", `Invalid status: ${input.status}`);
+  if (!isRequirementStatus(input.status)) return mutationFail("USAGE", `Invalid status: ${input.status}; expected ${oneOf(REQUIREMENT_STATUSES)}`);
   if (input.reason === undefined) return undefined;
   if (input.reason.length > MAX_REASON_LENGTH) {
     return mutationFail("USAGE", `reason exceeds ${MAX_REASON_LENGTH} UTF-16 code units`);

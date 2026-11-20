@@ -11,6 +11,8 @@ import { linesOutsideFences } from "../parser/index-parser.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { isCanonicalStability, isKnownStability, isRequirementStatus, isRequirementType } from "../schema.js";
 import type { Diagnostic, MutationResult, ParsedWorkspace, Priority, ProjectRoot, RequirementRecord, RequirementType, Risk, Stability, TextFile } from "../types.js";
+import { REQUIREMENT_STATUSES, REQUIREMENT_TYPES, STABILITY_LEVELS } from "../types.js";
+import { oneOf } from "../closed-values.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { getWorkMode } from "./work-mode.js";
 import { mutationEnvelopeFromPlan } from "./envelope.js";
@@ -195,7 +197,7 @@ function assertSafeChangeNotes(input: NormalizedAddRequirementInput): MutationRe
 
 function assertKnownStabilityInput(input: NormalizedAddRequirementInput): MutationResult<AddRequirementOutput> | undefined {
   if (input.stability === undefined) return undefined;
-  if (!isKnownStability(input.stability)) return mutationFail("USAGE", "Invalid stability");
+  if (!isKnownStability(input.stability)) return mutationFail("USAGE", `Invalid stability: ${String(input.stability)}; expected ${oneOf(STABILITY_LEVELS)}`);
   if (!isCanonicalStability(input.stability)) return mutationFail("MUTATION_DENIED", `Legacy stability is not valid for new requirements: ${input.stability}`);
   return undefined;
 }
@@ -322,13 +324,13 @@ export async function addRequirement(root: ProjectRoot, input: AddRequirementInp
 }
 
 async function addRequirementUnlocked(root: ProjectRoot, input: NormalizedAddRequirementInput): Promise<MutationResult<AddRequirementOutput>> {
-  if (!isRequirementType(input.type)) return mutationFail("USAGE", "Invalid requirement type");
+  if (!isRequirementType(input.type)) return mutationFail("USAGE", `Invalid requirement type: ${String(input.type)}; expected ${oneOf(REQUIREMENT_TYPES)}`);
   // @req FR-NODE-198 — the enum is checked at the entry and not at a use site. `input.status ??
   // "planned"` is re-evaluated everywhere the value is spent — the record's `status`, the metadata
   // `Status` row, the table-cell safety check, and `renderRequirementBlock` — so a guard placed at
   // one of them closes that one and leaves the rest admitting the value.
   if (input.status !== undefined && !isRequirementStatus(input.status)) {
-    return mutationFail("USAGE", `Invalid status: ${input.status}`);
+    return mutationFail("USAGE", `Invalid status: ${input.status}; expected ${oneOf(REQUIREMENT_STATUSES)}`);
   }
   if (!input.scope || !input.title || !input.statement || input.acceptanceCriteria.length === 0) {
     return mutationFail("USAGE", "type, scope, title, statement, and acceptanceCriteria are required; target may be omitted only when Active Target is set");

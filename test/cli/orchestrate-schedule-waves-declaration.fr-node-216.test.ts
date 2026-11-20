@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/index.js";
 import { ORCHESTRATE_TOOL_BINDINGS } from "../../src/cli/commands/orchestrate.js";
 import { canonicalJson } from "../../src/core/orchestrator/canonical-json.js";
+import { ENGINES } from "../../src/core/orchestrator/journal-schema.js";
 import { freezeLock } from "../../src/core/orchestrator/freeze.js";
 import { liteSdsText, sdsPath, sdsWorkspace, writeUnder } from "../core/orchestrator/sds-fixtures.js";
 
@@ -363,7 +364,8 @@ describe("FR-NODE-216 AC-8 --waves excludes --sds and --depends", () => {
     expect(option("sds")?.required).toBeUndefined();
     expect(option("depends")?.required).toBeUndefined();
     expect(option("waves")).toEqual({ flag: "--waves", dest: "waves", encoding: "string" });
-    expect(option("engine")).toEqual({ flag: "--engine", dest: "engine", encoding: "string" });
+    // FR-MCP-075 AC-2 — the binding also names the engines its guard accepts.
+    expect(option("engine")).toEqual({ flag: "--engine", dest: "engine", encoding: "string", values: ENGINES });
   });
 });
 

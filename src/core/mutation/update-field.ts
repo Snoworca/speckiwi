@@ -19,6 +19,8 @@ import { requirementReferenceRewrites } from "./requirement-references.js";
 import { withSrsMutationLock } from "./srs-lock.js";
 import { assertSafeMarkdownTableCell } from "./table-cell.js";
 import { noFreeRequirementIdMessage } from "./requirement-id-availability.js";
+import { REQUIREMENT_TYPES } from "../types.js";
+import { oneOf } from "../closed-values.js";
 import { prefixForType } from "./render-requirement.js";
 
 /**
@@ -128,7 +130,7 @@ async function migrateTypeOrScope(
 ): Promise<MutationResult<UpdateFieldOutput>> {
   const newType: RequirementType = input.field === "type" ? (input.value as RequirementType) : loaded.record.type;
   if (!isRequirementType(newType)) {
-    return mutationFail("USAGE", `Invalid requirement type: ${input.value}`) as MutationResult<UpdateFieldOutput>;
+    return mutationFail("USAGE", `Invalid requirement type: ${input.value}; expected ${oneOf(REQUIREMENT_TYPES)}`) as MutationResult<UpdateFieldOutput>;
   }
   const newScope = input.field === "scope" ? input.value : loaded.record.scope;
   const newId = generateNextRequirementId(workspace, newType, newScope);

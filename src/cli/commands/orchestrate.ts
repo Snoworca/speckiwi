@@ -17,7 +17,7 @@ import { updateStatus } from "../../core/mutation/update-status.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { srsLockRetry } from "../../core/mutation/srs-lock.js";
 import { groundFiles, isGroundingRefusal } from "../../core/orchestrator/grounding.js";
-import { closeWave, deferIssue, openIssue, planIssue, resolveIssue, type IssueRow, type ResolutionSet } from "../../core/orchestrator/issue-ledger.js";
+import { closeWave, DEFERRAL_REASON_CLASSES, deferIssue, ISSUE_CLASSES, openIssue, planIssue, resolveIssue, type IssueRow, type ResolutionSet } from "../../core/orchestrator/issue-ledger.js";
 import { readIssueRow, waveOption } from "../../core/orchestrator/issue-row.js";
 import { computeLanePlan, DEFAULT_LANE_CAP, LanePlanError } from "../../core/orchestrator/lane-plan.js";
 import type { WaveDependencies, WaveInput } from "../../core/orchestrator/conflict.js";
@@ -243,6 +243,8 @@ export interface OrchestrateToolOption {
    * leaf the binding reaches takes it. @req IR-MCP-011
    */
   readonly onlyFor?: readonly string[];
+  /** The closed set the leaf's guard accepts, named in the MCP field description. @req FR-MCP-075 AC-2 */
+  readonly values?: readonly string[];
 }
 
 /**
@@ -288,7 +290,7 @@ export function optionScopeText(binding: OrchestrateToolBinding, option: Orchest
 const RUN_ID_OPTION = o("--run-id", "runId");
 const JOURNAL_OPTION = o("--journal", "journal");
 const LEDGER_OPTION = o("--ledger", "ledger");
-const ENGINE_OPTION = o("--engine", "engine");
+const ENGINE_OPTION: OrchestrateToolOption = { ...o("--engine", "engine"), values: ENGINES };
 
 /**
  * The `orchestrate_*` family. The CLI namespace is the authority and every binding names the leaf it
@@ -348,9 +350,9 @@ export const ORCHESTRATE_TOOL_BINDINGS: readonly OrchestrateToolBinding[] = [
   // @req IR-CLI-113 AC-9 — `engine` is bound so the tool writes a round under the engine its leaf resolves.
   { tool: "orchestrate_round_record", description: "Records one verification round with the proof it rests on, which the argument list makes mandatory. The gate it refuses at is the round scope: one outside the closed vocabulary, or one belonging to a loop other than the round declares, is turned away before anything is appended. Without engine the round is written under the engine the run's journal lines carry, kiwi-orchestrator when the run has no line yet, and a run with lines under both engines is refused. Writes a round event into the run journal.", path: ["round", "record"], kind: "mutation", options: [RUN_ID_OPTION, ENGINE_OPTION, o("--payload", "payload", "json"), o("--proof", "proof", "json", true), JOURNAL_OPTION, DRY_RUN_OPTION] },
   { tool: "orchestrate_issue_open", description: "Opens a new issue in the wave ledger from the payload you supply, refusing a classification outside the closed six-value list and an issue id the ledger already carries. Writes the ledger row.", path: ["issue", "open"], kind: "mutation", options: [LEDGER_OPTION, o("--payload", "payload", "json"), DRY_RUN_OPTION] },
-  { tool: "orchestrate_issue_plan", description: "Assigns a classification to one issue in the wave ledger, which decides how it must be discharged. Writes the ledger row.", path: ["issue", "plan"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--class", "class", "string", true), DRY_RUN_OPTION] },
+  { tool: "orchestrate_issue_plan", description: "Assigns a classification to one issue in the wave ledger, which decides how it must be discharged. Writes the ledger row.", path: ["issue", "plan"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), { ...o("--class", "class", "string", true), values: ISSUE_CLASSES }, DRY_RUN_OPTION] },
   { tool: "orchestrate_issue_resolve", description: "Closes one issue with the proof for it, which is mandatory and has to resolve against the facts you supply rather than merely be well shaped — a syntactically perfect sha naming no commit in that set is refused. Writes the ledger row.", path: ["issue", "resolve"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--proof", "proof", "json", true), o("--resolution", "resolution", "string", true), DRY_RUN_OPTION] },
-  { tool: "orchestrate_issue_defer", description: "Records a closed-vocabulary deferral reason against one issue, with no resolution. The row stays in its wave and the wave-close judge still weighs it, so deferring does not clear the way to close. Writes the ledger row.", path: ["issue", "defer"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), o("--reason", "reason", "string", true), DRY_RUN_OPTION] },
+  { tool: "orchestrate_issue_defer", description: "Records a closed-vocabulary deferral reason against one issue, with no resolution. The row stays in its wave and the wave-close judge still weighs it, so deferring does not clear the way to close. Writes the ledger row.", path: ["issue", "defer"], kind: "mutation", options: [LEDGER_OPTION, o("--issue-id", "issueId", "string", true), { ...o("--reason", "reason", "string", true), values: DEFERRAL_REASON_CLASSES }, DRY_RUN_OPTION] },
   { tool: "orchestrate_issue_list", description: "Lists the wave issue ledger's rows, optionally for one wave, each with its classification and disposition. Read-only.", path: ["issue", "list"], kind: "read", options: [LEDGER_OPTION, o("--wave", "wave")] },
   { tool: "orchestrate_wave_close", description: "Judges whether a wave may close, by the evidence each issue's classification demands: a local defect or a missing task needs a resolution proof that resolves against the facts you supply, a design gap needs a fresh design-lock digest, an out-of-run or new-wave issue needs a recorded user decision, and a design contradiction needs a valid classification and nothing more. The supplied set is what proofs are checked against, never a list of outcomes the caller declares acceptable. Read-only.", path: ["wave", "close"], kind: "read", options: [o("--wave", "wave", "string", true), LEDGER_OPTION, o("--resolution", "resolution", "string", true)] },
   // @req IR-CLI-104 — the wave-state reader; `engine` is bound so a kiwi-wave-master journal is readable over MCP.
