@@ -449,16 +449,37 @@ function nonBlankString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-/** Why a pipeline event cannot be keyed by run, or null when it can. @req FR-NODE-309 AC-2 */
-function pipelineRunIdRefusal(event: WorkflowJsonlEvent, runId: string): string | null {
-  if (!nonBlankString(runId)) return "Workflow pipeline append requires a non-blank runId";
-  if (Object.hasOwn(event, "run_id") && !nonBlankString(event.run_id)) return "Workflow pipeline event run_id must be a non-blank string when present";
+/** The journal an append writes, as a refusal names it. */
+function journalLabel(kind: WorkflowMutationKind): string {
+  return kind === "pipeline_event_append" ? "pipeline" : kind === "worklog_event_append" ? "worklog" : "repair-record";
+}
+
+/** Why an event cannot be tied to its run, or null when it can. @req FR-NODE-309 AC-2 @req FR-NODE-310 AC-4 */
+function runIdRefusal(kind: WorkflowMutationKind, event: WorkflowJsonlEvent, runId: string): string | null {
+  const label = journalLabel(kind);
+  if (!nonBlankString(runId)) return `Workflow ${label} append requires a non-blank runId`;
+  if (Object.hasOwn(event, "run_id") && !nonBlankString(event.run_id)) return `Workflow ${label} event run_id must be a non-blank string when present`;
   return null;
 }
 
 /** A line missing skill or run_id names no run, so it is never the duplicate of an event. @req FR-NODE-309 AC-3 */
 function keyedByRun(event: WorkflowJsonlEvent): boolean {
   return nonBlankString(event.skill) && nonBlankString(event.run_id);
+}
+
+/**
+ * @req FR-NODE-309 AC-3 @req FR-NODE-310 AC-1 AC-2 AC-5 AC-6 — the journal line an append would repeat.
+ * The pipeline holds one event per skill and run, so it is keyed by `skill|run_id` among lines that
+ * name both. The worklog and repair records share one file per run, where the lines of a skill that
+ * omit run_id, or name this run, all share one `skill|run_id`, so they are keyed by journal identity; a
+ * line without one is never a duplicate.
+ */
+function appliedDuplicate(pipeline: boolean, entries: readonly WorkflowJsonlEntry[], event: WorkflowJsonlEvent): WorkflowJsonlEntry | undefined {
+  if (pipeline) {
+    const key = `${String(event.skill ?? "")}|${String(event.run_id ?? "")}`;
+    return entries.find((entry) => entry.eventKey === key && keyedByRun(entry.event));
+  }
+  return entries.find((entry) => entry.event.journal_key === event.journal_key);
 }
 
 function duplicateLine(filePath: string, entry: WorkflowJsonlEntry): WorkflowDuplicateLine {
@@ -480,10 +501,8 @@ async function applyJsonlAppendMutation(root: ProjectRoot, input: WorkflowMutati
     }
   }
   const pipeline = input.kind === "pipeline_event_append";
-  if (pipeline) {
-    const refusal = pipelineRunIdRefusal(input.event, input.runId);
-    if (refusal) return failWithEnvelope(input, filePath, identity, [usageDiagnostic(input.kind, refusal)], refusal, null);
-  }
+  const refusal = runIdRefusal(input.kind, input.event, input.runId);
+  if (refusal) return failWithEnvelope(input, filePath, identity, [usageDiagnostic(input.kind, refusal)], refusal, null);
   const event: WorkflowJsonlEvent = {
     // @req FR-NODE-309 AC-1 — an event without run_id is keyed, and written, by the call's runId.
     ...(pipeline ? { run_id: input.runId } : {}),
@@ -504,8 +523,7 @@ async function applyJsonlAppendMutation(root: ProjectRoot, input: WorkflowMutati
     const pendingRepair = { kind: "rerun_with_fresh_artifact", message: "Workflow JSONL append saw a stale source hash", retry: staleGuard.retry, staleGuard };
     return failWithEnvelope(input, filePath, identity, diagnostics, "Workflow artifact snapshot is stale", pendingRepair, staleGuard);
   }
-  const incomingEventKey = `${String(event.skill ?? "")}|${String(event.run_id ?? "")}`;
-  const duplicate = parsed.entries.find((entry) => entry.eventKey === incomingEventKey && (!pipeline || keyedByRun(entry.event)));
+  const duplicate = appliedDuplicate(pipeline, parsed.entries, event);
   if (duplicate) {
     const completedOperations = [`confirm:${input.kind}`];
     // @req FR-NODE-300 AC-2 — a confirmed duplicate reports the journal's lines as counts too.
