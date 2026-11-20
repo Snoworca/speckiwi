@@ -6,6 +6,7 @@ import type { MutationResult, ProjectRoot } from "../types.js";
 import { mutationOk } from "../mutation/guards.js";
 import { withSrsMutationLock } from "../mutation/srs-lock.js";
 import { runFileTransaction, type FileTransaction } from "../patch/file-transaction.js";
+import { ensureStatusCacheIgnored } from "./status-cache-gitignore.js";
 import {
   AGENT_INSTRUCTION_END_MARKER,
   AGENT_INSTRUCTION_HEADING_PREFIX,
@@ -742,6 +743,7 @@ async function refreshProjectFiles(
     await upsertAgentInstruction(root.root, agentFile, output, transaction, dryRun);
   }
   await installHooks(root.root, output, warnings, transaction, Boolean(input.force), dryRun);
+  await ensureStatusCacheIgnored(root.root, output, warnings, transaction, dryRun);
 }
 
 const SELF_HOSTING_NOTE =

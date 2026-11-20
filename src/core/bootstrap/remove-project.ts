@@ -14,6 +14,7 @@ import {
 } from "../skills/install-skill.js";
 import type { SkillAgent } from "../skills/types.js";
 import { unregisterSpeckiwiMcp } from "./mcp-registration.js";
+import { removeStatusCacheIgnore } from "./status-cache-gitignore.js";
 import {
   GIT_PRE_COMMIT_RUNNER,
   SKILL_PROVISION_AGENTS,
@@ -91,7 +92,7 @@ export interface RemoveProjectOutput {
 const EXCLUSIONS: ReadonlyArray<readonly [relativePath: string, reason: string]> = [
   ["docs/spec", "requirements are what you wrote with the tool, not what the tool wrote; no option removes them"],
   ["docs/rule", "the index metadata Rules row cites these documents, so removing them would leave that reference dangling"],
-  ["docs/.kiwi/trace", "accumulated hook output with no second copy; speckiwi installs no ignore rule, so it cannot tell whether you track it"]
+  ["docs/.kiwi/trace", "accumulated hook output with no second copy; speckiwi installs no ignore rule for it, so it cannot tell whether you track it"]
 ];
 
 const NPM_NOTE =
@@ -167,6 +168,7 @@ async function removeUnlocked(root: ProjectRoot, input: RemoveProjectInput, appl
     await step("git hook", path.join(root.root, ".git", "hooks", "pre-commit"), () => removeGitHook(root.root, apply, state));
     await step("hook runners", path.join(root.root, "docs", ".kiwi", "hooks"), () => removeHookRunners(root.root, apply, state));
     await step("agent instruction blocks", root.root, () => removeAgentInstructionBlocks(root.root, apply, state));
+    await step("status cache ignore entry", path.join(root.root, ".gitignore"), () => removeStatusCacheIgnore(root.root, apply, state.removed));
     for (const [relativePath, reason] of EXCLUSIONS) {
       state.excluded.push({ path: path.join(root.root, ...relativePath.split("/")), reason });
     }
