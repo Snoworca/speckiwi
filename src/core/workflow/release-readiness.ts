@@ -1,4 +1,4 @@
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import type {
   AcceptedResidueEntry,
@@ -292,10 +292,38 @@ function commandPolicyViolation(record: RequirementRecord, row: EvidenceRow, ref
   return result;
 }
 
+/** `test`, `test:<anything>` or `test-<anything>`: a script name that says it runs tests. */
+function isTestScriptName(name: string): boolean {
+  return name === "test" || /^test[:-]./.test(name);
+}
+
+/**
+ * @req FR-FLOW-231 AC-1 AC-4 — the test scripts the root package.json declares. A project with no
+ * package.json, or one that is not a JSON object holding a `scripts` object, declares none.
+ */
+export function declaredTestScripts(rootPath: string): ReadonlySet<string> {
+  const file = path.join(rootPath, "package.json");
+  if (!existsSync(file)) return new Set();
+  let parsed: unknown;
+  try {
+    // npm reads a package.json written with a byte order mark, so this does too.
+    parsed = JSON.parse(readFileSync(file, "utf8").replace(/^\uFEFF/, ""));
+  } catch {
+    // A directory, an unreadable file or broken JSON declares nothing; readiness still answers.
+    return new Set();
+  }
+  const scripts = parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as { scripts?: unknown }).scripts : undefined;
+  if (scripts === null || typeof scripts !== "object" || Array.isArray(scripts)) return new Set();
+  return new Set(Object.keys(scripts).filter(isTestScriptName));
+}
+
 /** @req FR-NODE-296 AC-1 — a wrapped command meets the policy exactly as the unwrapped one does. */
-function satisfiesCommandEvidencePolicy(reference: string): boolean {
+function satisfiesCommandEvidencePolicy(reference: string, testScripts: ReadonlySet<string>): boolean {
   const normalized = evidenceTarget(reference).replace(/^\$\s*/, "");
   if (/[;&|`<>]|\$\(/.test(normalized)) return false;
+  // @req FR-FLOW-231 AC-1 AC-2 — only a script the project declares, and only one named as a test.
+  const run = /^npm\s+run\s+(\S+)(?:\s|$)/.exec(normalized);
+  if (run !== null && testScripts.has(run[1] as string)) return true;
   return (
     /^npm\s+test(?:\s|$)/.test(normalized) ||
     /^npm\s+run\s+(build|typecheck|lint|test|test:integration|release:acceptance|release:check|perf:srs)(?:\s|$)/.test(normalized) ||
@@ -303,14 +331,14 @@ function satisfiesCommandEvidencePolicy(reference: string): boolean {
   );
 }
 
-export function collectCommandEvidencePolicyViolations(records: RequirementRecord[]): CommandEvidencePolicyViolation[] {
+export function collectCommandEvidencePolicyViolations(records: RequirementRecord[], testScripts: ReadonlySet<string> = new Set()): CommandEvidencePolicyViolation[] {
   const violations: CommandEvidencePolicyViolation[] = [];
   for (const record of records) {
     if (record.status !== "verified") continue;
     for (const row of record.verificationEvidence) {
       for (const reference of splitEvidenceReferences(row)) {
-        if (isCommandReference(row, reference) && !satisfiesCommandEvidencePolicy(reference)) {
-          violations.push(commandPolicyViolation(record, row, reference, "command evidence must use npm test, npm run release gates, or npx vitest run without shell operators"));
+        if (isCommandReference(row, reference) && !satisfiesCommandEvidencePolicy(reference, testScripts)) {
+          violations.push(commandPolicyViolation(record, row, reference, "command evidence must use npm test, npm run release gates, npm run with a test script the root package.json declares, or npx vitest run without shell operators"));
         }
       }
     }
@@ -760,7 +788,7 @@ export function summarizeReleaseReadiness(workspace: ParsedWorkspace, options: {
   const acCoverageGaps = collectAcCoverageGaps(records);
   const missingEvidenceReferences = collectMissingEvidenceReferences({ ...workspace, records });
   const brokenTraceLinks = collectBrokenTraceLinks(records, workspace.records);
-  const commandEvidencePolicyViolations = collectCommandEvidencePolicyViolations(records);
+  const commandEvidencePolicyViolations = collectCommandEvidencePolicyViolations(records, declaredTestScripts(workspace.root.root));
   const warnings = validation.warnings.map((diagnostic) => diagnostic.message);
   if (!target) {
     warnings.unshift("Release target is empty; provide an explicit target or set Active Target.");

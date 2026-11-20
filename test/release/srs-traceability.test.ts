@@ -112,7 +112,7 @@ describe("SRS traceability coverage", () => {
         requirementId: "FR-ARCH-001",
         evidenceId: "VE-4",
         reference: "python scripts/release.py",
-        policy: "command evidence must use npm test, npm run release gates, or npx vitest run without shell operators"
+        policy: "command evidence must use npm test, npm run release gates, npm run with a test script the root package.json declares, or npx vitest run without shell operators"
       }
     ]);
     const summary = summarizeReleaseReadiness(workspace(root, [record]));
@@ -127,7 +127,7 @@ describe("SRS traceability coverage", () => {
         requirementId: "FR-ARCH-001",
         evidenceId: "VE-4",
         reference: "python scripts/release.py",
-        policy: "command evidence must use npm test, npm run release gates, or npx vitest run without shell operators"
+        policy: "command evidence must use npm test, npm run release gates, npm run with a test script the root package.json declares, or npx vitest run without shell operators"
       }
     ]);
   });
@@ -156,7 +156,7 @@ describe("SRS traceability coverage", () => {
         requirementId: "FR-ARCH-001",
         evidenceId: "VE-1",
         reference: "npx vitest run | bash",
-        policy: "command evidence must use npm test, npm run release gates, or npx vitest run without shell operators"
+        policy: "command evidence must use npm test, npm run release gates, npm run with a test script the root package.json declares, or npx vitest run without shell operators"
       }
     ]);
   });
@@ -192,7 +192,7 @@ describe("SRS traceability coverage", () => {
         requirementId: "FR-FLOW-901",
         evidenceId: "VE-4",
         reference: "python scripts/release.py",
-        policy: "command evidence must use npm test, npm run release gates, or npx vitest run without shell operators"
+        policy: "command evidence must use npm test, npm run release gates, npm run with a test script the root package.json declares, or npx vitest run without shell operators"
       }
     ]);
     expect(summary.brokenTraceLinks).toEqual(["FR-FLOW-901 -> FR-MISSING-001"]);
