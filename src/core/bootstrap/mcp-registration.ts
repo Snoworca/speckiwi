@@ -5,7 +5,8 @@ import path from "node:path";
 //
 // Registers the SpecKiwi stdio MCP server into the project's Claude Code `.mcp.json`, idempotently:
 // create the file when absent, non-destructively merge the `speckiwi` server key into an existing
-// file (preserving all other servers and top-level keys), skip when a `speckiwi` key already exists,
+// file (preserving all other servers and top-level keys), skip when a `speckiwi` key already exists
+// (except, in a SpecKiwi checkout, the exact published launcher, which is replaced: FR-NODE-318),
 // and refuse to overwrite an unparseable file (warn instead). The global `~/.codex/config.toml` is
 // never edited (no TOML parser is bundled and clobbering a global cross-project file is unrecoverable);
 // instead a Codex remediation warning is always surfaced.
@@ -194,6 +195,16 @@ function isLauncher(value: unknown, entry: McpLauncher): boolean {
   return Array.isArray(args) && args.length === entry.args.length && args.every((arg, index) => arg === entry.args[index]);
 }
 
+/**
+ * @req FR-NODE-318 AC-3 — whether an entry already starts this checkout's entrypoint, whatever else it
+ * carries (`type`, `env`, written by hand or by an agent CLI) and however the path is spelled.
+ */
+function runsCheckout(value: unknown): boolean {
+  if (!isPlainObject(value) || value.command !== SELF_HOSTED_LAUNCHER.command || !Array.isArray(value.args)) return false;
+  const args = value.args.map((arg, index) => (index === 0 && typeof arg === "string" ? arg.replace(/^\.\//, "") : arg));
+  return args.length === SELF_HOSTED_LAUNCHER.args.length && args.every((arg, index) => arg === SELF_HOSTED_LAUNCHER.args[index]);
+}
+
 /** Writes `content` to `filePath` atomically via a sibling temp file + rename; cleans up on failure. */
 async function writeAtomic(filePath: string, content: string): Promise<void> {
   const tempPath = `${filePath}.speckiwi-tmp`;
@@ -246,6 +257,21 @@ export async function registerSpeckiwiMcp(
   }
   const servers = rawServers ?? {};
   if (Object.prototype.hasOwnProperty.call(servers, SERVER_KEY)) {
+    const current = servers[SERVER_KEY];
+    // @req FR-NODE-318 AC-1 AC-2 AC-3 AC-4 — only a self-hosting checkout looks at the entry it finds.
+    // The published launcher is the one value the tool writes for other projects, so it is replaced;
+    // anything else a person may have chosen is kept and named. Other projects skip any entry.
+    if (entry === SELF_HOSTED_LAUNCHER && !runsCheckout(current)) {
+      if (!isLauncher(current, PUBLISHED_LAUNCHER)) {
+        warnings.push(
+          `${MCP_CONFIG_FILE}: the speckiwi entry ${JSON.stringify(current)} is neither this SpecKiwi checkout's launcher nor the published launcher speckiwi writes, so it was left as written; check that it runs what this checkout builds, as ${JSON.stringify(SELF_HOSTED_LAUNCHER)} does.`
+        );
+        return { status: "skipped", filePath, warnings };
+      }
+      const next = { ...parsed, mcpServers: { ...servers, [SERVER_KEY]: entry } };
+      if (!dryRun) await writeAtomic(filePath, `${JSON.stringify(next, null, 2)}\n`);
+      return { status: "updated", filePath, warnings };
+    }
     return { status: "skipped", filePath, warnings };
   }
 
