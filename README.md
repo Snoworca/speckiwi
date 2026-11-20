@@ -141,7 +141,7 @@ A new feature or change goes through four skills: `kiwi-srs` → (`kiwi-srs-feas
 3. **`kiwi-pm --req-filter <REQ-ID,...>`** hands those requirements to one `kiwi-coder` run. `kiwi-coder` works test-first: a failing test that cites `<REQ-ID> AC-<n>`, the smallest change that passes it, then refactoring. `kiwi-pm` then marks each requirement whose criteria all have tests `implemented`.
 4. **`kiwi-review-fix-loop --close-reqs`** reviews the code. It keeps a finding only when a run proves it; a functional defect it cannot prove goes to you as a residual. It fixes the kept findings that block (a broken acceptance criterion, a reproduction on a normal path, lost data or values, a valid input refused, a security hole), and records the rest as declared limits that do not block. It promotes a requirement to `verified` once regression passes, no blocking finding or residual remains, and every acceptance criterion has a test. Otherwise it stops and asks you (`NEEDS_USER`), for example when a residual remains, when blocking findings remain at the round cap or past the token budget, or when most of them came from earlier rounds' fixes.
 
-**Every workflow that implements code ends the same way: a code review, then a test-sufficiency check.** The check runs `speckiwi coverage --tests` (MCP `check_test_sufficiency`). Every acceptance criterion in scope needs a test whose line cites `<REQ-ID> AC-<n>`. When tests are missing, one subagent adds them, once. A gap that remains keeps the requirement from becoming `verified`.
+**Every workflow that implements code ends the same way: a code review, then a test-sufficiency check.** The check runs `speckiwi coverage --tests` (MCP `check_test_sufficiency`). Every acceptance criterion in scope needs a test whose line cites `<REQ-ID> AC-<n>`. A criterion marked `[NON-TEST]` is judged instead by the non-test evidence rows whose Covers name it (`all` does not name one); only the tools add the marker, with a reason (MCP `mark_acceptance_criterion_non_test`, CLI `mark-ac-non-test`). When tests are missing, one subagent adds them, once. A gap that remains keeps the requirement from becoming `verified`.
 
 ```mermaid
 flowchart TD
@@ -329,7 +329,7 @@ docs/
 
 Requirement bodies live in `docs/spec/**/*.srs.md`, the **canonical source of truth**. Three directories hold run state, and you never edit them by hand:
 
-- **`kiwi/`** holds the SRS mutation lock while a write runs, the skills' journals `pipeline.jsonl` and `waves.jsonl`, and resume cards under `kiwi/orchestrator/<run-id>/`.
+- **`kiwi/`** holds the SRS mutation lock while a write runs, the skills' journals `pipeline.jsonl` and `waves.jsonl`, and resume cards under `kiwi/orchestrator/<run-id>/`. It also holds `kiwi/.status.json`, a status cache every change rewrites. Unless a shared ignore rule already covers it, `init` and `upgrade` add it to `.gitignore` under a SpecKiwi comment, creating the file if needed; if git already tracks it, they tell you to run `git rm --cached kiwi/.status.json`. When a rule re-includes the file, or git cannot answer (outside a work tree, for example), they add nothing and warn. `speckiwi remove` takes back only that entry.
 - **`.kiwi/`** holds per-run session state under `.kiwi/sessions/<run-id>/`, such as the `kiwi-coder` state and worklog.
 - **`docs/.kiwi/`** holds the hook runners and their trace output.
 
@@ -352,7 +352,7 @@ By default the skills and the MCP registration live in your home directory and s
 - Add `--global` to install the skills into the global directories as well.
 - The option is not remembered. Pass it on every `init` and `upgrade`. A plain `upgrade` moves the project to the global layout (see [Update a project](#en-upgrade)). A plain `init` adds the global setup but leaves the project copies in place.
 
-A checkout of SpecKiwi itself is always set up this way, with or without the option. Its `.mcp.json` runs the local `bin/speckiwi`, so the checkout tests its own build.
+A checkout of SpecKiwi itself is always set up this way, with or without the option. Its `.mcp.json` runs the local `bin/speckiwi`, so the checkout tests its own build. When that file still carries exactly the published `npx -y speckiwi mcp` entry, `init` and `upgrade` replace it with the checkout launcher; an entry that runs neither the checkout nor exactly that launcher is left as written, with a warning.
 
 ### `init` options
 
@@ -631,6 +631,10 @@ speckiwi repair requirement-id-collisions plan --duplicate-id <id> \
   --write-plan .kiwi/id-repair.json --json
 speckiwi repair requirement-id-collisions apply --plan .kiwi/id-repair.json --json
 ```
+
+`diagnose` also lists the code and test lines and the lines of the split completed-work history file that cite the duplicate ID (`codeReferences`, `historyReferences`). They are reported only and never edited, because such a line can mean either requirement. The kept block's own lines stay as they are and the renamed block's lines follow the rename; any other line naming the ID is yours to map in the plan: rewrite it with `--reference-edit` (MCP `referenceEdits`), adding `occurrence` (`"all"` or a match number) when its `from` text matches more than once on the line, or confirm it names the kept requirement with `--keep-reference` (MCP `keepReferences`).
+
+Parallel worktrees can avoid the collision: when they agree their numbers beforehand, pass the agreed free number to `add_requirement` as `requirementId` (CLI `--requirement-id`). It is checked against the current checkout only.
 
 ### Track progress and traceability
 
@@ -1141,7 +1145,7 @@ Node.js 22 이상, Git, 그리고 코딩 에이전트(Claude Code, Codex, OpenCo
 3. **`kiwi-pm --req-filter <REQ-ID,...>`**가 그 요구사항들을 `kiwi-coder` 실행 하나에 넘깁니다. `kiwi-coder`는 테스트를 먼저 씁니다. `<REQ-ID> AC-<n>`을 인용한 실패하는 테스트를 쓰고, 그 테스트를 통과하는 최소한의 변경을 한 뒤, 리팩터링합니다. 그다음 `kiwi-pm`은 모든 수용 기준에 테스트가 있는 요구사항을 `implemented`로 표시합니다.
 4. **`kiwi-review-fix-loop --close-reqs`**가 코드를 리뷰합니다. 실행으로 입증된 지적만 남기고, 입증하지 못한 기능 결함은 residual로 사용자에게 넘깁니다. 남긴 지적 중 통과를 막는 지적(수용 기준 위반, 평범한 경로에서의 재현, 데이터나 값의 손실, 맞는 입력의 거부, 보안 문제)을 고치며, 나머지는 통과를 막지 않는 선언된 한계로 기록합니다. 회귀 테스트가 통과하고, 통과를 막는 지적과 residual이 남지 않고, 모든 수용 기준에 테스트가 있으면 요구사항을 `verified`로 승격합니다. 그렇지 않으면 멈추고 사용자에게 묻습니다(`NEEDS_USER`). 예를 들어 residual이 남았을 때, 통과를 막는 지적이 남은 채 회차 상한이나 토큰 예산에 닿았을 때, 그 지적의 과반이 앞 회차의 수정에서 생겼을 때입니다.
 
-**코드를 구현하는 모든 워크플로는 같은 방식으로 끝납니다. 코드 리뷰를 한 뒤 테스트 충분성을 확인합니다.** 이 확인은 `speckiwi coverage --tests`(MCP `check_test_sufficiency`)로 합니다. 범위 안의 모든 수용 기준에는 그 줄에 `<REQ-ID> AC-<n>`을 인용한 테스트가 있어야 합니다. 테스트가 빠져 있으면 서브에이전트 하나가 한 번 채웁니다. 그래도 공백이 남으면 그 요구사항은 `verified`가 되지 못합니다.
+**코드를 구현하는 모든 워크플로는 같은 방식으로 끝납니다. 코드 리뷰를 한 뒤 테스트 충분성을 확인합니다.** 이 확인은 `speckiwi coverage --tests`(MCP `check_test_sufficiency`)로 합니다. 범위 안의 모든 수용 기준에는 그 줄에 `<REQ-ID> AC-<n>`을 인용한 테스트가 있어야 합니다. `[NON-TEST]` 표식이 붙은 수용 기준은 테스트 인용 대신, Covers에 그 기준을 지명한 비시험 증거 행으로 판정합니다(`all`은 지명으로 보지 않습니다). 표식은 도구만 사유와 함께 붙입니다(MCP `mark_acceptance_criterion_non_test`, CLI `mark-ac-non-test`). 테스트가 빠져 있으면 서브에이전트 하나가 한 번 채웁니다. 그래도 공백이 남으면 그 요구사항은 `verified`가 되지 못합니다.
 
 ```mermaid
 flowchart TD
@@ -1329,7 +1333,7 @@ docs/
 
 요구사항 본문은 `docs/spec/**/*.srs.md`에 있으며, 이 파일들이 **정본(canonical source of truth)**입니다. 실행 상태는 세 디렉터리에 있습니다. 이 디렉터리들은 직접 고치지 마십시오.
 
-- **`kiwi/`**에는 쓰기가 진행되는 동안의 SRS 변경 잠금, 스킬의 저널인 `pipeline.jsonl`과 `waves.jsonl`, 그리고 `kiwi/orchestrator/<run-id>/` 아래의 재개 카드가 있습니다.
+- **`kiwi/`**에는 쓰기가 진행되는 동안의 SRS 변경 잠금, 스킬의 저널인 `pipeline.jsonl`과 `waves.jsonl`, 그리고 `kiwi/orchestrator/<run-id>/` 아래의 재개 카드가 있습니다. 변경할 때마다 다시 쓰이는 상태 캐시 `kiwi/.status.json`도 여기에 있습니다. 공유 무시 규칙이 이미 덮고 있지 않으면 `init`과 `upgrade`가 SpecKiwi 주석 아래 `.gitignore`에 이 항목을 더하고, 파일이 없으면 만듭니다. git이 이미 추적하고 있으면 `git rm --cached kiwi/.status.json`을 실행하라고 안내합니다. 이 파일을 다시 포함하는 규칙이 있거나 git이 답하지 못하면(작업 트리 밖 등) 아무것도 더하지 않고 경고합니다. `speckiwi remove`는 그 항목만 거둡니다.
 - **`.kiwi/`**에는 `.kiwi/sessions/<run-id>/` 아래에 실행별 세션 상태가 있습니다. `kiwi-coder`의 상태와 작업 기록이 여기에 들어갑니다.
 - **`docs/.kiwi/`**에는 훅 실행기와 그 추적 출력이 있습니다.
 
@@ -1352,7 +1356,7 @@ docs/
 - 전역 디렉터리에도 스킬을 설치하려면 `--global`을 함께 주십시오.
 - 이 옵션은 기억되지 않으므로 `init`과 `upgrade`를 실행할 때마다 주어야 합니다. 옵션 없이 `upgrade`를 실행하면 프로젝트가 전역 구성으로 옮겨집니다([프로젝트 업데이트](#ko-upgrade) 참조). 옵션 없이 `init`을 실행하면 전역 설정을 추가하지만, 프로젝트 사본은 그대로 둡니다.
 
-SpecKiwi 자체의 체크아웃은 이 옵션과 관계없이 항상 이 방식으로 설정됩니다. 그 체크아웃의 `.mcp.json`은 로컬 `bin/speckiwi`를 실행하므로, 체크아웃이 자기 빌드를 시험하게 됩니다.
+SpecKiwi 자체의 체크아웃은 이 옵션과 관계없이 항상 이 방식으로 설정됩니다. 그 체크아웃의 `.mcp.json`은 로컬 `bin/speckiwi`를 실행하므로, 체크아웃이 자기 빌드를 시험하게 됩니다. 그 파일에 배포판 `npx -y speckiwi mcp` 항목이 그대로 남아 있으면 `init`과 `upgrade`가 체크아웃 실행기로 바꿉니다. 체크아웃을 실행하지도 않고 그 배포판 항목과 정확히 같지도 않은 항목은 그대로 두고 경고합니다.
 
 ### `init` 옵션
 
@@ -1631,6 +1635,10 @@ speckiwi repair requirement-id-collisions plan --duplicate-id <id> \
   --write-plan .kiwi/id-repair.json --json
 speckiwi repair requirement-id-collisions apply --plan .kiwi/id-repair.json --json
 ```
+
+`diagnose`는 중복 ID를 인용한 코드·테스트 줄과 분리된 완료 이력 파일의 줄도 함께 보여 줍니다(`codeReferences`, `historyReferences`). 이런 줄은 어느 요구사항을 뜻하는지 알 수 없으므로 보고만 하고 고치지 않습니다. 유지하는 블록 안의 줄은 그대로 두고, 이름을 바꾸는 블록 안의 줄은 새 ID를 따라갑니다. 그 밖에 ID를 적은 줄은 계획에서 직접 정합니다. `--reference-edit`(MCP `referenceEdits`)로 고치되, 그 줄에서 `from` 문자열이 여러 번 맞으면 `occurrence`(`"all"` 또는 몇 번째인지)를 줍니다. 유지하는 요구사항을 가리키는 줄이면 `--keep-reference`(MCP `keepReferences`)로 확인합니다.
+
+병렬 워크트리는 충돌을 미리 피할 수 있습니다. 번호를 미리 합의했다면 합의한 빈 번호를 `add_requirement`의 `requirementId`(CLI `--requirement-id`)로 넘깁니다. 이 번호는 현재 체크아웃 안에서만 확인합니다.
 
 ### 진행 상황과 추적성
 
