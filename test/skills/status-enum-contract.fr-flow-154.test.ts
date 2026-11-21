@@ -801,6 +801,10 @@ const TOOL_AXIS_NON_VALUES = [
   "fence",
   "finding",
   "freeze-route",
+  // FR-FLOW-235: the readiness snapshot is built from `speckiwi list --format=full --json`, so the
+  // projection value stands beside that call as `compact` does, and the command that writes the
+  // snapshot names its transport discriminator there. Neither is a lifecycle value.
+  "full",
   "lifecycle_override",
   "line",
   "lock",
@@ -831,6 +835,7 @@ const TOOL_AXIS_NON_VALUES = [
   "sha1",
   "skip",
   "speckiwi",
+  "speckiwi-list-json",
   "state",
   "string",
   "t_final_dryrun_only",
@@ -1083,9 +1088,11 @@ const TOOL_AXIS_SURFACES_IN_USE: Record<string, readonly string[]> = {
   // `search_requirements` joined with FR-FLOW-199 AC-3 · AC-7: kiwi-bug-repro looks up the requirements
   // a reported symptom touches, so it can tell a bug from specified behaviour.
   "skills/claude": ["add_requirement", "list_requirements", "search_requirements", "speckiwi list", "update_stability", "update_status"],
-  "skills/codex": ["add_requirement", "list_requirements", "search_requirements", "update_stability", "update_status"],
-  "skills/etc": ["add_requirement", "list_requirements", "search_requirements", "update_stability", "update_status"],
-  ".agents/skills": ["add_requirement", "list_requirements", "search_requirements", "update_stability", "update_status"]
+  // FR-FLOW-235: kiwi-orchestrator §V.derive-readiness cites `speckiwi list` in every rendering, so
+  // the read joins codex, etc and the mirror too.
+  "skills/codex": ["add_requirement", "list_requirements", "search_requirements", "speckiwi list", "update_stability", "update_status"],
+  "skills/etc": ["add_requirement", "list_requirements", "search_requirements", "speckiwi list", "update_stability", "update_status"],
+  ".agents/skills": ["add_requirement", "list_requirements", "search_requirements", "speckiwi list", "update_stability", "update_status"]
 };
 
 /**
@@ -3467,6 +3474,7 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       "fence",
       "finding",
       "freeze-route",
+      "full",
       "lifecycle_override",
       "line",
       "lock",
@@ -3490,6 +3498,7 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
       "sha1",
       "skip",
       "speckiwi",
+      "speckiwi-list-json",
       "state",
       "string",
       "t_final_dryrun_only",
@@ -3536,9 +3545,9 @@ describe("FR-FLOW-154 AC-1 — every value beside a lifecycle call names somethi
     });
     expect(TOOL_AXIS_SURFACES_IN_USE, "the lifecycle surfaces the shipped text writes a value beside").toEqual({
       "skills/claude": ["add_requirement", "list_requirements", "search_requirements", "speckiwi list", "update_stability", "update_status"],
-      "skills/codex": ["add_requirement", "list_requirements", "search_requirements", "update_stability", "update_status"],
-      "skills/etc": ["add_requirement", "list_requirements", "search_requirements", "update_stability", "update_status"],
-      ".agents/skills": ["add_requirement", "list_requirements", "search_requirements", "update_stability", "update_status"]
+      "skills/codex": ["add_requirement", "list_requirements", "search_requirements", "speckiwi list", "update_stability", "update_status"],
+      "skills/etc": ["add_requirement", "list_requirements", "search_requirements", "speckiwi list", "update_stability", "update_status"],
+      ".agents/skills": ["add_requirement", "list_requirements", "search_requirements", "speckiwi list", "update_stability", "update_status"]
     });
     // Derived, and derived to something: a CLI whose subcommand names stopped declaring a
     // requirement status would leave the CLI half of the axis anchored on nothing at all.

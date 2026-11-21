@@ -5,7 +5,7 @@ import {
   type RequirementStatus,
   type Stability
 } from "../types.js";
-import { requirementDependencyIds } from "../requirement-dependency.js";
+import { isDependsOnRelation, requirementDependencyIds } from "../requirement-dependency.js";
 
 /**
  * Requirement readiness — harvest H3 from the deferred multi-root branch's
@@ -134,7 +134,14 @@ export type SnapshotPayload =
   };
 
 /** A refused requirement; `invalidBecause` names why its snapshot was not trusted. @req FR-NODE-298 */
-export type NotReadyRequirement = DerivedRequirementReadiness & { readonly invalidBecause?: readonly SnapshotInvalidCause[] };
+export type NotReadyRequirement = DerivedRequirementReadiness & {
+  readonly invalidBecause?: readonly SnapshotInvalidCause[];
+  /**
+   * Dependency ids, direct or behind a dependency the snapshot holds, that the snapshot does not hold.
+   * Not a cause: such a snapshot is valid but incomplete. @req FR-NODE-321 AC-6
+   */
+  readonly missingDependencies?: readonly string[];
+};
 
 export class RequirementNotReadyError extends Error {
   /** §13's critical gate raised at Phase 3.c′ when derived readiness refuses the dispatch. */
@@ -197,55 +204,81 @@ function countsOf(value: unknown, what: string): Record<string, number> {
   return counts;
 }
 
+/** A string, empty allowed: a cell the workspace parser read as blank. */
+function textOf(value: unknown, what: string): string {
+  if (typeof value !== "string") malformed(what);
+  return value;
+}
+
+/**
+ * Where a refused record sits, so the refusal names it: the requirement id (or the record's position
+ * when it has none), its file and heading line. Read leniently, because it describes a record that
+ * is about to be refused. @req FR-NODE-321 AC-5
+ */
+function recordLocation(raw: Record<string, unknown>, position: number): string {
+  const id = typeof raw.id === "string" && raw.id.trim() !== "" ? raw.id : `record ${position}`;
+  if (typeof raw.filePath !== "string") return id;
+  return `${id} (${raw.filePath}${typeof raw.headingLine === "number" ? `:${raw.headingLine}` : ""})`;
+}
+
 /**
  * Builds the record from the fields this module reads and no others. Anything else the transport
  * carried — including a readiness boolean a caller attached — does not survive parsing, which is
  * what makes self-attestation structurally impossible rather than merely ignored.
  */
-function parseRecord(value: unknown): SpecRequirementRecord {
-  const raw = objectOf(value, "requirement record");
-  const status = stringOf(raw.status, "requirement status");
-  if (!(REQUIREMENT_STATUSES as readonly string[]).includes(status)) malformed(`unknown status ${status}`);
-  const stability = stringOf(raw.stability, "requirement stability");
-  if (!(STABILITY_LEVELS as readonly string[]).includes(stability)) malformed(`unknown stability ${stability}`);
+function parseRecord(value: unknown, index: number): SpecRequirementRecord {
+  const raw = objectOf(value, `requirement record ${index + 1}`);
+  const where = recordLocation(raw, index + 1);
+  const at = (what: string): string => `${where}: ${what}`;
+  const status = stringOf(raw.status, at("requirement status"));
+  if (!(REQUIREMENT_STATUSES as readonly string[]).includes(status)) malformed(at(`unknown status ${status}`));
+  const stability = stringOf(raw.stability, at("requirement stability"));
+  if (!(STABILITY_LEVELS as readonly string[]).includes(stability)) malformed(at(`unknown stability ${stability}`));
 
-  const filePath = optionalString(raw.filePath, "requirement filePath");
-  const headingLine = optionalInteger(raw.headingLine, "requirement headingLine");
-  const blockEndLine = optionalInteger(raw.blockEndLine, "requirement blockEndLine");
+  const filePath = optionalString(raw.filePath, at("requirement filePath"));
+  const headingLine = optionalInteger(raw.headingLine, at("requirement headingLine"));
+  const blockEndLine = optionalInteger(raw.blockEndLine, at("requirement blockEndLine"));
   const expiredIds = raw.expiredAcceptanceCriteria === undefined
     ? []
-    : arrayOf(raw.expiredAcceptanceCriteria, "expiredAcceptanceCriteria").map((entry) =>
-      stringOf(objectOf(entry, "expired acceptance criterion").id, "expired acceptance criterion id"));
+    : arrayOf(raw.expiredAcceptanceCriteria, at("expiredAcceptanceCriteria")).map((entry) =>
+      stringOf(objectOf(entry, at("expired acceptance criterion")).id, at("expired acceptance criterion id")));
 
   return {
-    id: stringOf(raw.id, "requirement id"),
-    target: stringOf(raw.target, "requirement target"),
+    id: stringOf(raw.id, at("requirement id")),
+    target: stringOf(raw.target, at("requirement target")),
     status: status as RequirementStatus,
     stability: stability as Stability,
-    acceptanceCriteria: arrayOf(raw.acceptanceCriteria, "acceptanceCriteria").map((entry) => {
-      const criterion = objectOf(entry, "acceptance criterion");
-      if (typeof criterion.checked !== "boolean") malformed("acceptance criterion checked");
-      return { id: stringOf(criterion.id, "acceptance criterion id"), checked: criterion.checked };
+    acceptanceCriteria: arrayOf(raw.acceptanceCriteria, at("acceptanceCriteria")).map((entry) => {
+      const criterion = objectOf(entry, at("acceptance criterion"));
+      if (typeof criterion.checked !== "boolean") malformed(at("acceptance criterion checked"));
+      return { id: stringOf(criterion.id, at("acceptance criterion id")), checked: criterion.checked };
     }),
-    verificationEvidence: arrayOf(raw.verificationEvidence, "verificationEvidence").map((entry) => {
-      const row = objectOf(entry, "verification evidence row");
-      const type = optionalString(row.type, "evidence type");
-      const notes = optionalString(row.notes, "evidence notes");
+    verificationEvidence: arrayOf(raw.verificationEvidence, at("verificationEvidence")).map((entry) => {
+      const row = objectOf(entry, at("verification evidence row"));
+      // @req FR-NODE-321 AC-4 — blank Type and Notes cells are accepted, as the other cells of the row are.
+      const type = row.type === undefined || row.type === null ? undefined : textOf(row.type, at("evidence type"));
+      const notes = row.notes === undefined || row.notes === null ? undefined : textOf(row.notes, at("evidence notes"));
       return {
-        id: typeof row.id === "string" ? row.id : malformed("evidence id"),
-        covers: typeof row.covers === "string" ? row.covers : malformed("evidence covers"),
-        reference: typeof row.reference === "string" ? row.reference : malformed("evidence reference"),
+        id: textOf(row.id, at("evidence id")),
+        covers: textOf(row.covers, at("evidence covers")),
+        reference: textOf(row.reference, at("evidence reference")),
         ...(type === undefined ? {} : { type }),
         ...(notes === undefined ? {} : { notes })
       };
     }),
-    traceLinks: arrayOf(raw.traceLinks, "traceLinks").map((entry) => {
-      const row = objectOf(entry, "trace link row");
-      return {
-        type: stringOf(row.type, "trace link type"),
-        reference: stringOf(row.reference, "trace link reference"),
-        relation: stringOf(row.relation, "trace link relation")
+    traceLinks: arrayOf(raw.traceLinks, at("traceLinks")).map((entry, rowIndex) => {
+      const row = objectOf(entry, at(`trace link row ${rowIndex + 1}`));
+      const rowAt = (what: string): string =>
+        at(`trace link row ${typeof row.line === "number" ? `at line ${row.line}` : rowIndex + 1}: ${what}`);
+      // @req FR-NODE-321 AC-4 — a blank cell is accepted, as an evidence row's blank cells are; only a
+      // depends_on row with no reference is refused, because that is a dependency the cell lost.
+      const link = {
+        type: textOf(row.type, rowAt("type")),
+        reference: textOf(row.reference, rowAt("reference")),
+        relation: textOf(row.relation, rowAt("relation"))
       };
+      if (isDependsOnRelation(link) && link.reference.trim() === "") malformed(rowAt("a depends_on row has an empty reference"));
+      return link;
     }),
     ...(expiredIds.length === 0 ? {} : { expiredAcceptanceCriterionIds: expiredIds }),
     ...(filePath === undefined ? {} : { filePath }),
@@ -608,12 +641,35 @@ export interface SnapshotInvalidCause {
   readonly count?: number;
   /** The message of the first diagnostic of this code. */
   readonly message?: string;
+  /** `unowned-warning`: where the first diagnostic of this code points, and why nothing owns it. @req FR-NODE-321 AC-3 */
+  readonly filePath?: string;
+  readonly line?: number;
+  readonly hint?: string;
 }
 
 function causesByCode(cause: SnapshotInvalidCause["cause"], diagnostics: readonly ReadinessDiagnostic[]): SnapshotInvalidCause[] {
   const groups = new Map<string, ReadinessDiagnostic[]>();
   for (const item of diagnostics) groups.set(item.code, [...(groups.get(item.code) ?? []), item]);
   return [...groups].map(([code, items]) => ({ cause, code, count: items.length, message: items[0]!.message }));
+}
+
+/**
+ * An unowned warning that points at a place names it, and says that the snapshot holds no record
+ * there: a snapshot of one target lacks the block of another target the warning sits in.
+ * @req FR-NODE-321 AC-3
+ */
+function unownedCauses(diagnostics: readonly ReadinessDiagnostic[]): SnapshotInvalidCause[] {
+  return causesByCode("unowned-warning", diagnostics).map((cause) => {
+    const first = diagnostics.find((item) => item.code === cause.code)!;
+    if (first.filePath === undefined) return cause;
+    const at = first.line === undefined ? first.filePath : `${first.filePath}:${first.line}`;
+    return {
+      ...cause,
+      filePath: first.filePath,
+      ...(first.line === undefined ? {} : { line: first.line }),
+      hint: `The snapshot holds no record at ${at}, so no requirement owns this warning. If a requirement block is there, build the snapshot from the whole repository (speckiwi list --format=full --json); otherwise fix the warning there.`
+    };
+  });
 }
 
 /**
@@ -650,7 +706,7 @@ function judgeSnapshot(
       : []),
     ...(fields.length > 0 ? [{ cause: "summary-contradicts-records" as const, fields }] : []),
     ...causesByCode("error-diagnostic", snapshot.diagnostics.filter((item) => item.severity === "error")),
-    ...causesByCode("unowned-warning", unowned)
+    ...unownedCauses(unowned)
   ];
   return {
     global,
@@ -662,7 +718,11 @@ function judgedReadiness(
   snapshot: RequirementSnapshot,
   target: string,
   requirementIds: readonly string[]
-): { derived: DerivedRequirementReadiness[]; causesOf: (id: string) => SnapshotInvalidCause[] } {
+): {
+  derived: DerivedRequirementReadiness[];
+  causesOf: (id: string) => SnapshotInvalidCause[];
+  missingOf: (id: string) => string[];
+} {
   if (!target.trim()) throw new Error("A target is required for canonical readiness derivation");
   if (requirementIds.length === 0 || !sameStringSet(requirementIds, [...new Set(requirementIds)])) {
     throw new Error("Canonical readiness requires a non-empty, duplicate-free requirement allowlist");
@@ -711,7 +771,22 @@ function judgedReadiness(
       ownershipVerified: !invalid && occurrences.length === 1 && record.target === target
     }];
   });
-  return { derived, causesOf };
+  // @req FR-NODE-321 AC-6 — the ids a dependency walk meets that no record answers.
+  const missingOf = (id: string): string[] => {
+    const missing: string[] = [];
+    const seen = new Set<string>();
+    const walk = (current: string): void => {
+      for (const dependencyId of hardDependencyIds(deterministicOccurrence(byId.get(current)!))) {
+        if (seen.has(dependencyId)) continue;
+        seen.add(dependencyId);
+        if (!byId.has(dependencyId)) missing.push(dependencyId);
+        else walk(dependencyId);
+      }
+    };
+    if (byId.has(id)) walk(id);
+    return missing;
+  };
+  return { derived, causesOf, missingOf };
 }
 
 /**
@@ -724,14 +799,19 @@ export function assertRequirementsReady(
   target: string,
   requirementIds: readonly string[]
 ): DerivedRequirementReadiness[] {
-  const { derived, causesOf } = judgedReadiness(snapshot, target, requirementIds);
+  const { derived, causesOf, missingOf } = judgedReadiness(snapshot, target, requirementIds);
   const resolved = new Set(derived.map((entry) => entry.id));
   const unresolved = requirementIds.filter((id) => !resolved.has(id));
   const notReady = derived
     .filter((entry) => !entry.hardDependenciesSatisfied || entry.evidenceDrift || !entry.ownershipVerified)
     .map((entry): NotReadyRequirement => {
       const causes = causesOf(entry.id);
-      return causes.length > 0 ? { ...entry, invalidBecause: causes } : entry;
+      const missing = missingOf(entry.id);
+      return {
+        ...entry,
+        ...(causes.length > 0 ? { invalidBecause: causes } : {}),
+        ...(missing.length > 0 ? { missingDependencies: missing } : {})
+      };
     });
   if (notReady.length > 0 || unresolved.length > 0) throw new RequirementNotReadyError(notReady, unresolved);
   return derived;

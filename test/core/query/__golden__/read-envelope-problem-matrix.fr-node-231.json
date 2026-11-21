@@ -401,7 +401,8 @@
       "severity": "warning",
       "message": "Rationale section missing for FR-ARCH-701",
       "filePath": "docs/spec/10.product-architecture.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "FR-ARCH-701"
     },
     {
       "code": "SRS-E010",
@@ -415,28 +416,32 @@
       "severity": "warning",
       "message": "Rationale section missing for FR-ARCH-705",
       "filePath": "docs/spec/10.product-architecture.srs.md",
-      "line": 34
+      "line": 34,
+      "requirementId": "FR-ARCH-705"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for REL-PARSE-701",
       "filePath": "docs/spec/20.parser-validation.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "REL-PARSE-701"
     },
     {
       "code": "SRS-W002",
       "severity": "warning",
       "message": "Target is not registered: v9.9.9",
       "filePath": "docs/spec/20.parser-validation.srs.md",
-      "line": 38
+      "line": 38,
+      "requirementId": "FR-PARSE-707"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-PARSE-707",
       "filePath": "docs/spec/20.parser-validation.srs.md",
-      "line": 38
+      "line": 38,
+      "requirementId": "FR-PARSE-707"
     },
     {
       "code": "SRS-E012",
@@ -450,7 +455,8 @@
       "severity": "warning",
       "message": "Rationale section missing for FR-PARSE-713",
       "filePath": "docs/spec/20.parser-validation.srs.md",
-      "line": 72
+      "line": 72,
+      "requirementId": "FR-PARSE-713"
     },
     {
       "code": "SRS-E003",
@@ -478,28 +484,32 @@
       "severity": "warning",
       "message": "Rationale section missing for FR-CLI-702",
       "filePath": "docs/spec/30.cli-interface.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "FR-CLI-702"
     },
     {
       "code": "SRS-W009",
       "severity": "warning",
       "message": "Frozen target requirement changed without Change Notes: FR-CLI-709",
       "filePath": "docs/spec/30.cli-interface.srs.md",
-      "line": 31
+      "line": 31,
+      "requirementId": "FR-CLI-709"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-CLI-709",
       "filePath": "docs/spec/30.cli-interface.srs.md",
-      "line": 31
+      "line": 31,
+      "requirementId": "FR-CLI-709"
     },
     {
       "code": "SRS-W008",
       "severity": "warning",
       "message": "High risk requirement lacks Research / Analysis: FR-CLI-709",
       "filePath": "docs/spec/30.cli-interface.srs.md",
-      "line": 31
+      "line": 31,
+      "requirementId": "FR-CLI-709"
     },
     {
       "code": "SRS-E004",
@@ -513,21 +523,24 @@
       "severity": "warning",
       "message": "Rationale section missing for REL-MCP-703",
       "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "REL-MCP-703"
     },
     {
       "code": "SRS-W023",
       "severity": "warning",
       "message": "Draft requirement is not ready as an implementation contract: FR-MCP-710",
       "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
-      "line": 34
+      "line": 34,
+      "requirementId": "FR-MCP-710"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-MCP-710",
       "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
-      "line": 34
+      "line": 34,
+      "requirementId": "FR-MCP-710"
     },
     {
       "code": "SRS-E005",
@@ -562,7 +575,8 @@
       "severity": "warning",
       "message": "Rationale section missing for FR-NODE-704",
       "filePath": "docs/spec/50.nodejs-implementation.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "FR-NODE-704"
     },
     {
       "code": "SRS-E033",
@@ -576,21 +590,24 @@
       "severity": "warning",
       "message": "Rationale section missing for FR-NODE-711",
       "filePath": "docs/spec/50.nodejs-implementation.srs.md",
-      "line": 34
+      "line": 34,
+      "requirementId": "FR-NODE-711"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-NODE-714",
       "filePath": "docs/spec/50.nodejs-implementation.srs.md",
-      "line": 64
+      "line": 64,
+      "requirementId": "FR-NODE-714"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for REL-PARSE-701",
       "filePath": "docs/spec/60.workflow-release.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "REL-PARSE-701"
     },
     {
       "code": "SRS-E012",
@@ -604,28 +621,32 @@
       "severity": "warning",
       "message": "Rationale section missing for FR-FLOW-706",
       "filePath": "docs/spec/60.workflow-release.srs.md",
-      "line": 38
+      "line": 38,
+      "requirementId": "FR-FLOW-706"
     },
     {
       "code": "SRS-W022",
       "severity": "warning",
       "message": "Legacy volatile stability should be migrated: FR-FLOW-712",
       "filePath": "docs/spec/60.workflow-release.srs.md",
-      "line": 68
+      "line": 68,
+      "requirementId": "FR-FLOW-712"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-FLOW-712",
       "filePath": "docs/spec/60.workflow-release.srs.md",
-      "line": 68
+      "line": 68,
+      "requirementId": "FR-FLOW-712"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-FLOW-715",
       "filePath": "docs/spec/60.workflow-release.srs.md",
-      "line": 97
+      "line": 97,
+      "requirementId": "FR-FLOW-715"
     },
     {
       "code": "SRS-E015",
@@ -639,21 +660,24 @@
       "severity": "warning",
       "message": "Rationale section missing for FR-EXTRA-708",
       "filePath": "docs/spec/70.unregistered-extra.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "FR-EXTRA-708"
     },
     {
       "code": "SRS-W008",
       "severity": "warning",
       "message": "High risk requirement lacks Research / Analysis: FR-ARCH-802",
       "filePath": "docs/spec/71.stress-targets.srs.md",
-      "line": 42
+      "line": 42,
+      "requirementId": "FR-ARCH-802"
     },
     {
       "code": "SRS-W002",
       "severity": "warning",
       "message": "Target is not registered: v9.9.9",
       "filePath": "docs/spec/71.stress-targets.srs.md",
-      "line": 75
+      "line": 75,
+      "requirementId": "FR-ARCH-803"
     },
     {
       "code": "SRS-E008",
@@ -695,7 +719,8 @@
       "severity": "warning",
       "message": "Draft requirement is not ready as an implementation contract: FR-MCP-807",
       "filePath": "docs/spec/73.stress-lifecycle.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "FR-MCP-807"
     },
     {
       "code": "SRS-E033",
@@ -709,14 +734,16 @@
       "severity": "warning",
       "message": "Frozen target requirement changed without Change Notes: FR-MCP-809",
       "filePath": "docs/spec/73.stress-lifecycle.srs.md",
-      "line": 72
+      "line": 72,
+      "requirementId": "FR-MCP-809"
     },
     {
       "code": "SRS-W008",
       "severity": "warning",
       "message": "High risk requirement lacks Research / Analysis: FR-MCP-809",
       "filePath": "docs/spec/73.stress-lifecycle.srs.md",
-      "line": 72
+      "line": 72,
+      "requirementId": "FR-MCP-809"
     },
     {
       "code": "SRS-E012",
@@ -737,7 +764,8 @@
       "severity": "warning",
       "message": "Rationale section missing for FR-NODE-813",
       "filePath": "docs/spec/75.stress-table-shape.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "FR-NODE-813"
     },
     {
       "code": "SRS-E008",
@@ -1414,196 +1442,224 @@
       "severity": "warning",
       "message": "Rationale section missing for FR-ARCH-701",
       "filePath": "docs/spec/10.product-architecture.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "FR-ARCH-701"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-ARCH-705",
       "filePath": "docs/spec/10.product-architecture.srs.md",
-      "line": 34
+      "line": 34,
+      "requirementId": "FR-ARCH-705"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for REL-PARSE-701",
       "filePath": "docs/spec/20.parser-validation.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "REL-PARSE-701"
     },
     {
       "code": "SRS-W002",
       "severity": "warning",
       "message": "Target is not registered: v9.9.9",
       "filePath": "docs/spec/20.parser-validation.srs.md",
-      "line": 38
+      "line": 38,
+      "requirementId": "FR-PARSE-707"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-PARSE-707",
       "filePath": "docs/spec/20.parser-validation.srs.md",
-      "line": 38
+      "line": 38,
+      "requirementId": "FR-PARSE-707"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-PARSE-713",
       "filePath": "docs/spec/20.parser-validation.srs.md",
-      "line": 72
+      "line": 72,
+      "requirementId": "FR-PARSE-713"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-CLI-702",
       "filePath": "docs/spec/30.cli-interface.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "FR-CLI-702"
     },
     {
       "code": "SRS-W009",
       "severity": "warning",
       "message": "Frozen target requirement changed without Change Notes: FR-CLI-709",
       "filePath": "docs/spec/30.cli-interface.srs.md",
-      "line": 31
+      "line": 31,
+      "requirementId": "FR-CLI-709"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-CLI-709",
       "filePath": "docs/spec/30.cli-interface.srs.md",
-      "line": 31
+      "line": 31,
+      "requirementId": "FR-CLI-709"
     },
     {
       "code": "SRS-W008",
       "severity": "warning",
       "message": "High risk requirement lacks Research / Analysis: FR-CLI-709",
       "filePath": "docs/spec/30.cli-interface.srs.md",
-      "line": 31
+      "line": 31,
+      "requirementId": "FR-CLI-709"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for REL-MCP-703",
       "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "REL-MCP-703"
     },
     {
       "code": "SRS-W023",
       "severity": "warning",
       "message": "Draft requirement is not ready as an implementation contract: FR-MCP-710",
       "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
-      "line": 34
+      "line": 34,
+      "requirementId": "FR-MCP-710"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-MCP-710",
       "filePath": "docs/spec/40.mcp-stdio-interface.srs.md",
-      "line": 34
+      "line": 34,
+      "requirementId": "FR-MCP-710"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-NODE-704",
       "filePath": "docs/spec/50.nodejs-implementation.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "FR-NODE-704"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-NODE-711",
       "filePath": "docs/spec/50.nodejs-implementation.srs.md",
-      "line": 34
+      "line": 34,
+      "requirementId": "FR-NODE-711"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-NODE-714",
       "filePath": "docs/spec/50.nodejs-implementation.srs.md",
-      "line": 64
+      "line": 64,
+      "requirementId": "FR-NODE-714"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for REL-PARSE-701",
       "filePath": "docs/spec/60.workflow-release.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "REL-PARSE-701"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-FLOW-706",
       "filePath": "docs/spec/60.workflow-release.srs.md",
-      "line": 38
+      "line": 38,
+      "requirementId": "FR-FLOW-706"
     },
     {
       "code": "SRS-W022",
       "severity": "warning",
       "message": "Legacy volatile stability should be migrated: FR-FLOW-712",
       "filePath": "docs/spec/60.workflow-release.srs.md",
-      "line": 68
+      "line": 68,
+      "requirementId": "FR-FLOW-712"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-FLOW-712",
       "filePath": "docs/spec/60.workflow-release.srs.md",
-      "line": 68
+      "line": 68,
+      "requirementId": "FR-FLOW-712"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-FLOW-715",
       "filePath": "docs/spec/60.workflow-release.srs.md",
-      "line": 97
+      "line": 97,
+      "requirementId": "FR-FLOW-715"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-EXTRA-708",
       "filePath": "docs/spec/70.unregistered-extra.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "FR-EXTRA-708"
     },
     {
       "code": "SRS-W008",
       "severity": "warning",
       "message": "High risk requirement lacks Research / Analysis: FR-ARCH-802",
       "filePath": "docs/spec/71.stress-targets.srs.md",
-      "line": 42
+      "line": 42,
+      "requirementId": "FR-ARCH-802"
     },
     {
       "code": "SRS-W002",
       "severity": "warning",
       "message": "Target is not registered: v9.9.9",
       "filePath": "docs/spec/71.stress-targets.srs.md",
-      "line": 75
+      "line": 75,
+      "requirementId": "FR-ARCH-803"
     },
     {
       "code": "SRS-W023",
       "severity": "warning",
       "message": "Draft requirement is not ready as an implementation contract: FR-MCP-807",
       "filePath": "docs/spec/73.stress-lifecycle.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "FR-MCP-807"
     },
     {
       "code": "SRS-W009",
       "severity": "warning",
       "message": "Frozen target requirement changed without Change Notes: FR-MCP-809",
       "filePath": "docs/spec/73.stress-lifecycle.srs.md",
-      "line": 72
+      "line": 72,
+      "requirementId": "FR-MCP-809"
     },
     {
       "code": "SRS-W008",
       "severity": "warning",
       "message": "High risk requirement lacks Research / Analysis: FR-MCP-809",
       "filePath": "docs/spec/73.stress-lifecycle.srs.md",
-      "line": 72
+      "line": 72,
+      "requirementId": "FR-MCP-809"
     },
     {
       "code": "SRS-W001",
       "severity": "warning",
       "message": "Rationale section missing for FR-NODE-813",
       "filePath": "docs/spec/75.stress-table-shape.srs.md",
-      "line": 5
+      "line": 5,
+      "requirementId": "FR-NODE-813"
     },
     {
       "code": "SRS-W041",

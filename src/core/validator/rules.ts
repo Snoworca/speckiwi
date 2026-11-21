@@ -796,7 +796,7 @@ export function registerDefaultRules(): void {
         diagnostics.push(diagnostic("SRS-E011", "error", `Invalid stability for ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
       }
       if (record.stability && isLegacyStabilityValue(record.stability)) {
-        diagnostics.push(diagnostic("SRS-W022", "warning", `Legacy volatile stability should be migrated: ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
+        diagnostics.push(diagnostic("SRS-W022", "warning", `Legacy volatile stability should be migrated: ${record.id}`, { filePath: record.filePath, line: record.headingLine, requirementId: record.id }));
       }
       if (record.status === "verified" && record.stability === "draft") {
         diagnostics.push(diagnostic("SRS-E033", "error", `Verified requirement uses draft stability: ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
@@ -804,12 +804,13 @@ export function registerDefaultRules(): void {
         diagnostics.push(
           diagnostic("SRS-W023", "warning", `Draft requirement is not ready as an implementation contract: ${record.id}`, {
             filePath: record.filePath,
-            line: record.headingLine
+            line: record.headingLine,
+            requirementId: record.id
           })
         );
       }
       if (record.stability === "frozen" && record.status !== "discarded" && !hasExplicitChangeNote(record)) {
-        diagnostics.push(diagnostic("SRS-W009", "warning", `Frozen target requirement changed without Change Notes: ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
+        diagnostics.push(diagnostic("SRS-W009", "warning", `Frozen target requirement changed without Change Notes: ${record.id}`, { filePath: record.filePath, line: record.headingLine, requirementId: record.id }));
       }
       if (record.acceptanceCriteria.length === 0) {
         diagnostics.push(diagnostic("SRS-E008", "error", `Acceptance Criteria missing for ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
@@ -866,8 +867,9 @@ export function registerDefaultRules(): void {
           })
         );
       }
+      // @req FR-NODE-321 AC-1 — the record-level warnings name their block, so readiness can tell whose they are.
       if (record.target && !targets.has(record.target)) {
-        diagnostics.push(diagnostic("SRS-W002", "warning", `Target is not registered: ${record.target}`, { filePath: record.filePath, line: record.headingLine }));
+        diagnostics.push(diagnostic("SRS-W002", "warning", `Target is not registered: ${record.target}`, { filePath: record.filePath, line: record.headingLine, requirementId: record.id }));
       }
       if (record.scope && !scopes.has(record.scope)) {
         diagnostics.push(diagnostic("SRS-E015", "error", `Scope prefix is not registered: ${record.scope}`, { filePath: record.filePath, line: record.headingLine }));
@@ -876,10 +878,10 @@ export function registerDefaultRules(): void {
       // thing a later reader cannot reconstruct from the statement. Reported at the heading line,
       // because the absent section has no line of its own.
       if (record.sectionLines?.Rationale === undefined) {
-        diagnostics.push(diagnostic("SRS-W001", "warning", `Rationale section missing for ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
+        diagnostics.push(diagnostic("SRS-W001", "warning", `Rationale section missing for ${record.id}`, { filePath: record.filePath, line: record.headingLine, requirementId: record.id }));
       }
       if ((record.risk === "high" || record.risk === "critical") && !record.markdown?.includes("#### Research / Analysis")) {
-        diagnostics.push(diagnostic("SRS-W008", "warning", `High risk requirement lacks Research / Analysis: ${record.id}`, { filePath: record.filePath, line: record.headingLine }));
+        diagnostics.push(diagnostic("SRS-W008", "warning", `High risk requirement lacks Research / Analysis: ${record.id}`, { filePath: record.filePath, line: record.headingLine, requirementId: record.id }));
       }
     }
     for (const scope of workspace.index.scopes) {

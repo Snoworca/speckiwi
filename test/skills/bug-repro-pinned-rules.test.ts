@@ -572,7 +572,7 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
     },
     "kiwi-orchestrator §V.derive-readiness": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "8cb11f918d6eaab8"
+      "digest": "7ea6d5fa0562bbf4"
     },
     "kiwi-orchestrator §V.promote-requirements": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -622,7 +622,7 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
     },
     "kiwi-orchestrator §V.derive-readiness": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "8cb11f918d6eaab8"
+      "digest": "7ea6d5fa0562bbf4"
     },
     "kiwi-orchestrator §V.promote-requirements": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -676,7 +676,7 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
     },
     "kiwi-orchestrator §V.derive-readiness": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "8cb11f918d6eaab8"
+      "digest": "7ea6d5fa0562bbf4"
     },
     "kiwi-orchestrator §V.promote-requirements": {
       "file": "kiwi-orchestrator/SKILL.md",
@@ -730,7 +730,7 @@ const SECTION_DIGESTS: Readonly<Record<string, Readonly<Record<string, { readonl
     },
     "kiwi-orchestrator §V.derive-readiness": {
       "file": "kiwi-orchestrator/SKILL.md",
-      "digest": "8cb11f918d6eaab8"
+      "digest": "7ea6d5fa0562bbf4"
     },
     "kiwi-orchestrator §V.promote-requirements": {
       "file": "kiwi-orchestrator/SKILL.md",
