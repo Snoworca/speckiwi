@@ -49,10 +49,28 @@ describe("FR-FLOW-234 AC-1 AC-2 — the shared contract in each tree", () => {
       expect(reqBullet.startsWith(korean ? "- 추적 태그 `@req <REQ-ID> AC-<n>[ AC-<m>…]`" : "- The trace tag `@req <REQ-ID> AC-<n>[ AC-<m>…]`"), reqBullet.slice(0, 60)).toBe(true);
       expect(reqBullet).toContain(korean ? "설정과 관계없이" : "whatever the setting");
       expect(reqBullet).toContain("`@step <task-name>: AC-<n>");
-      // A vibe step may have no acceptance lines yet; the AC numbers then arrive with the @req tag after promotion.
-      expect(reqBullet).toContain(korean ? "acceptance 줄이 아직 없으면" : "has no acceptance lines yet");
       expect(keep).toContain(korean ? "어떤 상황에서도 빼지 않는다" : "never left out");
-      expect(text).not.toMatch(/AC 번호(를|는)? ?(빼|생략)|(omit|drop|leave out)\w* the AC|without (the |its )?AC/i);
+      expect(text).not.toMatch(/AC 번호(를|는)? ?(빼|생략)|AC 번호 없이 커밋|(omit|drop|leave out)\w* the AC|without (the |its )?AC/i);
+    });
+
+    // @req FR-FLOW-234 AC-1 — user 2026-11-21: "이것이 기본값으로 들어가게 하세요" (fill the vibe step tags before the commit).
+    it(`${tree}: a vibe step fills its step tags with AC numbers before the synthesis that precedes the commit`, async () => {
+      const text = await read(`skills/${tree}/${CONTRACT}`);
+      const korean = tree === "claude";
+      const reqBullet = section(text, "keep").split("\n").find((line) => line.includes("`@req <REQ-ID> AC-<n>")) ?? "";
+      expect(reqBullet).not.toContain(korean ? "acceptance 줄이 아직 없으면" : "has no acceptance lines yet");
+      expect(reqBullet).toContain(korean ? "그 task 를 싣는 커밋 전에" : "before the commit that lands the task");
+      expect(reqBullet).toContain("docs/spec/steps/<task-name>/intent.md");
+      // Every commit that carries the tagged code, not only the last one, and code no acceptance line covers gets a line.
+      expect(reqBullet).toContain(korean ? "그 코드를 싣는 커밋마다" : "before any commit that carries such code");
+      expect(reqBullet).toContain(korean ? "어느 줄에도 해당하지 않는" : "that no line covers yet");
+      const fill = reqBullet.indexOf(korean ? "AC 번호를 채운 뒤" : "fill each `@step <task-name>:` tag with the AC numbers");
+      const synth = reqBullet.indexOf(korean ? "step SRS 를 합성한다" : "then synthesize the step SRS");
+      expect(fill, "fill sentence").toBeGreaterThan(0);
+      expect(synth, "fill comes before the synthesis").toBeGreaterThan(fill);
+      // The synthesizer never rewrites an existing step SRS, so a late fill needs the file removed first.
+      expect(reqBullet).toContain("docs/spec/steps/<task-name>/<task-name>.srs.md");
+      expect(reqBullet).toContain(korean ? "커밋되는 추적 태그에는 늘 AC 번호가 있다" : "every trace tag a commit carries has its AC numbers");
     });
 
     // @req FR-FLOW-234 AC-2
@@ -141,6 +159,16 @@ describe("FR-FLOW-234 AC-4 — the root instruction block 1.13", () => {
   });
 
   // @req FR-FLOW-234 AC-4
+  it("item 7 has a vibe step write its acceptance lines and fill its step tags before the synthesis", () => {
+    const vibe = renderAgentInstructionSnippet().split("\n").find((line) => /^\d+\. When the mode is `vibe`/.test(line)) ?? "";
+    const fill = vibe.indexOf("fill each `@step <task-name>:` tag with the AC numbers its code implements");
+    expect(fill, "fill clause").toBeGreaterThan(vibe.indexOf("before the commit that lands the task"));
+    expect(vibe).toContain("before that synthesis, and before any earlier commit that carries the task's code, write the step's acceptance lines in its `intent.md`");
+    expect(vibe).toContain("one for any tagged code no line covers yet");
+    expect(vibe).toContain("never rewrites an existing step SRS");
+  });
+
+  // @req FR-FLOW-234 AC-4
   it("names speckiwi comments among the CLI-only SRS mutations", () => {
     const cliOnly = renderAgentInstructionSnippet().split("\n").find((line) => line.includes("may use the CLI:")) ?? "";
     expect(cliOnly).toContain("`speckiwi rename-target`");
@@ -152,5 +180,6 @@ describe("FR-FLOW-234 AC-4 — the root instruction block 1.13", () => {
     const text = await read(file);
     expect(text).toContain(`${AGENT_INSTRUCTION_HEADING_PREFIX}1.13`);
     expect(text).toContain(OFF_LINE);
+    expect(text).toContain("fill each `@step <task-name>:` tag with the AC numbers its code implements");
   });
 });

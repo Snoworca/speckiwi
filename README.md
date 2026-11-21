@@ -665,7 +665,7 @@ The work mode is stored in `docs/spec/steps/state.md`. A new project starts in `
 
 - **`wait`**: the default. There is no Active Task, and the SRS-first rules apply: write the requirement, then implement.
 - **`sdd`**: spec-driven work on scope documents. Write or adjust the requirements first, then implement.
-- **`vibe`**: code-first. Write code for the Active Task, then synthesize its step SRS before the commit.
+- **`vibe`**: code-first. Write code for the Active Task. Before each commit that carries that code, write the step's acceptance lines and put their AC numbers in the `@step` tags; synthesize its step SRS after that, before the commit that lands the task.
 - **`tdd`**: the step-scoped TDD First cycle through `kiwi-tdd` (see [Step-scoped work](#en-tdd-steps)). A step without acceptance lines fails with `STEP_ACCEPTANCE_MISSING`.
 
 ```sh
@@ -1672,7 +1672,7 @@ git tag srs-v1.0.0-baseline
 
 - **`wait`**: 기본값입니다. Active Task가 없고, SRS 우선 규칙을 따릅니다. 즉 요구사항을 먼저 쓰고 그다음 구현합니다.
 - **`sdd`**: scope 문서에서 진행하는 명세 주도 작업입니다. 요구사항을 먼저 쓰거나 고친 뒤 구현합니다.
-- **`vibe`**: 코드 우선 작업입니다. Active Task의 코드를 먼저 쓰고, 커밋하기 전에 그 step SRS를 합성합니다.
+- **`vibe`**: 코드 우선 작업입니다. Active Task의 코드를 먼저 씁니다. 그 코드를 싣는 커밋마다 커밋하기 전에 step의 수용 기준 줄을 쓰고 그 AC 번호를 `@step` 태그에 채웁니다. step SRS는 그다음, task를 싣는 커밋 전에 합성합니다.
 - **`tdd`**: `kiwi-tdd`로 진행하는 step 단위 TDD First 주기입니다([step 단위 작업](#ko-tdd-steps) 참조). 수용 기준 줄이 없는 step은 `STEP_ACCEPTANCE_MISSING`으로 실패합니다.
 
 ```sh

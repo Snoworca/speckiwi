@@ -13,7 +13,7 @@
 
 ## 2. `off` 여도 그대로 쓰는 것 (keep)
 
-- 추적 태그 `@req <REQ-ID> AC-<n>[ AC-<m>…]`. 그 코드가 구현하는 AC 번호를 설정과 관계없이(on 이든 off 든) 늘 함께 쓰고, 한 줄에 REQ-ID 하나만 둔다(형식·위치·중복 처리는 `kiwi-coder` §0.17). step 작업(vibe, `kiwi-tdd`)의 작업 이름(task-name) 태그는 `@step <task-name>: AC-<n>[ AC-<m>…]` 로 그 step 의 AC 번호를 함께 쓴다(`speckiwi step synthesize` 가 이 표식을 읽는다). vibe step 에 acceptance 줄이 아직 없으면 인용할 AC 번호가 없으므로 `@step <task-name>:` 만 쓴다. `off` 이면 태그 줄에는 태그와 AC 번호만 두고 설명 문장을 붙이지 않는다.
+- 추적 태그 `@req <REQ-ID> AC-<n>[ AC-<m>…]`. 그 코드가 구현하는 AC 번호를 설정과 관계없이(on 이든 off 든) 늘 함께 쓰고, 한 줄에 REQ-ID 하나만 둔다(형식·위치·중복 처리는 `kiwi-coder` §0.17). step 작업(vibe, `kiwi-tdd`)의 작업 이름(task-name) 태그는 `@step <task-name>: AC-<n>[ AC-<m>…]` 로 그 step 의 AC 번호를 함께 쓴다(`speckiwi step synthesize` 가 이 표식을 읽는다). vibe step 은 코드를 먼저 쓰는 동안 태그를 `@step <task-name>:` 로 시작할 수 있다. 그 코드를 싣는 커밋마다 그 전에 acceptance 줄(`docs/spec/steps/<task-name>/intent.md` 의 `## Acceptance` 아래 `AC-<n>: WHEN … THE SYSTEM SHALL …`)을 쓰되 어느 줄에도 해당하지 않는 태그 달린 코드에는 그 코드를 다루는 줄을 더하고, 각 `@step <task-name>:` 태그에 그 코드가 구현하는 AC 번호를 채운다. 그 task 를 싣는 커밋 전에는 AC 번호를 채운 뒤 step SRS 를 합성한다. 합성은 표식 뒤 내용을 옮기되 step SRS 가 이미 있으면 건너뛰므로, 태그를 채우기 전에 합성했으면 `docs/spec/steps/<task-name>/<task-name>.srs.md` 를 지우고 다시 합성한다. 그래서 커밋되는 추적 태그에는 늘 AC 번호가 있다. `off` 이면 태그 줄에는 태그와 AC 번호만 두고 설명 문장을 붙이지 않는다.
 - 시험 줄의 `<REQ-ID> AC-<n>` 인용과 `SDS-AC-<n>` 인용. 어떤 상황에서도 빼지 않는다. 시험 충분성이 이 줄을 읽는다(`_shared/kiwi/test-sufficiency.md`).
 - 언어·도구가 요구하는 지시 주석: `// eslint-disable-next-line`, `// @ts-expect-error`, `# type: ignore`, `@req-lint: ignore`, shebang, 라이선스 머리글처럼 동작·빌드·검사에 필요한 것.
 
