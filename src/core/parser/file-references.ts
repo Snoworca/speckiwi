@@ -52,11 +52,22 @@ export function relatedDocsPath(destination: string): string | undefined {
   return resolveRelatedDocsLink(destination) ?? classified.path;
 }
 
-/** A trailing line designation, in either the dash-range or the colon-column spelling. */
-const LINE_SUFFIX = /:\d+(?:[-:]\d+)?$/;
+/**
+ * A trailing line designation: a line and column `:N:M`, or a comma list whose items are each a line
+ * `N` or a range `N-M` (`:N`, `:N-M`, `:7,79,231`, `:3,5-7`). A list holding whitespace, a column or
+ * an empty item is not one. @req FR-NODE-293 AC-5 AC-6
+ */
+const LINE_SUFFIX = /:(?:\d+:\d+|\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/;
 
 /**
- * `reference` without a trailing `:N`, `:N:M` or `:N-M`. The one rule for what a line designation is:
+ * The spellings a local reference may take, written once for every message and tool description that
+ * names them. @req FR-NODE-293 AC-7
+ */
+export const LOCAL_REFERENCE_FORMS =
+  "`path`, `path:N`, `path:N-M`, `path:N,M,...` (each item a line N or a range N-M) or `path:N:M`, each optionally followed by `#` and an anchor such as a test title";
+
+/**
+ * `reference` without a trailing line designation. The one rule for what a line designation is:
  * Trace Link and Verification Evidence references both pass through it, because two copies of it
  * drifted — the evidence copy never learned `:N-M`, so `Foo.java:44-46` was looked up as a file of
  * that name and refused as missing. Whether the lines exist is not judged here or anywhere (FR-NODE-206
@@ -86,6 +97,15 @@ export function withoutEnclosingBackticks(reference: string): string {
 const REPOSITORY_PATH = /^[A-Za-z0-9_.@/-]+\.[A-Za-z0-9]+$/;
 
 /**
+ * The same shape with letters, digits and marks of any script in the name, so `docs/결정/01.결정.md`
+ * is a path as `docs/a.md` is. Its extension has to hold a letter, because a numbered id in another
+ * script (`작업-3.1`) was never read as a file and widening the name must not start reading it as
+ * one; the ASCII rule above keeps `tool.1` a file as before.
+ * @req FR-NODE-322 AC-1 AC-2
+ */
+const NON_ASCII_REPOSITORY_PATH = /^[\p{L}\p{M}\p{N}_.@/-]+\.(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]+$/u;
+
+/**
  * FR-NODE-206 — the file one `;`-separated part of a Trace Link reference names, repository relative.
  *
  * Those rows went unread by `links check` whatever they said, which is how a source edit could move a
@@ -104,7 +124,7 @@ const REPOSITORY_PATH = /^[A-Za-z0-9_.@/-]+\.[A-Za-z0-9]+$/;
  */
 export function traceReferencePath(part: string): string | undefined {
   const candidate = withoutLineDesignation(withoutEnclosingBackticks(part).replace(/#.*$/, ""));
-  return REPOSITORY_PATH.test(candidate) ? candidate : undefined;
+  return REPOSITORY_PATH.test(candidate) || NON_ASCII_REPOSITORY_PATH.test(candidate) ? candidate : undefined;
 }
 
 /** The files a Trace Link of a type other than Requirement names. */

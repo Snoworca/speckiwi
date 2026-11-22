@@ -2,7 +2,8 @@ import { diagnostic } from "../diagnostic.js";
 import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { replaceHeadingTitle } from "../parser/heading-render.js";
-import type { MutationResult, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
+import type { Diagnostic, EvidenceRow, MutationResult, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
+import { judgeWrittenEvidence } from "./add-evidence.js";
 import { priorityRiskRefusal } from "./priority-risk.js";
 import { assertOpensNoBlockBoundary, assertRequirementTitle } from "./block-prose.js";
 import { mutationEnvelopeFromPlan, mutationNoopEnvelope, withMutationEnvelope } from "./envelope.js";
@@ -148,7 +149,8 @@ async function applyGranularPlan(
   operations: PatchOperation[],
   kind: string,
   dryRun: boolean,
-  updatedFields: string[]
+  updatedFields: string[],
+  warnings: Diagnostic[] = []
 ): Promise<MutationResult<GranularRequirementEditOutput>> {
   if (operations.length === 0) {
     return withMutationEnvelope(mutationOk({ id, written: false, updatedFields }), mutationNoopEnvelope(kind, file.relativePath, dryRun));
@@ -157,7 +159,7 @@ async function applyGranularPlan(
   try {
     const applied = await applyPatchPlan(plan, { dryRun });
     return withMutationEnvelope(
-      mutationOk({ id, written: applied.written, updatedFields }),
+      mutationOk({ id, written: applied.written, updatedFields }, warnings),
       mutationEnvelopeFromPlan(kind, plan, dryRun, applied.written)
     );
   } catch (error) {
@@ -340,6 +342,7 @@ async function editRequirementTableRowsUnlocked(root: ProjectRoot, input: EditRe
   if (editable) return editable as MutationResult<GranularRequirementEditOutput>;
 
   const operations: PatchOperation[] = [];
+  const writtenEvidence: EvidenceRow[] = [];
   const rows: ReadonlyArray<{ line?: number }> =
     input.section === "verification_evidence"
       ? loaded.record.verificationEvidence
@@ -389,7 +392,10 @@ async function editRequirementTableRowsUnlocked(root: ProjectRoot, input: EditRe
     const write = planTableRowUpdate(loaded.file, table, tableRow, Object.fromEntries(Object.entries(values).map(([field, value]) => [columns[field] ?? field, value])));
     if (!write.ok) return mutationFail("MUTATION_DENIED", write.message);
     operations.push(write.operation);
+    if (input.section === "verification_evidence") writtenEvidence.push({ ...(row as EvidenceRow), ...values });
   }
 
-  return applyGranularPlan(input.id, loaded.file, operations, "edit_requirement_table_rows", input.dryRun ?? false, [input.section, `changed:${todayStamp()}`]);
+  // @req FR-NODE-287 AC-5 — an updated evidence row warns as add_verification_evidence does.
+  const { warnings } = judgeWrittenEvidence(root.root, loaded.record, writtenEvidence);
+  return applyGranularPlan(input.id, loaded.file, operations, "edit_requirement_table_rows", input.dryRun ?? false, [input.section, `changed:${todayStamp()}`], warnings);
 }

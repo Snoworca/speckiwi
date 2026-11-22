@@ -3,7 +3,7 @@ import { COVERS_ACCEPTED_FORMS, coversRangeIn } from "../evidence-covers.js";
 import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
 import { createPatchPlan } from "../patch/patch-plan.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
-import type { MutationResult, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
+import type { Diagnostic, EvidenceReferenceIssue, EvidenceRow, MutationResult, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
 import { mutationEnvelopeFromPlan, withMutationEnvelope } from "./envelope.js";
 import { mutationFail, mutationOk } from "./guards.js";
 import { planSectionRowsInsert } from "./internal.js";
@@ -46,6 +46,25 @@ function stalePatchMutationFailure(error: unknown, filePath: string): MutationRe
   return mutationFail("STALE_PATCH", message, [staleDiagnostic], { staleGuard: { filePath, retry: "rerun the command" } });
 }
 
+/**
+ * The rows a writer is about to write, judged by the rule the `verified` transition applies: the
+ * references that do not resolve, and the SRS-W082 warning naming them. Every writer of an evidence row
+ * returns this warning, so a reference the transition will refuse is never written in silence.
+ * @req FR-NODE-287 AC-4 AC-5
+ */
+export function judgeWrittenEvidence(
+  projectRoot: string,
+  record: Pick<RequirementRecord, "id" | "filePath">,
+  rows: readonly EvidenceRow[]
+): { unresolved: EvidenceReferenceIssue[]; warnings: Diagnostic[] } {
+  const unresolved = collectEvidenceReferenceIssuesForRecord(projectRoot, { id: record.id, verificationEvidence: [...rows] });
+  const warnings =
+    unresolved.length === 0
+      ? []
+      : [diagnostic("SRS-W082", "warning", `${record.id} Verification Evidence does not resolve yet: ${describeEvidenceIssues(unresolved, projectRoot)}`, { filePath: record.filePath, requirementId: record.id })];
+  return { unresolved, warnings };
+}
+
 export async function addVerificationEvidence(root: ProjectRoot, input: AddEvidenceInput): Promise<MutationResult> {
   return withSrsMutationLock(root, { operation: "add_verification_evidence", dryRun: input.dryRun, ignoreLock: input.ignoreLock, skipLock: input.skipLock }, () => addVerificationEvidenceUnlocked(root, input));
 }
@@ -82,14 +101,10 @@ async function addVerificationEvidenceUnlocked(root: ProjectRoot, input: AddEvid
   // a verified requirement may not gain a row it could not have been promoted with, while a requirement
   // still in work may record evidence for a file the same change is about to add.
   const row = { id: next, type: input.type, reference: input.reference, covers, notes };
-  const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, { ...loaded.record, verificationEvidence: [row] });
+  const { unresolved, warnings } = judgeWrittenEvidence(root.root, loaded.record, [row]);
   if (unresolved.length > 0 && loaded.record.status === "verified") {
     return mutationFail("MUTATION_DENIED", `${input.id} is verified, so its evidence must resolve: ${describeEvidenceIssues(unresolved, root.root)}`);
   }
-  const warnings =
-    unresolved.length === 0
-      ? []
-      : [diagnostic("SRS-W082", "warning", `${input.id} Verification Evidence does not resolve yet: ${describeEvidenceIssues(unresolved, root.root)}`, { filePath: loaded.record.filePath, requirementId: input.id })];
   // @req FR-NODE-259 AC-2 @req FR-NODE-278 AC-3 — under the table's own header, the table made when missing.
   const insert = planSectionRowsInsert(loaded.file, loaded.record, "Verification Evidence", [
     { "Evidence ID": next, Type: input.type, Reference: input.reference, Covers: covers, Notes: notes }

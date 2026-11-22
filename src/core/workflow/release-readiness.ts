@@ -12,7 +12,7 @@ import type {
   RequirementRecord,
   ValidationResult
 } from "../types.js";
-import { withoutEnclosingBackticks, withoutLineDesignation } from "../parser/file-references.js";
+import { LOCAL_REFERENCE_FORMS, withoutEnclosingBackticks, withoutLineDesignation } from "../parser/file-references.js";
 import { findHeadingMatching, RELEASE_RESIDUE_HEADING, TARGET_MAP_HEADING } from "../parser/index-parser.js";
 import { resolveTargetSelection } from "../query/summary.js";
 import { validateWorkspace } from "../validator/validate-workspace.js";
@@ -187,7 +187,7 @@ function realPathIfExists(candidate: string): string | undefined {
   }
 }
 
-function evidenceReferenceIssue(record: RequirementRecord, row: EvidenceRow, reference: string, issue: string): EvidenceReferenceIssue {
+function evidenceReferenceIssue(record: Pick<RequirementRecord, "id">, row: EvidenceRow, reference: string, issue: string): EvidenceReferenceIssue {
   const result: EvidenceReferenceIssue = { requirementId: record.id, reference, issue };
   if (row.id.trim()) result.evidenceId = row.id;
   return result;
@@ -202,7 +202,7 @@ function evidenceReferenceIssue(record: RequirementRecord, row: EvidenceRow, ref
  * Takes a record rather than a workspace because the transition asks about a requirement that is not
  * `verified` yet — the status filter belongs to the caller, not to the rule.
  */
-export function collectEvidenceReferenceIssuesForRecord(projectRoot: string, record: RequirementRecord): EvidenceReferenceIssue[] {
+export function collectEvidenceReferenceIssuesForRecord(projectRoot: string, record: Pick<RequirementRecord, "id" | "verificationEvidence">): EvidenceReferenceIssue[] {
   const issues: EvidenceReferenceIssue[] = [];
   const root = evidenceRoot(projectRoot);
   for (const row of record.verificationEvidence) {
@@ -266,7 +266,7 @@ const EVIDENCE_ISSUE_CAUSE: Record<string, string> = {
  */
 export function describeEvidenceIssues(issues: readonly EvidenceReferenceIssue[], projectRoot: string): string {
   const root = evidenceRoot(projectRoot);
-  return issues
+  const clauses = issues
     .map((issue) => {
       const row = issue.evidenceId ? `${issue.evidenceId} ` : "";
       const label = issue.reference.trim() === "" ? "(empty cell)" : issue.reference;
@@ -280,6 +280,9 @@ export function describeEvidenceIssues(issues: readonly EvidenceReferenceIssue[]
       return `${row}${label} [${kind}] ${EVIDENCE_ISSUE_CAUSE[kind] ?? `fails the ${kind} check`}${lookedFor}`;
     })
     .join(" | ");
+  // @req FR-NODE-293 AC-7 — once per message, so a malformed line list is corrected where it is written.
+  if (!issues.some((issue) => issue.issue === "missing")) return clauses;
+  return `${clauses}. Accepted local forms: ${LOCAL_REFERENCE_FORMS}; several references are separated by \`;\``;
 }
 
 export function describeEvidenceRefusal(issues: readonly EvidenceReferenceIssue[], projectRoot: string): string {

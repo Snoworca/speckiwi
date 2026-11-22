@@ -4,6 +4,7 @@ import { BILINGUAL_SEARCH_EXAMPLE, BILINGUAL_SEARCH_RULE } from "../core/bootstr
 import { MCP_READ_DIAGNOSTICS_SENTENCE } from "./read-diagnostics.js";
 import { APPENDED_NOTE_DATE_RULE } from "../core/mutation/append-section-note.js";
 import { SETTABLE_ROW_COLUMNS_RULE } from "../core/mutation/edit-requirement.js";
+import { LOCAL_REFERENCE_FORMS } from "../core/parser/file-references.js";
 import {
   ORCHESTRATE_TOOL_BINDINGS,
   ORCHESTRATE_CONTAINER_PATHS,
@@ -551,7 +552,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("add-evidence", mcp("add_verification_evidence", "Adds one Verification Evidence row to a requirement — type, reference, the criteria it covers, notes — which is what makes a `verified` status defensible. A local path in the reference is written relative to the project root, optionally with `:line` or `:line-line`. Writes the requirement block."), "req-scoped", "addVerificationEvidence", [
+  mutationSpec("add-evidence", mcp("add_verification_evidence", `Adds one Verification Evidence row to a requirement — type, reference, the criteria it covers, notes — which is what makes a \`verified\` status defensible. A local path in the reference is written relative to the project root as ${LOCAL_REFERENCE_FORMS}, and several references are separated by \`;\`. Writes the requirement block.`), "req-scoped", "addVerificationEvidence", [
     opt("--type <type>", "type"),
     opt("--reference <reference>", "reference"),
     opt("--covers <covers>", "covers"),

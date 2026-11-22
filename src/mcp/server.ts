@@ -40,6 +40,7 @@ import { MCP_READ_DIAGNOSTICS_LIMIT } from "./read-diagnostics.js";
 import { optionScopeText, ORCHESTRATE_TOOL_BINDINGS } from "../cli/commands/orchestrate.js";
 import { ROADMAP_BINDINGS } from "../cli/commands/roadmap.js";
 import { CHANGE_NOTES_FORMS } from "../core/mutation/seed-rows.js";
+import { LOCAL_REFERENCE_FORMS } from "../core/parser/file-references.js";
 
 // IR-CLI-045 / REL-MCP-004: MCP 서버 기동 표면은 root 파라미터를 노출하지 않는다 (cwd discovery 전용).
 export interface McpServerOptions {
@@ -387,7 +388,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   add_verification_evidence: {
     id: z.string(),
     type: tableCell(),
-    reference: tableCell("a test row names the test file, as path or path:line, with the test title after #"),
+    // @req FR-NODE-293 AC-7
+    reference: tableCell(`a local path relative to the project root, as ${LOCAL_REFERENCE_FORMS}; a test row names the test file and puts the test title after #`),
     covers: tableCell("one criterion such as AC-2, a comma list, or all; no range").optional(),
     notes: tableCell().optional(),
     dryRun: z.boolean().optional(),

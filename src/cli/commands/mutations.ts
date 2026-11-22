@@ -11,6 +11,7 @@ import { updateStability } from "../../core/mutation/update-stability.js";
 import { APPENDED_NOTE_DATE_RULE, appendSectionNote } from "../../core/mutation/append-section-note.js";
 import { appendAcceptanceCriterion, setAcceptanceCriteriaChecked, editAcceptanceCriteria } from "../../core/mutation/check-ac.js";
 import { addVerificationEvidence } from "../../core/mutation/add-evidence.js";
+import { LOCAL_REFERENCE_FORMS } from "../../core/parser/file-references.js";
 import { addTraceLink, setSupersede } from "../../core/mutation/add-trace.js";
 import { addRequirement } from "../../core/mutation/add-requirement.js";
 import { registerTarget, setActiveTarget, setTargetDescription } from "../../core/mutation/set-active-target.js";
@@ -559,7 +560,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .command("add-evidence")
     .argument("<id>")
     .requiredOption("--type <type>")
-    .option("--reference <reference>")
+    .option("--reference <reference>", `a local path is written relative to the project root as ${LOCAL_REFERENCE_FORMS}; several references are separated by ;`)
     .option("--ref <reference>", "alias for --reference")
     .option("--covers <covers>")
     .option("--notes <notes>")

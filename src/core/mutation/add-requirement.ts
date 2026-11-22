@@ -10,7 +10,7 @@ import { parseTopLevelSectionTitle } from "../parser/block-scanner.js";
 import { linesOutsideFences } from "../parser/index-parser.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { isCanonicalStability, isKnownStability, isRequirementStatus, isRequirementType } from "../schema.js";
-import type { Diagnostic, MutationResult, ParsedWorkspace, Priority, ProjectRoot, RequirementRecord, RequirementType, Risk, Stability, TextFile } from "../types.js";
+import type { Diagnostic, EvidenceRow, MutationResult, ParsedWorkspace, Priority, ProjectRoot, RequirementRecord, RequirementType, Risk, Stability, TextFile } from "../types.js";
 import { REQUIREMENT_STATUSES, REQUIREMENT_TYPES, STABILITY_LEVELS } from "../types.js";
 import { oneOf } from "../closed-values.js";
 import { mutationFail, mutationOk } from "./guards.js";
@@ -19,6 +19,7 @@ import { getWorkMode } from "./work-mode.js";
 import { mutationEnvelopeFromPlan } from "./envelope.js";
 import { DEFAULT_REQUIREMENT_STABILITY, defaultChangeNotes, prefixForType, refuseToolOnlyMarkers, renderRequirementBlock, traceRowCells, type RenderRequirementInput } from "./render-requirement.js";
 import { refuseDiscardedTraceTargets, refuseDiscardedTraceTargetsBeforeLock } from "./add-trace.js";
+import { judgeWrittenEvidence } from "./add-evidence.js";
 import { normalizeSeedRows, type ChangeNotesSurface } from "./seed-rows.js";
 import { assertOpensNoBlockBoundary, assertPromotableBlock, assertRequirementTitle } from "./block-prose.js";
 import { assertSafeMarkdownTableCells } from "./table-cell.js";
@@ -137,6 +138,20 @@ function canBeVerified(input: NormalizedAddRequirementInput): boolean {
   const acCount = input.acceptanceCriteria.length;
   const checked = new Set(input.checkedAcceptanceCriteria ?? []);
   return acCount > 0 && input.acceptanceCriteria.every((criterion, index) => checked.has(`AC-${index + 1}`) || checked.has(criterion)) && (input.evidence ?? []).some((row) => (row.reference ?? "").trim() !== "");
+}
+
+/**
+ * The evidence rows the block will hold. The defaults MUST match renderRequirementBlock's, or a check
+ * judges a row the document never contains.
+ */
+function renderedEvidenceRows(input: NormalizedAddRequirementInput): EvidenceRow[] {
+  return (input.evidence ?? []).map((row, index) => ({
+    id: String(row.id ?? `VE-${index + 1}`),
+    type: String(row.type ?? "test"),
+    reference: String(row.reference ?? ""),
+    covers: String(row.covers ?? "all"),
+    notes: String(row.notes ?? "-")
+  }));
 }
 
 const REQUIREMENTS_SECTION_TITLE = "4. Requirements";
@@ -364,17 +379,7 @@ async function addRequirementUnlocked(root: ProjectRoot, input: NormalizedAddReq
     // contains. Measured: with `type` omitted the gate saw `""` (not path-like) while the document
     // got `test` (path-like), so `Manual QA on staging` landed at `verified` and release readiness
     // then reported it unresolvable — on a row that can no longer be edited.
-    const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, {
-      id: "",
-      verificationEvidence: (resolvedInput.evidence ?? []).map((row, index) => ({
-        id: String(row.id ?? `VE-${index + 1}`),
-        type: String(row.type ?? "test"),
-        reference: String(row.reference ?? ""),
-        covers: String(row.covers ?? "all"),
-        notes: String(row.notes ?? "-"),
-        line: 0
-      }))
-    } as unknown as RequirementRecord);
+    const unresolved = collectEvidenceReferenceIssuesForRecord(root.root, { id: "", verificationEvidence: renderedEvidenceRows(resolvedInput) });
     if (unresolved.length > 0) return mutationFail("MUTATION_DENIED", describeEvidenceRefusal(unresolved, root.root));
   }
   const unsafeCell = assertSafeAddRequirementTableCells(resolvedInput);
@@ -444,7 +449,9 @@ async function addRequirementUnlocked(root: ProjectRoot, input: NormalizedAddReq
       const dryRun = input.dryRun ?? false;
       const applied = await applyPatchPlan(plan, { dryRun });
       const rollup = applied.written ? await syncIndexRollupsAfterWrite(root) : undefined;
-      const mergedDiagnostics = [...diagnostics, ...(rollup?.diagnostics ?? [])];
+      // @req FR-NODE-287 AC-5 — a creation that is not verified warns as add_verification_evidence does.
+      const evidenceWarnings = judgeWrittenEvidence(root.root, { id, filePath: file.relativePath }, renderedEvidenceRows(resolvedInput)).warnings;
+      const mergedDiagnostics = [...diagnostics, ...evidenceWarnings, ...(rollup?.diagnostics ?? [])];
       return {
         ok: true,
         value: {
@@ -591,7 +598,8 @@ async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteS
           targetSource: "explicit",
           record: stepRecord
         },
-        [...advisories, ...(rollup?.diagnostics ?? [])]
+        // @req FR-NODE-287 AC-5 — a promotion that is not verified warns as add_verification_evidence does.
+        [...advisories, ...judgeWrittenEvidence(root.root, { id: input.id, filePath: file.relativePath }, stepRecord.verificationEvidence).warnings, ...(rollup?.diagnostics ?? [])]
       ),
       patch: summarizePatch(plan, dryRun),
       mutation: mutationEnvelopeFromPlan("promote_step_requirement", plan, dryRun, applied.written),

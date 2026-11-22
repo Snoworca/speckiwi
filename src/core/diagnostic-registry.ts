@@ -5,6 +5,7 @@ import {
   STABILITY_LEVELS,
   type DiagnosticDefinition
 } from "./types.js";
+import { LOCAL_REFERENCE_FORMS } from "./parser/file-references.js";
 
 // @req FR-PARSE-038 — the remediation names the values a field may take, and an agent follows it
 // literally. Deriving the list from the constant that defines the field keeps the two from drifting.
@@ -885,7 +886,7 @@ export const DIAGNOSTIC_DEFINITIONS: DiagnosticDefinition[] = [
     sourceRule: "FR-NODE-287",
     since: "v5.4.0",
     remediation:
-      "Create the file the reference names before promoting the requirement to verified, or correct the reference: a test row names the test file as a path relative to the project root, optionally with :line or :line-line and the test title after #, and a command belongs in notes. The verified transition refuses the same reference."
+      `Create the file the reference names before promoting the requirement to verified, or correct the reference: a local path is written relative to the project root as ${LOCAL_REFERENCE_FORMS}, a test row names the test file and puts the test title after #, and a command belongs in notes. The verified transition refuses the same reference.`
   },
   {
     code: "SRS-W083",
