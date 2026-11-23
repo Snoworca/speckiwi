@@ -4,7 +4,7 @@ import path from "node:path";
 import type { WaveSdsDigest } from "../../core/orchestrator/freeze.js";
 import type { OrchTrailerCommit } from "../../core/orchestrator/lane-state.js";
 import type { ResumeCard } from "../../core/orchestrator/resume-card.js";
-import type { DriftInputs, GitFacts } from "../../core/orchestrator/resume.js";
+import { LANE_BRANCH, type DriftInputs, type GitFacts } from "../../core/orchestrator/resume.js";
 import { routeLockDigest, type RouteLock } from "../../core/orchestrator/route-lock.js";
 import { declarationEntryDigest, parseWaveDeclaration } from "../../core/orchestrator/wave-declaration.js";
 import type { WavesJournalView } from "../../core/orchestrator/waves-journal.js";
@@ -180,11 +180,15 @@ function parseWorktrees(text: string): GitFacts["worktrees"] {
     .split(/\r?\n\r?\n/)
     .map(lines)
     .filter((block) => block.some((line) => line.startsWith("worktree ")))
-    .map((block) => {
+    .map((block, index) => {
       const branch = block.find((line) => line.startsWith("branch "))?.slice("branch ".length) ?? null;
+      const head = block.find((line) => line.startsWith("HEAD "))?.slice("HEAD ".length).trim();
       return {
         path: (block.find((line) => line.startsWith("worktree ")) as string).slice("worktree ".length),
         branch: branch === null ? null : branch.replace(/^refs\/heads\//, ""),
+        // @req FR-NODE-323 AC-2 — where each worktree's HEAD is; git lists the repository's own first.
+        ...(head ? { head } : {}),
+        ...(index === 0 ? { primary: true } : {}),
         locked: block.some((line) => line === "locked" || line.startsWith("locked ")),
         // @req FR-NODE-299 AC-1 — `locked <reason>`: the reason is the pid an isolated agent records.
         ...lockReasonOf(block)
@@ -211,8 +215,42 @@ async function integrationCommits(root: string, branch: string, runId: string): 
     });
 }
 
+/**
+ * The full commit each dispatch base the journal records names, keyed as written, so the kernel can
+ * compare a short sha with a branch tip without calling git. A base git cannot resolve is left out.
+ * @req FR-NODE-323 AC-3
+ */
+async function resolvedDispatchBases(root: string, view: WavesJournalView): Promise<Record<string, string>> {
+  const recorded = new Set<string>();
+  for (const event of view.lines) {
+    const base = event.isolation?.base_sha;
+    if (event.verb === "dispatch-lane" && typeof base === "string" && base.length > 0) recorded.add(base);
+  }
+  const resolved: Record<string, string> = {};
+  for (const base of recorded) {
+    const answer = await git(root, ["rev-parse", "--verify", "--quiet", `${base}^{commit}`]);
+    if (answer.code === 0) resolved[base] = answer.stdout.trim();
+  }
+  return resolved;
+}
+
+/**
+ * Each worktree but the repository's own with whether its `git status --porcelain` is empty: a lane's
+ * work may sit on its lane branch, detached, or on a branch that is no lane's. A worktree git cannot
+ * answer for keeps no `clean`, which the kernel reads as not clean. @req FR-NODE-323 AC-2 AC-3
+ */
+async function withCleanliness(trees: GitFacts["worktrees"]): Promise<GitFacts["worktrees"]> {
+  return Promise.all(
+    trees.map(async (tree) => {
+      if (tree.primary === true) return tree;
+      const status = await git(tree.path, ["status", "--porcelain"]);
+      return status.code === 0 ? { ...tree, clean: status.stdout.trim().length === 0 } : tree;
+    })
+  );
+}
+
 /** The git half of a resume's facts, read from the repository at `root`. @req FR-NODE-217 AC-2 */
-async function collectGitFacts(root: string, card: ResumeCard, runId: string): Promise<GitFacts> {
+async function collectGitFacts(root: string, card: ResumeCard, runId: string, view: WavesJournalView): Promise<GitFacts> {
   const branch = typeof card.frozen?.integration_branch === "string" ? card.frozen.integration_branch : "";
   const head = branch === "" ? null : await git(root, ["rev-parse", "--verify", "--quiet", `${branch}^{commit}`]);
   const integrationHead = head?.code === 0 ? head.stdout.trim() : "";
@@ -222,7 +260,7 @@ async function collectGitFacts(root: string, card: ResumeCard, runId: string): P
   for (const line of refs.code === 0 ? lines(refs.stdout) : []) {
     const [name = "", sha = ""] = line.split("\t");
     // Only a lane's branch is ever looked up (`branchFor`), so the ancestry question is asked of those alone.
-    if (!/(^|\/)lane-[^/]+$/.test(name)) continue;
+    if (!LANE_BRANCH.test(name)) continue;
     const ancestor = integrationHead === "" ? null : await git(root, ["merge-base", "--is-ancestor", sha, integrationHead]);
     branches.push({ name, sha, ancestorOfIntegration: ancestor?.code === 0 });
   }
@@ -231,12 +269,13 @@ async function collectGitFacts(root: string, card: ResumeCard, runId: string): P
   const status = await git(root, ["status", "--porcelain=v1", "-z"]);
   return {
     branches,
-    worktrees: worktrees.code === 0 ? parseWorktrees(worktrees.stdout) : [],
+    worktrees: worktrees.code === 0 ? await withCleanliness(parseWorktrees(worktrees.stdout)) : [],
     // shortcut: no producer writes a lane heartbeat file yet and `computeResumeState` reads none; collect them when a contract names one.
     heartbeats: [],
     integrationHead,
     hostStatusPaths: status.code === 0 ? parseStatusPaths(status.stdout) : [],
-    integrationCommits: integrationHead === "" ? [] : await integrationCommits(root, branch, runId)
+    integrationCommits: integrationHead === "" ? [] : await integrationCommits(root, branch, runId),
+    resolvedShas: await resolvedDispatchBases(root, view)
   };
 }
 
@@ -258,7 +297,7 @@ export async function collectResumeFacts(
   const lanePointer = frozen.lane_lock?.[`wave-${card.position?.wave}`];
   const route = await routeObserved(root, card);
   return {
-    gitFacts: await collectGitFacts(root, card, runId),
+    gitFacts: await collectGitFacts(root, card, runId, view),
     driftInputs: {
       lockDigests: {
         design: await pointerNow(root, frozen.design_lock),

@@ -31,8 +31,13 @@ import type { WavesJournalView } from "./waves-journal.js";
 
 export interface GitFacts {
   branches: Array<{ name: string; sha: string; ancestorOfIntegration: boolean }>;
-  /** `lockReason` is git's `locked <reason>` text, when git gives one. @req FR-NODE-299 AC-1 */
-  worktrees: Array<{ path: string; branch: string | null; locked: boolean; lockReason?: string }>;
+  /**
+   * `lockReason` is git's `locked <reason>` text, when git gives one. @req FR-NODE-299 AC-1
+   * `clean` is whether the worktree's `git status --porcelain` is empty; absent when unknown, which no
+   * rule reads as clean. `head` is the commit its HEAD is at; `primary` marks the repository's own
+   * worktree, the first git lists. @req FR-NODE-323 AC-1 AC-2
+   */
+  worktrees: Array<{ path: string; branch: string | null; locked: boolean; lockReason?: string; clean?: boolean; head?: string; primary?: boolean }>;
   /**
    * Phase 2's freshness conjunct (§P2 5.5.3). Phase 1 creates no worktree, so liveness here is decided
    * by the workspace lock and by the unattributed-workspace window alone — which is what keeps this
@@ -49,6 +54,11 @@ export interface GitFacts {
    * same reason it supplies every other fact in this bundle — the tool never invents them.
    */
   integrationCommits?: readonly OrchTrailerCommit[];
+  /**
+   * The full commit each `isolation.base_sha` the journal records names, keyed as written: a journal may
+   * hold a short sha and this module cannot ask git which commit it is. @req FR-NODE-323 AC-1
+   */
+  resolvedShas?: Readonly<Record<string, string>>;
 }
 
 /** What `lanes.lock.json` records for `computeLanePlan`'s inputs (FR-NODE-138 AC-6). */
@@ -119,6 +129,14 @@ export type LaneEvidence =
   | { reason: "landed-without-integrate-result"; branch?: string; mergeWitness?: string }
   | { reason: "unreadable-disposition"; detail: string };
 
+/** Where a lane that never started is dispatched again from. @req FR-NODE-323 AC-1 */
+export interface Redispatch {
+  base_sha: string;
+  branch: string;
+  /** A worktree already on the branch, which the new dispatch attaches to instead of adding one. */
+  worktree?: string;
+}
+
 export interface LaneClass {
   lane: string;
   wave: number;
@@ -127,11 +145,13 @@ export interface LaneClass {
   nextVerb: VerbName | null;
   /** Set only on the classes that block a resume. */
   evidence?: LaneEvidence;
+  /** Set only on a lane whose branch is still at its dispatch base. */
+  redispatch?: Redispatch;
 }
 
 export interface NextAction {
   verb: VerbName | null;
-  args: { wave?: number; stage?: number; lane?: string };
+  args: { wave?: number; stage?: number; lane?: string } & Partial<Redispatch>;
   recoveryClass: RecoveryClass | null;
   interrupted: boolean;
   reconciliation: ReconciliationOutcome;
@@ -206,6 +226,9 @@ function isLaneRef(ref: string, lane: string, prefixes: readonly string[]): bool
   return ref.endsWith(`/${lane}`) && prefixes.some((prefix) => ref.startsWith(prefix));
 }
 
+/** A branch some lane works on, of this run or another: its last segment is a lane id. */
+export const LANE_BRANCH = /(^|\/)lane-[^/]+$/;
+
 function branchFor(gitFacts: GitFacts, lane: string, prefixes: readonly string[]) {
   return gitFacts.branches.find((branch) => isLaneRef(branch.name, lane, prefixes)) ?? null;
 }
@@ -225,6 +248,38 @@ function liveness(gitFacts: GitFacts, lane: string, prefixes: readonly string[],
     return { reason: "unmatched-external-intent", interruptedVerb: interrupted.event.verb as string, journalLine: interrupted.event.journalLine, detachedWorktrees: detached };
   }
   return "dead";
+}
+
+/**
+ * The lane never started: its branch is still at the base its last `dispatch-lane` line records, every
+ * worktree on its ref is known to be clean, and every other worktree that is neither the repository's
+ * own nor on some lane's branch is known to be clean at that base — a worker whose HEAD left its branch,
+ * detached or onto a branch that is no lane's, keeps its work there while the branch stays put
+ * (worktree-lane.md §2), and such a worktree names no lane, so any of them may be this lane's. A
+ * base is always an ancestor of the integration branch, so ancestry alone read such a lane as landed.
+ * The caller has already ruled out a merge witness — a worker that committed straight onto the
+ * integration branch leaves its lane branch at the base too — an integrate-lane result and a
+ * disposition, since merging a branch with no commit leaves no witness; a live lane is classified
+ * before this is read. Commits after the base are not the test: a branch cut from elsewhere has them
+ * with no work of its own, and an uncommitted change has none. @req FR-NODE-323 AC-1 AC-2
+ */
+function unstartedAtBase(
+  events: readonly WavesEvent[],
+  branch: GitFacts["branches"][number],
+  gitFacts: GitFacts,
+  lane: string,
+  prefixes: readonly string[]
+): Redispatch | null {
+  const dispatches = events.filter((event) => event.verb === "dispatch-lane");
+  const recorded = dispatches[dispatches.length - 1]?.isolation?.base_sha;
+  if (typeof recorded !== "string") return null;
+  const base = gitFacts.resolvedShas?.[recorded];
+  if (base === undefined || base !== branch.sha) return null;
+  const trees = gitFacts.worktrees.filter((tree) => tree.branch !== null && isLaneRef(tree.branch, lane, prefixes));
+  if (trees.some((tree) => tree.clean !== true)) return null;
+  const unattributed = gitFacts.worktrees.filter((tree) => tree.primary !== true && (tree.branch === null || !LANE_BRANCH.test(tree.branch)));
+  if (unattributed.some((tree) => tree.clean !== true || tree.head !== base)) return null;
+  return { base_sha: base, branch: branch.name, ...(trees[0] ? { worktree: trees[0].path } : {}) };
 }
 
 function classifyLanes(
@@ -266,10 +321,12 @@ function classifyLanes(
     // @req FR-NODE-160 — a landed worker may leave no lane branch, only a trailered commit on the
     // integration branch, so `ancestorOfIntegration` alone read a landed wave as never dispatched with
     // nothing blocking. Either witness is a landing.
-    const branchLanded = branch?.ancestorOfIntegration === true;
     const witness = mergeWitnessOf(gitFacts.integrationCommits ?? [], view.runId, { wave, stage, lane });
-    const merged = branchLanded || witness !== undefined;
     const integrated = events.some((event) => event.verb === "integrate-lane" && event.event === "result");
+    const settled = witness !== undefined || integrated || !read.ok || disposition;
+    const unstarted = branch === null || settled ? null : unstartedAtBase(events, branch, gitFacts, lane, prefixes);
+    const branchLanded = branch?.ancestorOfIntegration === true && unstarted === null;
+    const merged = branchLanded || witness !== undefined;
     const live = liveness(gitFacts, lane, prefixes, interrupted);
 
     // First match wins, in §4.6's order.
@@ -288,7 +345,7 @@ function classifyLanes(
       return { lane, wave, stage, klass: "journal-behind-git" as LaneClassName, nextVerb: null, evidence: landed };
     }
     // @req FR-NODE-160 AC-4 — an un-landed wave's worker is dispatched again.
-    return { lane, wave, stage, klass: "not-dispatched" as LaneClassName, nextVerb: "dispatch-lane" as VerbName };
+    return { lane, wave, stage, klass: "not-dispatched" as LaneClassName, nextVerb: "dispatch-lane" as VerbName, ...(unstarted ? { redispatch: unstarted } : {}) };
   });
 }
 
@@ -499,7 +556,7 @@ export function computeResumeState(
         ...(typeof interrupted.event.lane === "string" ? { lane: interrupted.event.lane } : {})
       }
     : nextLane
-      ? { wave: nextLane.wave, stage: nextLane.stage, lane: nextLane.lane }
+      ? { wave: nextLane.wave, stage: nextLane.stage, lane: nextLane.lane, ...nextLane.redispatch }
       : {};
 
   const driftGate = drift.digests.find((entry) => entry.gate !== null)?.gate ?? null;

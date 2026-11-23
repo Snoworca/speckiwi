@@ -214,6 +214,7 @@ verb 마다 세 번 쓴다. **동작 앞에 의도(intent) 1줄, 동작 뒤에 �
 - 카드가 분류와 어긋나면 `card-stale` — 카드를 재생성하고 계속한다. 카드는 파생물이므로 이것만 자가 치유된다.
 - 저널·lock·git 이 서로 어긋나 어느 분류에도 들지 않으면 `ledger-reconciliation-divergent` 로 **중단**한다.
 - `lane_disposition` 이 종결 값이면 그 lane 은 **정산된 것**이다 — 병합되지 않았다는 사실만으로 다시 실행하지 않는다. 종결 disposition 을 읽지 않으면, 설계가 반증되어 폐기된 작업을 재개한 세션이 통합한다.
+- 레인 브랜치의 끝이 그 lane 의 마지막 `dispatch-lane` 줄의 `isolation.base_sha` 가 가리키는 커밋과 같고, 그 lane 에 워크트리 잠금 · merge witness · `integrate-lane` result · `lane_disposition` 이 없고, 그 브랜치의 워크트리가 없거나 그 워크트리의 `git status` 가 비어 있고, 저장소 루트의 워크트리와 lane 브랜치 위의 워크트리를 뺀 나머지 워크트리(detached 이거나 lane 이 아닌 브랜치로 옮긴 것 — 레인의 작업이 거기 남아 있을 수 있다)가 모두 HEAD 가 그 base 이고 `git status` 가 비어 있으면 그 lane 은 **시작되지 않은 것**이다 — base 는 늘 통합 브랜치의 조상이므로 조상 여부만으로 병합됐다고 읽지 않는다. `orchestrate resume` 은 이 lane 을 `not-dispatched` 로 분류하고 `next_action` 을 `dispatch-lane` 으로 내며, `args` 에 `base_sha`(완전한 sha) · `branch` 와 그 브랜치에 이미 있는 워크트리의 `worktree` 를 싣는다. `args.worktree` 가 있으면 새 워크트리를 `worktree add` 하지 않고 그 워크트리에 붙인다 — 그 워크트리를 이미 만들어진 레인 워크트리로 보고 `worktree-lane.md §2` 의 2 로 준비한다. 조건이 하나라도 어긋나거나 그 줄에 `base_sha` 가 없으면 이 규칙은 적용되지 않고 분류는 이 규칙이 없을 때와 같다.
 - 다음 동작이 여럿이면 **가장 낮은 순위**의 lane 을 고르고, 동순위는 lane id 오름차순으로 깬다.
 
 ---
