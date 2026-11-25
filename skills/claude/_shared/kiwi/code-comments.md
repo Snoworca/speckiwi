@@ -1,6 +1,6 @@
 # kiwi code-comments v1.0.0
 
-코드 설명 주석을 끄는 설정의 뜻을 정하는 SSOT (FR-FLOW-234). 이 설정의 목적은 설명 주석을 쓰지 않아 토큰 소비를 줄이는 것이다. 추적 태그의 AC 번호는 설정과 관계없이 남는다. 설정은 사용자가 CLI `speckiwi comments on|off` 로 바꾸고(IR-CLI-121), 에이전트는 MCP `get_work_mode` 응답의 `codeComments` 로 읽기만 한다(MCP 가 없으면 CLI `speckiwi mode --json`). 값이 없으면 `on` 이다. 에이전트는 사용자가 요청할 때만 이 설정을 바꾼다. 코드를 쓰거나 고치는 스킬은 코드를 쓰기 전에 `codeComments` 를 읽고, 이 문서를 경로로 인용하며 규칙을 다시 적지 않는다.
+코드 설명 주석을 끄는 설정의 뜻을 정하는 SSOT (FR-FLOW-234). 이 설정은 사용자가 선호에 따라 설명 주석을 끌 수 있게 하는 것이다. 추적 태그의 AC 번호는 설정과 관계없이 남는다. 설정은 사용자가 CLI `speckiwi comments on|off` 로 바꾸고(IR-CLI-121), 에이전트는 MCP `get_work_mode` 응답의 `codeComments` 로 읽기만 한다(MCP 가 없으면 CLI `speckiwi mode --json`). 값이 없으면 `on` 이다. 에이전트는 사용자가 요청할 때만 이 설정을 바꾼다. 코드를 쓰거나 고치는 스킬은 코드를 쓰기 전에 `codeComments` 를 읽고, 이 문서를 경로로 인용하며 규칙을 다시 적지 않는다.
 
 ## 1. `off` 일 때 쓰지 않는 것 (omit)
 

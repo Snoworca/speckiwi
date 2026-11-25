@@ -40,10 +40,14 @@ describe("FR-FLOW-234 AC-1 AC-2 — the shared contract in each tree", () => {
     });
 
     // @req FR-FLOW-234 AC-1 — user request 2026-11-20: "ac 번호는 어떤 상황에서도 반드시 주석으로 남겨야 합니다".
-    it(`${tree}: trace tags carry the AC numbers whatever the setting, and the purpose is saving tokens`, async () => {
+    // User decision 2026-11-26: the experiment showed no effect, so the setting is a preference and no
+    // saving is claimed.
+    it(`${tree}: trace tags carry the AC numbers whatever the setting, and the setting is a preference claiming no effect`, async () => {
       const text = await read(`skills/${tree}/${CONTRACT}`);
       const korean = tree === "claude";
-      expect(text.split("\n## ")[0]).toMatch(korean ? /토큰/ : /token/i);
+      const preamble = text.split("\n## ")[0] as string;
+      expect(preamble).toMatch(korean ? /선호/ : /preference/i);
+      expect(preamble).not.toMatch(/token|토큰|faster|속도|절감|save/i);
       const keep = section(text, "keep");
       const reqBullet = keep.split("\n").find((line) => line.includes("`@req <REQ-ID> AC-<n>")) ?? "";
       expect(reqBullet.startsWith(korean ? "- 추적 태그 `@req <REQ-ID> AC-<n>[ AC-<m>…]`" : "- The trace tag `@req <REQ-ID> AC-<n>[ AC-<m>…]`"), reqBullet.slice(0, 60)).toBe(true);

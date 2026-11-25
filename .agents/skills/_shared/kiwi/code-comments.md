@@ -1,6 +1,6 @@
 # kiwi code-comments v1.0.0
 
-The single source of what the code-comment setting means (FR-FLOW-234). The setting exists to save tokens by not writing explanatory comments; the AC numbers in trace tags stay whatever the setting. The user changes the setting with the CLI `speckiwi comments on|off` (IR-CLI-121); the agent only reads it, as `codeComments` in the MCP `get_work_mode` answer (the CLI `speckiwi mode --json` when MCP is unavailable). Without a value it is `on`. The agent changes the setting only when the user asks. A skill that writes or changes code reads `codeComments` before it writes code, cites this path, and does not restate the rules.
+The single source of what the code-comment setting means (FR-FLOW-234). The setting is a preference that lets the user turn explanatory comments off; the AC numbers in trace tags stay whatever the setting. The user changes the setting with the CLI `speckiwi comments on|off` (IR-CLI-121); the agent only reads it, as `codeComments` in the MCP `get_work_mode` answer (the CLI `speckiwi mode --json` when MCP is unavailable). Without a value it is `on`. The agent changes the setting only when the user asks. A skill that writes or changes code reads `codeComments` before it writes code, cites this path, and does not restate the rules.
 
 ## 1. What `off` leaves out (omit)
 

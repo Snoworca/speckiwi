@@ -684,7 +684,7 @@ speckiwi step update-state <name> --status merged              # mark the step m
 speckiwi vibe-gate check                         # CI check for the Active Task
 ```
 
-**`speckiwi comments off`** keeps a second setting in the same file (`Code Comments: off`; without it, `on`). Agents then write no explanatory comments in the code they write or change, but still write the trace tags with their AC numbers (`@req <REQ-ID> AC-<n>`, which carry AC numbers whatever the setting), the `<REQ-ID> AC-<n>` citations on test lines and the directive comments a tool needs. The setting exists to save tokens. `speckiwi comments` alone shows the setting, and `get_work_mode` reports it as `codeComments`. Only the CLI changes it.
+**`speckiwi comments off`** keeps a second setting in the same file (`Code Comments: off`; without it, `on`). Agents then write no explanatory comments in the code they write or change, but still write the trace tags with their AC numbers (`@req <REQ-ID> AC-<n>`, which carry AC numbers whatever the setting), the `<REQ-ID> AC-<n>` citations on test lines and the directive comments a tool needs. It is a preference you may turn off; the default stays `on`. `speckiwi comments` alone shows the setting, and `get_work_mode` reports it as `codeComments`. Only the CLI changes it.
 
 `vibe-gate check` fails while the Active Task has no step directory under `docs/spec/steps/`. In `tdd`, it also fails while that step has no acceptance lines. It does not check that the synthesis ran, and with no Active Task it never fails.
 
@@ -713,7 +713,7 @@ speckiwi set-target-status v0.1.0 completed   # planned|active|frozen|completed|
 speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summary "..."
 ```
 
-- A code trace names a file path with no `:line` suffix. `links check` checks that the path exists.
+- A local reference in `add-trace` or `add-evidence` is a path relative to the project root, optionally followed by a line designation (`:N`, `:N-M`, a comma list `:N,M,...` such as `:7,79,231` or `:3,5-7`, or `:N:M`) and then `#` and an anchor such as a test title. The tools check that the path exists and never check the lines: `links check` reports a missing trace path, and a missing evidence path draws `SRS-W082` when written and is refused when the requirement moves to `verified`.
 - `set-active-target` without `--create` only switches to a target that is already registered. Its `--description` applies only when it creates the target; for a registered target it is refused, and `set-target-description` (MCP `set_target_description`) changes the description.
 - `append-ac` (MCP `append_acceptance_criterion`) appends one unchecked criterion, numbered one above the highest number the requirement ever used, expired ones included. MCP `edit_acceptance_criterion` rewrites the text of one criterion. Both refuse a `verified` requirement, like `replace_acceptance_criteria`.
 - `set-target-status` refuses any status other than `active` for the Active Target. Move the Active Target first, as above.
@@ -1691,7 +1691,7 @@ speckiwi step update-state <name> --status merged              # step을 병합�
 speckiwi vibe-gate check                         # Active Task에 대한 CI 검사
 ```
 
-**`speckiwi comments off`**는 같은 파일에 두 번째 설정을 남깁니다(`Code Comments: off`, 줄이 없으면 `on`). 그러면 에이전트는 자기가 쓰거나 고치는 코드에 설명 주석을 쓰지 않습니다. 다만 AC 번호를 단 추적 태그(`@req <REQ-ID> AC-<n>`, 설정과 관계없이 AC 번호를 늘 씁니다), 시험 줄의 `<REQ-ID> AC-<n>` 인용, 도구가 요구하는 지시 주석은 그대로 씁니다. 이 설정은 토큰을 아끼려고 둡니다. `speckiwi comments`만 실행하면 현재 설정을 보여 주고, `get_work_mode`는 이 값을 `codeComments`로 알려 줍니다. 설정은 CLI로만 바꿉니다.
+**`speckiwi comments off`**는 같은 파일에 두 번째 설정을 남깁니다(`Code Comments: off`, 줄이 없으면 `on`). 그러면 에이전트는 자기가 쓰거나 고치는 코드에 설명 주석을 쓰지 않습니다. 다만 AC 번호를 단 추적 태그(`@req <REQ-ID> AC-<n>`, 설정과 관계없이 AC 번호를 늘 씁니다), 시험 줄의 `<REQ-ID> AC-<n>` 인용, 도구가 요구하는 지시 주석은 그대로 씁니다. 사용자 선호에 따라 끌 수 있는 설정이며, 기본값은 `on`입니다. `speckiwi comments`만 실행하면 현재 설정을 보여 주고, `get_work_mode`는 이 값을 `codeComments`로 알려 줍니다. 설정은 CLI로만 바꿉니다.
 
 `vibe-gate check`는 Active Task의 step 디렉터리가 `docs/spec/steps/` 아래에 없으면 실패합니다. `tdd`에서는 그 step에 수용 기준 줄이 없을 때도 실패합니다. 합성을 실행했는지는 확인하지 않으며, Active Task가 없으면 절대 실패하지 않습니다.
 
@@ -1720,7 +1720,7 @@ speckiwi set-target-status v0.1.0 completed   # planned|active|frozen|completed|
 speckiwi add-completed-work --date 2026-07-13 --target v0.1.0 --scope APP --summary "..."
 ```
 
-- 코드 추적 링크에는 `:line` 접미사 없이 파일 경로만 적습니다. `links check`가 그 경로가 있는지 확인합니다.
+- `add-trace`·`add-evidence`의 로컬 참조는 프로젝트 루트 기준 경로입니다. 경로 뒤에 줄 표기(`:N`, `:N-M`, `:7,79,231`·`:3,5-7` 같은 쉼표 목록 `:N,M,...`, `:N:M`)를 붙이고, 그 뒤에 `#`과 시험 제목 같은 앵커를 붙일 수 있습니다. 도구는 경로가 있는지만 확인하고 줄은 확인하지 않습니다. 없는 추적 링크 경로는 `links check`가 보고하고, 없는 증거 경로는 쓸 때 `SRS-W082` 경고를 받고 요구사항을 `verified`로 올릴 때 거부됩니다.
 - `set-active-target`은 `--create`가 없으면 이미 등록된 대상으로만 전환합니다. `--description`은 대상을 새로 만들 때만 적용되고, 이미 등록된 대상에 주면 거부됩니다. 설명을 바꾸려면 `set-target-description`(MCP `set_target_description`)을 쓰십시오.
 - `append-ac`(MCP `append_acceptance_criterion`)는 체크되지 않은 수용 기준 하나를 덧붙이며, 번호는 그 요구사항이 지금까지 쓴 가장 큰 번호(만료된 것 포함)보다 하나 큽니다. MCP `edit_acceptance_criterion`은 수용 기준 하나의 텍스트를 다시 씁니다. 둘 다 `replace_acceptance_criteria`처럼 `verified` 요구사항은 거부합니다.
 - `set-target-status`는 Active Target에 `active`가 아닌 상태를 주면 거부합니다. 위의 예처럼 먼저 Active Target을 옮기십시오.
