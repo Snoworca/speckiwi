@@ -9,7 +9,7 @@ description: "OpenCode/Hermes local-LLM variant for running a Kiwi review, fix, 
 
 **etc override:** If any legacy section appears to allow CLI mutation fallback or
 direct normal SRS Markdown mutation, the shared etc local-LLM profile wins:
-normal SRS operations require `speckiwi mcp`; CLI is diagnostic/remediation only.
+normal SRS operations require `speckiwi mcp`; CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 
 Run a code review, apply clear fixes, then re-review until the gate is clean.
 Self mode reviews local changes. PR mode reads GitHub PR comments and applies

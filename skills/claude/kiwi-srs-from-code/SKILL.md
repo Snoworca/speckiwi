@@ -2,7 +2,7 @@
 name: kiwi-srs-from-code
 description: 코드베이스를 역분석해 speckiwi MCP로 scope별 SRS Markdown을 자동 생성. 4축 서브에이전트 검증(누락/오류/할루시네이션/scope-creep) 루프로 모든 scope의 결함이 사라질 때까지 반복. 트리거 — kiwi srs from code, speckiwi srs 역추출, 코드로 speckiwi srs 만들어줘, kiwi 코드 분석 SRS, 기존 코드로 kiwi srs 생성. 필수 CODE_PATH. 선택 TARGET(기본 v0.1) / --max-eval-iter(기본 3) / --skip-init / 검증 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 가능(4축 토폴로지·게이트 불변).
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-srs-from-code v1.4
 
 코드베이스를 역분석하여 **speckiwi MCP 도구**로 scope별 SRS Markdown 문서를 자동 생성하는 스킬.

@@ -9,7 +9,7 @@ description: "기능·마일스톤·일정에 관한 사용자 말을 로드맵 
 3. 로드맵을 쓰는 호출(`add_roadmap_item` · `update_roadmap_item`, `dryRun` 으로 부를 때 포함)에는 늘 `reason` 을 넣고, 일정을 바꾸는 쓰기에는 사용자 원문을 따옴표째 넣는다.
 4. 항목을 `cancelled` 로 바꾸는 것은 사용자가 취소하라고 말했을 때뿐이다 — `--auto` 에서도 그렇다.
 
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 
 > etc local-LLM profile: read ../_shared/kiwi/local-llm-profile.md before executing. It requires working speckiwi mcp, treats --max as the default, disables multi-worker fanout, and uses one delegated worker/evaluator at a time.
 

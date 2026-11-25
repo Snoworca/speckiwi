@@ -55,7 +55,7 @@ export const SSOT_LITERAL_REGISTRY: readonly SsotLiteralEntry[] = [
     role: "current",
     // The heading always carries a version suffix, which is what makes an older one recognisable.
     shape: /# SpecKiwi SRS workflow v(\d+(?:\.\d+)*)/g,
-    value: "1.13"
+    value: "1.14"
   },
   {
     name: "BUNDLED_SRS_RULES_FILENAME",
@@ -140,6 +140,18 @@ export const SSOT_LITERAL_REGISTRY: readonly SsotLiteralEntry[] = [
     module: "src/core/bootstrap/templates.ts",
     role: "unshaped",
     reason: "A prose rule with no version or path shape; FR-FLOW-207 keeps its wording identical by importing it."
+  },
+  {
+    name: "WORKTREE_CLI_EXCEPTION",
+    module: "src/core/bootstrap/templates.ts",
+    role: "unshaped",
+    reason: "A prose rule with no version or path shape; FR-NODE-327 AC-5 keeps every skill sentence that follows the CLI rule identical to it."
+  },
+  {
+    name: "WORKTREE_CLI_EXCEPTION_KO",
+    module: "src/core/bootstrap/templates.ts",
+    role: "unshaped",
+    reason: "The Korean form of WORKTREE_CLI_EXCEPTION, held identical in the Korean skill rules the same way."
   },
   {
     name: "BILINGUAL_SEARCH_EXAMPLE",

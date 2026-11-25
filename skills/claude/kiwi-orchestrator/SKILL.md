@@ -2,7 +2,7 @@
 name: kiwi-orchestrator
 description: "얇은 의도·연구문서·GitHub 이슈를 받아 intake → 라우팅 → 설계 동결 → SRS 한 번 저작 → 요구를 작업 그래프로 분해(--sds 면 wave 마다 SDS) → stage 계획 공개 → wave 당 워커 하나를 워크트리에서 병렬 실행 → 병합·재생 → 사후 검증 → 테스트 충분성 확인 → 요구 승급까지 하나의 재개 가능한 run 으로 완주시키는 설계-우선 오케스트레이터 v0.1. 규모와 범위를 스스로 판정해 R-STEP(/kiwi-tdd) · R-ORCH(공용 wave 엔진) 중 하나로 라우팅한다. wave 는 기본이 병렬이고 --serial 이면 모든 단계를 하나씩 돈다. 진행은 ./kiwi/waves.jsonl 과 재개 카드에 영속되어 컴팩션 뒤에도 재개된다. 트리거 — kiwi orchestrator, 오케스트레이터 실행, 설계부터 구현까지 완주, 대형 작업 오케스트레이션, orchestrate run, 이 문서로 개발 진행. 옵션 — --auto (사용자 게이트 자동 결정, 안전 게이트 유지), --max, --mini / --loops N, --serial, --work, --base-branch, --lanes N."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-orchestrator v0.1
 
 ## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 규칙 (FR-FLOW-204)

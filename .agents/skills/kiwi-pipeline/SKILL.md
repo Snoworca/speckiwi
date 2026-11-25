@@ -2,7 +2,7 @@
 name: kiwi-pipeline
 description: "kiwi-* 스킬 파이프라인 메타 오케스트레이터. 공식 workflow tools(`workflow_pipeline_tail`, `workflow_pipeline_status`, `get_next_work_order`, `workflow_pipeline_emit`)로 직전 이벤트를 읽고 다음 단계를 추천한 뒤 사용자 게이트 후 자동 진행한다. 결정표 T1 (직전 skill × status → next_hint) 적용 + Codex clarification gate 다지선다 + --auto 모드 자동 진행 (FAILED/NEEDS_USER 는 자동 진행 차단). 이벤트 부재 시 시작 후보 (kiwi-srs / kiwi-srs-from-code) 제안. 마지막 N 이벤트 통계 출력 (스킬별 횟수 / 평균 소요 / 마지막 실행 시각). 트리거 — kiwi pipeline, 파이프라인 상태, 다음 단계 추천, kiwi 다음 뭐 해, pipeline status, kiwi next step, 파이프라인 진행, kiwi 자동 진행, pipeline resume, 다음 스킬 추천. 옵션 — --auto (사용자 게이트 우회 자동 진행), --tail=N (마지막 N 이벤트 표시), --stats (통계만 출력), --run (추천 후보 즉시 실행). 기본 동작은 §2.5 전체 사이클(kiwi-srs → … → kiwi-review-fix-loop)이며, 체인을 돌리지 않으려면 --none-cycle 을 명시한다."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-pipeline v0.1
 
 > Codex clarification gate means: ask the user directly in Default mode; use `request_user_input` only in Plan mode when that tool is available.

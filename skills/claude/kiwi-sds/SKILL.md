@@ -2,7 +2,7 @@
 name: kiwi-sds
 description: "사용자가 직접 부르거나 호출자가 opt-in 을 넘길 때만 돈다 — 어느 체인의 기본 단계도 아니다. 구현 직전의 요구 범위에 대해 초경량 SDS(설계 명세, SDS 규칙의 lite 프로필) 하나를 `docs/sds/<sds-id>.sds.md` 에 쓰고 결정적 검사 `speckiwi sds check`(MCP `check_sds`)로 확인한 뒤 스스로 agreed 로 올리는 스킬. SDS 는 코딩 에이전트용(영어, 서사 없음)이며 사용자 승인 게이트가 없다. 기본 모드에는 LLM 검증 루프가 없고 `--max` 가 독립 검증자 1회를 더한다. `--close <sds-id>` 는 구현이 끝난 SDS 의 해석 결정을 SRS AC 명확화로 옮기고, 승급 뒤 파일을 지운다. 트리거 — kiwi sds, SDS 작성, 설계 명세 작성, lite SDS, sds close, SDS 마감, /kiwi-sds. 옵션 — --req-filter, --sds-id, --convergence-registry, --existing-modules, --close, --auto, --max, --mini / --loops N, --model, --no-pipeline-emit."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-sds v0.1
 
 `--sds` 를 준 sdd 사슬 `kiwi-srs → (kiwi-srs-feasibility) → kiwi-sds → kiwi-pm → kiwi-review-fix-loop` 의 설계 단계 — 기본 사슬에는 이 단계가 없다(FR-FLOW-193). 구현할 요구 범위에 대해 lite SDS 하나를 쓰고, 결정적 검사로 확인하고, 스스로 합의한다. 구현이 끝나면 `--close` 로 SDS 를 닫는다 — 남길 것은 SRS 로 옮기고 파일은 지운다.

@@ -2,7 +2,7 @@
 name: kiwi-coder
 description: "요구 ID 집합(--req-filter, kiwi-pm 이 넘긴 REQ_IDS)을 한 번의 실행으로 구현하는 코딩 스킬 v0.1 — SDS 는 사용자가 --sds <path>(별칭 SDS_PATH=)로 줄 때만 쓴다. 집합 요구의 SRS AC(--sds 면 SDS 의 Interfaces · Acceptance Contracts · Test Plan 도)를 읽고 TDD 선행(테스트 줄에 `<REQ-ID> AC-<n>` / `SDS-AC-<n>` 인용) → TDD 검증(기본 서브에이전트 1, --max 2 병렬) → high-reasoning 시니어 구현 → 보존 검사(--sds 면 SDS-코드 일치 게이트도) → 정형 검사 → 까칠 리뷰 → 개선 루프 → 테스트 실행 → 회귀 검증 → speckiwi MCP mutation → .kiwi/ 상태 갱신을 자동화한다. 재개 가능. 트리거: SDS 대로 구현, kiwi 코딩, tdd 코딩, SDS 구현, kiwi sds 구현. --auto 는 공용 auto-option 정책으로 메인 게이트와 후속 kiwi-review-fix-loop --close-reqs handoff를 자동화하되 --yes-all/--auto-integration/--auto-cost-warning은 자동 활성하지 않음. 검증(정형 검사·까칠 리뷰) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 그 모델을 override 한다."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-coder v0.1.9
 
 > Codex clarification gate means: ask the user directly in Default mode; use `request_user_input` only in Plan mode when that tool is available.

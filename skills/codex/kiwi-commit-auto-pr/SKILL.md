@@ -2,7 +2,7 @@
 name: kiwi-commit-auto-pr
 description: "Kiwi Git workflow that commits, pushes, and creates or updates a GitHub Pull Request while preserving SpecKiwi traceability. Use when the user asks for Kiwi commit PR, kiwi PR open, commit and PR, or automatic PR creation with issue/REQ trailers. Extends kiwi-commit-auto-push with protected-branch feature-branch creation, PR body/review quality gates, GitHub CLI checks, and speckiwi MCP evidence/trace links. Supports --auto, --model, --draft, --update-pr-body, --no-pr-comment, --req, and --issue."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 
 # kiwi-commit-auto-pr
 

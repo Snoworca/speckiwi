@@ -2,7 +2,7 @@
 name: kiwi-srs-feasibility
 description: "speckiwi MCP 활성 target 의 SRS 전수에 대해 구현 가능성(feasibility)을 정량 평가하고 그 결과로 stability(draft/evolving/stable/frozen/deprecated)를 일괄 갱신하는 스킬. get_active_target → list_requirements → per-REQ implementability/score → 종합 판정 → dryRun 선행 → 사용자 승인 → update_stability 적용. 3 standard 사전조사 병렬 + high-reasoning 시니어 분석가 + 현재 세션 모델을 상속하는 단일 검증 서브에이전트(Max는 + 독립 2차 검증 패스) + 심각도 게이트(Normal: CRITICAL=0+HIGH=0 / Max: 2연속 MEDIUM-zero). 트리거 — feasibility 검증, 활성 target feasibility, kiwi srs feasibility, target 전수 평가, stability 승급, 구현 가능성 일괄 평가, release readiness, freeze 게이트, 스프린트 진입 평가, kiwi feasibility, kiwi-srs-feasibility, batch feasibility, target-wide feasibility, srs feasibility gate, implementability assessment. --max 로 검증 강화(단일 검증 서브에이전트 + 독립 2차 검증 패스, 2연속 MEDIUM-zero 종료). --dry-run 으로 mutation 없이 제안만 출력. --scope/--priority 로 부분집합 평가. 평가·검증은 현재 세션 모델을 상속하는 단일 검증 서브에이전트로 수행하며 `--model <name>` 로 override 한다(게이트 불변, 자식 research 호출에 자동 전파)."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-srs-feasibility v0.8
 
 > Codex clarification gate means: ask the user directly in Default mode; use `request_user_input` only in Plan mode when that tool is available.
@@ -26,7 +26,7 @@ deprecated 예정인 `snoworca-feasibility` 의 후계. 입력 카디널리티�
 | §0.3 | **코드 증거 우선**. 모든 implementability 판정은 코드 path:line 증거 첨부. 증거 없는 판정은 `evidence_strength: weak` 라벨 |
 | §0.4 | **할루시네이션 금지**. 존재하지 않는 코드/함수 인용 시 §8.2 axis 2 (Evidence existence) CRITICAL. 블로커 근거가 코드와 무관한 추측이면 §8.2 axis 5 (Blocker substantiation) HIGH |
 | §0.5 | **SRS-MD Authoring Rules v2.7.0 준수**. heading / ID 정규식 위반 금지 |
-| §0.6 | **speckiwi MCP 필수 + 황금률**. 정상 target-scoped SRS read/mutation/status/evidence 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 mutation 대체 경로가 아니다. **황금률**: speckiwi MCP mutation 도구 호출 1회 = Markdown line-patch 1회. **mutation 호출 후 동일 SRS 파일에 `apply_patch` manual edit 사용 절대 금지** |
+| §0.6 | **speckiwi MCP 필수 + 황금률**. 정상 target-scoped SRS read/mutation/status/evidence 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 mutation 대체 경로가 아니다. 오케스트레이터 run 밖의 워크트리 한 경우는 예외다(루트 지침 Per-call workspace root 4번 항목). **황금률**: speckiwi MCP mutation 도구 호출 1회 = Markdown line-patch 1회. **mutation 호출 후 동일 SRS 파일에 `apply_patch` manual edit 사용 절대 금지** |
 | §0.7 | **stable/frozen 승급은 항상 사용자 확인**. 정책 파일이 자동 허용으로 설정해도 본 §0.7 우선. Codex clarification gate 단일 호출 |
 | §0.8 | **/snoworca-* 스킬 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부 |
 | §0.9 | **사실 위조 거절**. 존재하지 않는 코드/함수 판정 근거 거절 + `rejected_findings.log` |

@@ -9,7 +9,7 @@ description: "OpenCode/Hermes local-LLM variant for urgent Kiwi hot fixes, produ
 
 **etc override:** If any legacy section appears to allow CLI mutation fallback or
 direct normal SRS Markdown mutation, the shared etc local-LLM profile wins:
-normal SRS operations require `speckiwi mcp`; CLI is diagnostic/remediation only.
+normal SRS operations require `speckiwi mcp`; CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 
 Handle an urgent bug fix without bypassing governance: reproduce it through
 `kiwi-bug-repro`, take its reproduction test as the regression test, make the

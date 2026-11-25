@@ -2,7 +2,7 @@
 name: kiwi-wave-master
 description: "PRD 로 제품 target 의 SRS 를 한 번 저작하고 그 요구 집합을 작업 그래프(wave 노드와 의존 간선)로 분해한 뒤, 공용 병렬 계약으로 wave 당 워커 하나를 워크트리에서 실행·병합·검증하는 멀티-웨이브 오케스트레이터 v0.1. 초안 그래프는 speckiwi orchestrate wave propose 가 쓰고, orchestrate wave check 를 통과해야 dispatch 한다. 의존이 없는 wave 는 병렬로 돌고 --serial 이면 모든 단계를 하나씩 돈다. ./kiwi/waves.jsonl 로 진행을 추적하여 재개 가능(첫 미완료 wave 부터). 트리거 — kiwi wave master, 웨이브 오케스트레이션, 멀티 웨이브, 대형 작업 분해, wave 별 병렬 실행, 에픽 실행, 여러 단계로 나눠서 진행. 옵션 — --auto (모든 wave 를 끝까지 자율 완주, 안전 게이트 유지), --max (모든 wave 의 하위 스킬로 전파), --serial (모든 단계를 하나씩), --drive (무인 완주 + 경계 있는 자가 복구, §7.5)."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-wave-master v0.1
 
 > Codex clarification gate means: ask the user directly in Default mode; use `request_user_input` only in Plan mode when that tool is available.

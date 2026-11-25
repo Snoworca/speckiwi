@@ -157,8 +157,9 @@ describe("FR-FLOW-234 AC-4 — the root instruction block 1.13", () => {
     "When `get_work_mode` reports `codeComments: off`, write no explanatory comment in code you write or change: keep the trace tags with the AC numbers the code implements (`@req <REQ-ID> AC-<n>`, or `@step <task-name>: AC-<n>` for step work; the tag alone on its line), the `<REQ-ID> AC-<n>` citations on test lines and the directive comments a language or tool needs, and leave existing comments in place. Trace tags carry those AC numbers whatever the setting. Change the setting (`speckiwi comments on|off`) only when the user asks.";
 
   // @req FR-FLOW-234 AC-4
-  it("raises the block to 1.13 and carries the off rule", () => {
-    expect(AGENT_INSTRUCTION_VERSION).toBe("1.13");
+  // The block has moved on since 1.13 (FR-NODE-327 raised it to 1.14); the rule stays in the current block.
+  it("raised the block past 1.12 and carries the off rule", () => {
+    expect(AGENT_INSTRUCTION_VERSION).not.toBe("1.12");
     expect(renderAgentInstructionSnippet().split("\n")).toContain(OFF_LINE);
   });
 
@@ -180,9 +181,9 @@ describe("FR-FLOW-234 AC-4 — the root instruction block 1.13", () => {
   });
 
   // @req FR-FLOW-234 AC-4
-  it.each(["CLAUDE.md", "AGENTS.md"])("the repository's own %s carries the 1.13 block", async (file) => {
+  it.each(["CLAUDE.md", "AGENTS.md"])("the repository's own %s carries the current block with the off rule", async (file) => {
     const text = await read(file);
-    expect(text).toContain(`${AGENT_INSTRUCTION_HEADING_PREFIX}1.13`);
+    expect(text).toContain(`${AGENT_INSTRUCTION_HEADING_PREFIX}${AGENT_INSTRUCTION_VERSION}`);
     expect(text).toContain(OFF_LINE);
     expect(text).toContain("fill each `@step <task-name>:` tag with the AC numbers its code implements");
   });

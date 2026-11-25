@@ -40,6 +40,8 @@ export function readRecoveryForCommand(commandName: string): CliRecoveryHint {
   if (commandName === "show") return { command: "search", message: "Search for the requirement ID or title, then retry show with the exact ID." };
   if (commandName === "summary") return { command: "targets", message: "List registered targets before requesting a target summary." };
   if (commandName === "search") return { command: "search", message: "Retry search with valid filters and pagination options." };
+  // @req IR-CLI-123 AC-5
+  if (commandName === "validate" || commandName === "links check") return { command: commandName, message: `Write the baseline with speckiwi ${commandName} --json into a file first, then pass that file to --baseline.` };
   if (commandName === "active-target") return { command: "active-target", message: "Inspect the active target before selecting target-scoped work." };
   return { command: "list", message: "List requirements with valid filters before retrying the read command." };
 }

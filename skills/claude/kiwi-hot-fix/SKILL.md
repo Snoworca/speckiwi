@@ -3,7 +3,7 @@ name: kiwi-hot-fix
 description: "긴급 버그·운영 이슈에 대해 SRS→pm→coder 풀 파이프라인을 우회하면서도 speckiwi 거버넌스(REQ-ID·TDD·sync)를 유지하는 hot-fix 스킬. 입력 자동 감지(GitHub issue URL / 자연어 증상 / git status 변경분) + 원인 분석과 재현은 `/kiwi-bug-repro` 위임(돌려받은 재현 테스트가 회귀 테스트, 재현되지 않거나 버그가 아니거나 자동 테스트가 없으면 fix 없이 멈춤, 작업 트리 변경은 임시 worktree 에서 재현) + 시니어 fixer + 정형 검사 + 까칠 리뷰어 + 개선 루프 + 회귀 테스트 + 종료 시 `/kiwi-srs-sync` Skill 호출 위임으로 SRS 사후 동기화. **코드 수정 발생 시 까칠 리뷰어 서브에이전트 의무**(kiwi-coder Phase 2.f/2.g 동등). 트리거 — kiwi hot fix, 핫픽스, hot-fix, 긴급 수정, 긴급 패치, 운영 이슈 수정, hotfix, urgent fix, 버그 긴급 수정, 이 이슈 고쳐줘, 빠르게 고쳐줘, 즉시 수정, prod 이슈, production hotfix, issue 처리, github issue 수정. 검증(정형 검사·까칠 리뷰어) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 한다(시니어 fixer 는 영향 없음; `/kiwi-bug-repro` 위임에는 전파). --max 로 까칠 ×2 강도 승격. --auto 로 사용자 게이트 자동 진행(severity 가드레일). --no-sync 로 kiwi-srs-sync 위임 skip."
 ---
 
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 
 # kiwi-hot-fix
 

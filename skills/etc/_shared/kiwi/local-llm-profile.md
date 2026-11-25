@@ -13,7 +13,7 @@ If SpecKiwi MCP is unavailable:
 3. Restrict work to diagnostics, bootstrap assistance, or remediation guidance for starting or connecting `speckiwi mcp`.
 4. Halt before target-scoped SRS or implementation workflow continues.
 
-CLI diagnostics/remediation is diagnostic/remediation only. It is not the normal mutation path for etc Kiwi skills.
+CLI diagnostics/remediation is diagnostic/remediation only and is not the normal mutation path for etc Kiwi skills, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 
 ## Default Mode
 

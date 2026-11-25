@@ -17,6 +17,9 @@ import { renderReadOnlyToolNames, SEARCH_BEHAVIOR, toolSpecs, type ToolSpec } fr
 import { BILINGUAL_SEARCH_EXAMPLE, BILINGUAL_SEARCH_RULE } from "../../core/bootstrap/templates.js";
 import { validateWorkspace } from "../../core/validator/validate-workspace.js";
 import { checkLinks } from "../../core/query/links.js";
+import { parseBaseline, withoutBaselineLinks, withoutBaselineWarnings, type Baseline, type BaselineCommand, type BaselineReport } from "../../core/query/baseline.js";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { getRequirement, listRequirements } from "../../core/query/lookup.js";
 import { matchesRequirementFilter } from "../../core/query/filter.js";
 import { normalizeDiscoveryFields, projectRequirementRecords, searchRequirementRecords, type RequirementDiscoveryOptions } from "../../core/query/discovery.js";
@@ -77,8 +80,10 @@ function plural(count: number, singular: string, pluralized: string): string {
 }
 
 // @req REL-PARSE-002
-function formatValidateHuman(value: { diagnostics: Diagnostic[]; summary: DiagnosticsSummary }): string {
+function formatValidateHuman(value: { diagnostics: Diagnostic[]; summary: DiagnosticsSummary; baseline?: BaselineReport }): string {
   const lines = [`Diagnostics: ${plural(value.summary.errors, "error", "errors")}, ${plural(value.summary.warnings, "warning", "warnings")}`];
+  // @req IR-CLI-123 AC-3 — what the baseline removed is said, never hidden.
+  if (value.baseline) lines.push(`Baseline: ${plural(value.baseline.suppressed, "warning", "warnings")} already in ${value.baseline.file} not listed`);
   for (const item of value.diagnostics) {
     lines.push(`${item.severity} ${item.code} ${diagnosticLocation(item)} ${item.message}`);
   }
@@ -93,6 +98,19 @@ interface ReadOutputOptions {
   json?: boolean;
   /** Already validated by {@link parseDiagnosticsLimit}; omitted means every entry. */
   diagnosticsLimit?: number;
+}
+
+const BASELINE_HELP = "a previous --json output of this command; warnings it already holds, matched without their line, are left out and counted, and errors always stay";
+
+/** Reads `--baseline`; a file that is not the command's --json output is a usage error. @req IR-CLI-123 AC-5 */
+async function readBaseline(context: CliContext, command: Command, json: boolean, name: BaselineCommand, file: unknown): Promise<Baseline | null | undefined> {
+  if (typeof file !== "string") return undefined;
+  const absolute = path.resolve(file);
+  const content = await readFile(absolute, "utf8").catch(() => undefined);
+  const parsed = parseBaseline(name, file, content);
+  if (parsed.ok) return parsed.baseline;
+  readFailure(context, command, { json }, "USAGE", parsed.message, name);
+  return null;
 }
 
 const DIAGNOSTICS_LIMIT_HELP = "most diagnostic entries in JSON output, errors first; diagnosticsSummary still counts every entry";
@@ -417,6 +435,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     .option("--only <code>", "display only the listed diagnostic codes (repeatable)", collectDiagnosticCode, [])
     .option("--ignore <code>", "hide the listed diagnostic codes from display (repeatable)", collectDiagnosticCode, [])
     .option("--explain <code>", "print the diagnostic definition for a code and exit")
+    .option("--baseline <file>", BASELINE_HELP)
     .option("--json", "JSON output")
     .action(async (options) => {
       const json = options.json || command.opts().json;
@@ -427,7 +446,12 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       }
       const workspace = await workspaceFrom(command.opts());
       // @req FR-NODE-209 AC-3 — the lite SDS files under docs/sds are validated here, in every work-mode.
-      const diagnostics = [...readDiagnostics(workspace), ...(await liteSdsValidationDiagnostics(workspace))];
+      const baseline = await readBaseline(context, command, Boolean(json), "validate", options.baseline);
+      if (baseline === null) return;
+      const found = [...readDiagnostics(workspace), ...(await liteSdsValidationDiagnostics(workspace))];
+      // @req IR-CLI-123 AC-1 AC-2 — the baseline leaves before the exit decision, warnings only.
+      const based = baseline ? withoutBaselineWarnings(found, baseline) : undefined;
+      const diagnostics = based?.diagnostics ?? found;
       // @req IR-CLI-051 — exit code is computed from the UNFILTERED error set; display filters only
       // change which diagnostics are shown, never the pass/fail decision.
       const unfiltered = splitDiagnostics(diagnostics);
@@ -441,7 +465,7 @@ export function registerReadCommands(command: Command, context: CliContext): voi
       });
       const result = splitDiagnostics(displayed);
       const diagnosticsSummary = summarizeDiagnostics(displayed);
-      const value = { ...result, summary: diagnosticsSummary, diagnosticsSummary };
+      const value = { ...result, summary: diagnosticsSummary, diagnosticsSummary, ...(based ? { baseline: based.report } : {}) };
       if (json) output(context, { json: true }, value);
       else output(context, { json: false }, formatValidateHuman(value));
       if (unfiltered.errors.length > 0 || (options.failOnWarning && unfiltered.warnings.length > 0)) command.setOptionValue("exitCode", exitCodeFor("VALIDATION"));
@@ -992,9 +1016,14 @@ export function registerReadCommands(command: Command, context: CliContext): voi
     });
 
   const links = command.command("links");
-  links.command("check").option("--json").option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit).action(async (options) => {
+  links.command("check").option("--json").option("--baseline <file>", BASELINE_HELP).option("--diagnostics-limit <n>", DIAGNOSTICS_LIMIT_HELP, parseDiagnosticsLimit).action(async (options) => {
+    const read = readOutputOptions(options, command);
+    const baseline = await readBaseline(context, command, Boolean(read.json), "links check", options.baseline);
+    if (baseline === null) return;
     const workspace = await workspaceFrom(command.opts());
-    outputRead(context, readOutputOptions(options, command), workspace, await checkLinks(workspace));
+    const result = await checkLinks(workspace);
+    // @req IR-CLI-123 AC-4
+    outputRead(context, read, workspace, baseline ? withoutBaselineLinks(result, baseline) : result);
   });
 
   // @req IR-CLI-046 — step-local validation surface: run validateWorkspaceScoped for the named step

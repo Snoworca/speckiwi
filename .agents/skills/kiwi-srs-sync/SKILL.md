@@ -2,7 +2,7 @@
 name: kiwi-srs-sync
 description: "코드를 먼저 구현한 뒤 그 변경분(git diff)을 분석하여 기존 speckiwi SRS 를 사후 동기화하는 reverse-direction 증분 SRS 스킬 v0.1. 핫픽스/탐색적 프로토타입/외부 PR 흡수/레거시 합류 후 SRS 갱신용. git diff 자동 감지(--base/--head/--staged/--since) + 3 standard 사전조사 병렬(intent/mapping/impact) + high-reasoning 시니어 분석가 + 현재 세션 모델을 상속하는 단일 검증 서브에이전트 + 4방향 분류(conflict/update/new-feature/new-scope) + dry-run 선행 의무 + 사용자 승인 후 MCP mutation. **TDD 의무화 제외** (kiwi-coder 와 반대 방향). 트리거 — kiwi srs sync, 코드 먼저 SRS 나중, SRS 사후 동기화, 핫픽스 SRS 반영, 코드-우선 SRS, reverse SRS sync, code-first srs update, post-hoc srs, srs catch-up, srs back-sync, 타겟 비교, 타겟 X 와 비교, SRS 와 코드 비교, SRS 업데이트, 타겟 SRS 업데이트, 구현된 코드 SRS 반영, 코드와 SRS 동기화. 평가·검증은 현재 세션 모델을 상속하는 단일 검증 서브에이전트로 수행하며 `--model <name>` 로 override 한다."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-srs-sync v0.1.2
 
 > Codex clarification gate means: ask the user directly in Default mode; use `request_user_input` only in Plan mode when that tool is available.

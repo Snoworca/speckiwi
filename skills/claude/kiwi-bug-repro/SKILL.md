@@ -2,7 +2,7 @@
 name: kiwi-bug-repro
 description: "보고된 버그를 고치기 전에 확인하고 재현하는 스킬. 사용자가 준 이슈나 설명을 그대로 읽어 증상·기대 동작·실제 동작·재현 절차를 기록하고, 무엇이든 실행하기 전에 정적 분석으로 원인 후보를 file:line 근거와 확신도로 추린다. 재현은 가장 작은 범위의 자동 테스트에서 시작해, 재현되지 않을 때만 원인 후보와 범위를 넓히고(모듈·통합 테스트), 마지막으로 자격 증명을 뺀 격리된 임시 사본에서 제품을 빌드해 실행한다. 3단계를 넘지 않는다. 결과는 증상과 같게 실패하는 재현 테스트, 자동 테스트 없는 재현(스크립트와 관찰 기록), '버그가 아님'(요구 변경은 kiwi-srs 로), 또는 사용자에게 하는 질문이다. 제품 코드는 고치지 않고 사용자의 작업을 잃지 않는다. kiwi-hot-fix 와 kiwi-orchestrator 가 버그를 받으면 먼저 이 스킬을 부른다. 트리거 — kiwi bug repro, 버그 재현, 버그 확인, 이 버그 재현해줘, 재현 테스트 작성, 버그인지 확인해줘, reproduce bug, /kiwi-bug-repro. 옵션 — --analysis-only, --no-pipeline-emit, --auto, --max, --mini / --loops N, --model."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-bug-repro v0.1
 
 보고된 버그를 고치기 전에 **정말 버그인지 확인하고 재현한다.** 결과는 넷 중 하나다: 보고된 증상과 같은 이유로 실패하는 재현 테스트, 자동 테스트로 옮기지 못한 재현(재현 스크립트와 관찰 기록), 명세대로의 동작이라는 "버그가 아님" 판정, 또는 재현에 모자란 정보를 묻는 질문. 고치는 일은 하지 않는다. 그것은 호출자(`kiwi-hot-fix`, `kiwi-orchestrator`)나 사용자의 몫이다.

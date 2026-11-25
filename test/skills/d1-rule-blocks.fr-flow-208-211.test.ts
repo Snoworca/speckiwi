@@ -87,7 +87,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
   "FR-FLOW-208": {
     "skills/claude": [
       "SKILL.md\t## 핵심 규칙 — 요구 사이 의존 (FR-FLOW-208)\t6\t10d6f4b2:1 50d4e6e8:1 cb3f91d5:1 087f1e9b:1 d8c58aac:1 cb3f91d5:1",
-      "SKILL.md\t## 0. 공통 규약 (SSOT)\t25\t3cd39375:1 4199ba45:1 b49ed306:1 eb7749d9:1 cf39f9d4:1 695b2fd5:1 511baa1e:1 409d5935:1 66105baa:1 32391a33:1 4e7732cb:1 69be011d:1 b7735515:1 bb651fbb:1 59ea2061:1 a2f4baf6:1 f6344a99:1 b1193bb3:1 c49a9d1a:1 475f9c0c:1 61d41699:1 8991009c:1 363ef397:1 55118954:1 163b506f:1",
+      "SKILL.md\t## 0. 공통 규약 (SSOT)\t25\t3cd39375:1 4199ba45:1 b49ed306:1 eb7749d9:1 cf39f9d4:1 695b2fd5:1 511baa1e:1 6e91af73:1 66105baa:1 32391a33:1 4e7732cb:1 69be011d:1 b7735515:1 bb651fbb:1 59ea2061:1 a2f4baf6:1 f6344a99:1 b1193bb3:1 c49a9d1a:1 475f9c0c:1 61d41699:1 8991009c:1 363ef397:1 55118954:1 163b506f:1",
       "SKILL.md\t### 6.1 분류\t18\tb6ce8fb9:1 a56726cd:1 021fb596:1 eb868a52:1 8a718f6d:1 0371d57a:1 80778808:1 06001ab4:1 42402ab3:1 39d4b54e:1 ee407353:1 9b6879ad:1 5db94bf9:1 717c35b4:1 18c43429:1 671df184:1 d10b36aa:1 f1b90184:1",
       "SKILL.md\t### 6.5 Multi-aspect 요구사항 분리\t5\t2c70a7a0:1 5bfbc903:1 e292f01d:1 c93d17b9:1 cb3f91d5:1",
       "SKILL.md\t### 9.1 작성자 컨텍스트\t10\tf496c86c:1 0cc77084:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
@@ -96,7 +96,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
     ],
     "skills/codex": [
       "SKILL.md\t## 핵심 규칙 — 요구 사이 의존 (FR-FLOW-208)\t6\t10d6f4b2:1 50d4e6e8:1 cb3f91d5:1 087f1e9b:1 d8c58aac:1 cb3f91d5:1",
-      "SKILL.md\t## 0. 공통 규약 (SSOT)\t25\t3cd39375:1 4199ba45:1 b49ed306:1 eb7749d9:1 cf39f9d4:1 695b2fd5:1 511baa1e:1 2828f516:1 d8e89fe9:1 32391a33:1 4e7732cb:1 69be011d:1 b7735515:1 bb651fbb:1 59ea2061:1 0c22beea:1 f6344a99:1 b1193bb3:1 c49a9d1a:1 475f9c0c:1 87438d74:1 f8319948:1 6cdf0ecf:1 fc0d1db1:1 163b506f:1",
+      "SKILL.md\t## 0. 공통 규약 (SSOT)\t25\t3cd39375:1 4199ba45:1 b49ed306:1 eb7749d9:1 cf39f9d4:1 695b2fd5:1 511baa1e:1 ecc3ceb5:1 d8e89fe9:1 32391a33:1 4e7732cb:1 69be011d:1 b7735515:1 bb651fbb:1 59ea2061:1 0c22beea:1 f6344a99:1 b1193bb3:1 c49a9d1a:1 475f9c0c:1 87438d74:1 f8319948:1 6cdf0ecf:1 fc0d1db1:1 163b506f:1",
       "SKILL.md\t### 6.1 분류\t18\tb6ce8fb9:1 a56726cd:1 021fb596:1 eb868a52:1 8a718f6d:1 0371d57a:1 80778808:1 06001ab4:1 42402ab3:1 39d4b54e:1 ee407353:1 9b6879ad:1 5db94bf9:1 717c35b4:1 18c43429:1 671df184:1 d10b36aa:1 f1b90184:1",
       "SKILL.md\t### 6.5 Multi-aspect 요구사항 분리\t5\t2c70a7a0:1 5bfbc903:1 e292f01d:1 c93d17b9:1 cb3f91d5:1",
       "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tcb2239cb:1 8e42b0a4:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
@@ -114,7 +114,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
     ],
     ".agents/skills": [
       "SKILL.md\t## 핵심 규칙 — 요구 사이 의존 (FR-FLOW-208)\t6\t10d6f4b2:1 50d4e6e8:1 cb3f91d5:1 087f1e9b:1 d8c58aac:1 cb3f91d5:1",
-      "SKILL.md\t## 0. 공통 규약 (SSOT)\t25\t3cd39375:1 4199ba45:1 b49ed306:1 eb7749d9:1 cf39f9d4:1 695b2fd5:1 511baa1e:1 2828f516:1 d8e89fe9:1 32391a33:1 4e7732cb:1 69be011d:1 b7735515:1 bb651fbb:1 59ea2061:1 0c22beea:1 f6344a99:1 b1193bb3:1 c49a9d1a:1 475f9c0c:1 87438d74:1 f8319948:1 6cdf0ecf:1 fc0d1db1:1 163b506f:1",
+      "SKILL.md\t## 0. 공통 규약 (SSOT)\t25\t3cd39375:1 4199ba45:1 b49ed306:1 eb7749d9:1 cf39f9d4:1 695b2fd5:1 511baa1e:1 ecc3ceb5:1 d8e89fe9:1 32391a33:1 4e7732cb:1 69be011d:1 b7735515:1 bb651fbb:1 59ea2061:1 0c22beea:1 f6344a99:1 b1193bb3:1 c49a9d1a:1 475f9c0c:1 87438d74:1 f8319948:1 6cdf0ecf:1 fc0d1db1:1 163b506f:1",
       "SKILL.md\t### 6.1 분류\t18\tb6ce8fb9:1 a56726cd:1 021fb596:1 eb868a52:1 8a718f6d:1 0371d57a:1 80778808:1 06001ab4:1 42402ab3:1 39d4b54e:1 ee407353:1 9b6879ad:1 5db94bf9:1 717c35b4:1 18c43429:1 671df184:1 d10b36aa:1 f1b90184:1",
       "SKILL.md\t### 6.5 Multi-aspect 요구사항 분리\t5\t2c70a7a0:1 5bfbc903:1 e292f01d:1 c93d17b9:1 cb3f91d5:1",
       "references/extended-workflow.md\t### 9.1 작성자 컨텍스트\t10\tcb2239cb:1 8e42b0a4:1 138d4f3e:1 9b8c6770:1 692879a3:1 0a43f9f3:1 24b803ff:1 f853dd0d:1 5c7fb4cd:1 4a69ba62:1",
@@ -160,7 +160,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
   },
   "FR-FLOW-211": {
     "skills/claude": [
-      "SKILL.md\t(top)\t2\td914dca4:1 0b7beaa4:1",
+      "SKILL.md\t(top)\t2\td914dca4:1 c03726ad:1",
       "SKILL.md\t# kiwi-pm v0.1\t3\tc0395013:1 4fce87bd:1 cb3f91d5:1",
       "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 실행 규칙 (FR-FLOW-223)\t3\t63451555:1 69b1661e:1 cb3f91d5:1",
       "SKILL.md\t## 0. 공통 규약 (SSOT)\t20\t3cd39375:1 4199ba45:1 40f7dcfe:1 ef23af26:1 25826395:1 01f55da4:1 f7bf6e70:1 1330dbf8:1 88af73b5:1 8ddfe9db:1 b677cae3:1 f6a5c73d:1 22d3dbf9:1 d8f66d4f:1 30dcc1c8:1 4a150061:1 ac212ca6:1 538cad9a:1 7865cd3c:1 1296a589:1",
@@ -187,7 +187,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "SKILL.md\t### MCP 호출 분담 표 (speckiwi 실제 schema)\t14\t481f5962:1 4da1ec6f:1 01c46fb7:1 d2354436:1 48868688:1 02ef48b8:1 f71fe53a:1 ebe584e6:1 70999ede:1 5a8f92c2:1 c8b46f50:1 bd917e01:1 e35f0d35:1 cb3f91d5:1"
     ],
     "skills/codex": [
-      "SKILL.md\t(top)\t2\tda0bb095:1 0b7beaa4:1",
+      "SKILL.md\t(top)\t2\tda0bb095:1 c03726ad:1",
       "SKILL.md\t## Official Workflow Tool Policy\t8\t56dd546e:1 b27d11cb:1 e31eeaec:1 bb86273e:1 6ee48ca6:1 0b3c8e90:1 befb240b:1 cb3f91d5:1",
       "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 실행 규칙 (FR-FLOW-223)\t3\t63451555:1 69b1661e:1 cb3f91d5:1",
       "SKILL.md\t## 0. 공통 규약 (SSOT)\t20\t3cd39375:1 4199ba45:1 40f7dcfe:1 62e7b719:1 25826395:1 89aa7b3e:1 f7bf6e70:1 1330dbf8:1 4783f3b6:1 d88d1702:1 b677cae3:1 2691ea84:1 22d3dbf9:1 d8f66d4f:1 30dcc1c8:1 4a150061:1 1f7c6729:1 4e14f40a:1 b68dfcd6:1 1296a589:1",
@@ -216,7 +216,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
     ],
     "skills/etc": [
       "SKILL.md\t(top)\t1\t7c8337e7:1",
-      "SKILL.md\t# kiwi-pm v0.1\t4\tdba4d1c2:1 eb708c0f:1 befb240b:1 cb3f91d5:1",
+      "SKILL.md\t# kiwi-pm v0.1\t4\tad666471:1 eb708c0f:1 befb240b:1 cb3f91d5:1",
       "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 실행 규칙 (FR-FLOW-223)\t3\t63451555:1 69b1661e:1 cb3f91d5:1",
       "SKILL.md\t## 0. 공통 규약 (SSOT)\t19\t3cd39375:1 4199ba45:1 40f7dcfe:1 62e7b719:1 25826395:1 b60eac6f:1 f7bf6e70:1 1330dbf8:1 4783f3b6:1 1ae19e86:1 b677cae3:1 2691ea84:1 22d3dbf9:1 d8f66d4f:1 30dcc1c8:1 4a150061:1 85a976eb:1 12bfdbde:1 b18f5717:1",
       "SKILL.md\t#### §0.G1 — 입력 무결성\t11\t657898dc:1 41399f0d:1 4199ba45:1 da39e2f1:1 1b66a4f8:1 05f7e7b6:1 93d5dd17:1 86d34597:1 32205632:1 d9aab87d:1 6fab408c:1",
@@ -243,7 +243,7 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
       "references/extended-workflow.md\t### MCP 호출 분담 표 (speckiwi 실제 schema)\t14\t481f5962:1 4da1ec6f:1 01c46fb7:1 d2354436:1 48868688:1 02ef48b8:1 f71fe53a:1 ebe584e6:1 70999ede:1 5a8f92c2:1 c8b46f50:1 bd917e01:1 c2a0c3cb:1 cb3f91d5:1"
     ],
     ".agents/skills": [
-      "SKILL.md\t(top)\t2\tda0bb095:1 0b7beaa4:1",
+      "SKILL.md\t(top)\t2\tda0bb095:1 c03726ad:1",
       "SKILL.md\t## Official Workflow Tool Policy\t8\t56dd546e:1 b27d11cb:1 e31eeaec:1 bb86273e:1 6ee48ca6:1 0b3c8e90:1 befb240b:1 cb3f91d5:1",
       "SKILL.md\t## 핵심 규칙 — 컴팩션 뒤에도 남는 실행 규칙 (FR-FLOW-223)\t3\t63451555:1 69b1661e:1 cb3f91d5:1",
       "SKILL.md\t## 0. 공통 규약 (SSOT)\t20\t3cd39375:1 4199ba45:1 40f7dcfe:1 62e7b719:1 25826395:1 89aa7b3e:1 f7bf6e70:1 1330dbf8:1 4783f3b6:1 d88d1702:1 b677cae3:1 2691ea84:1 22d3dbf9:1 d8f66d4f:1 30dcc1c8:1 4a150061:1 1f7c6729:1 4e14f40a:1 b68dfcd6:1 1296a589:1",

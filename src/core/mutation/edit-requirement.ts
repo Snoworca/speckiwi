@@ -1,5 +1,5 @@
 import { diagnostic } from "../diagnostic.js";
-import { applyPatchPlan, isStalePatchError } from "../patch/apply-patch.js";
+import { applyPatchPlan, isStalePatchError, renderPlanText } from "../patch/apply-patch.js";
 import { createPatchPlan, type PatchOperation } from "../patch/patch-plan.js";
 import { replaceHeadingTitle } from "../parser/heading-render.js";
 import type { Diagnostic, EvidenceRow, MutationResult, ProjectRoot, RequirementRecord, TextFile } from "../types.js";
@@ -59,6 +59,14 @@ const SETTABLE_ROW_COLUMNS: Record<RequirementTableSection, readonly string[]> =
 export const SETTABLE_ROW_COLUMNS_RULE = `The \`values\` keys are lowercase: ${Object.entries(SETTABLE_ROW_COLUMNS)
   .map(([section, columns]) => `${section} takes ${columns.join(", ")}`)
   .join("; ")}.`;
+
+/**
+ * The shape of one row operation, said in the CLI option help and the MCP description alike.
+ * @req IR-CLI-122 AC-1
+ */
+export const ROW_OPERATIONS_SHAPE = `Each operation is an object with \`kind\` (update or delete), the row as \`rowId\` (evidence rows only, such as VE-1) or \`rowIndex\` (0-based), and for an update \`values\`, an object of the cells to set; no other key is taken. ${SETTABLE_ROW_COLUMNS_RULE} Example: [{"kind":"update","rowId":"VE-1","values":{"notes":"..."}}]`;
+
+const ROW_OPERATION_KEYS: readonly string[] = ["kind", "rowId", "rowIndex", "values"];
 
 export interface RequirementTableRowOperation {
   kind: "update" | "delete";
@@ -150,12 +158,15 @@ async function applyGranularPlan(
   kind: string,
   dryRun: boolean,
   updatedFields: string[],
-  warnings: Diagnostic[] = []
+  warnings: Diagnostic[] = [],
+  changeStamp?: string
 ): Promise<MutationResult<GranularRequirementEditOutput>> {
   if (operations.length === 0) {
     return withMutationEnvelope(mutationOk({ id, written: false, updatedFields }), mutationNoopEnvelope(kind, file.relativePath, dryRun));
   }
   const plan = createPatchPlan(file, operations);
+  // @req FR-NODE-093 AC-10 — the stamp says the document changed, so a row rewritten as it was carries none.
+  if (changeStamp !== undefined && renderPlanText(plan).changed) updatedFields = [...updatedFields, changeStamp];
   try {
     const applied = await applyPatchPlan(plan, { dryRun });
     return withMutationEnvelope(
@@ -359,6 +370,16 @@ async function editRequirementTableRowsUnlocked(root: ProjectRoot, input: EditRe
     // identical to the original and still reports ok/written: a governance edit the caller believes
     // happened and did not. The capitalised header spelling (`Covers`) is the likely mistake.
     const settable = SETTABLE_ROW_COLUMNS[input.section];
+    // @req FR-NODE-093 AC-7 — a key beside `values` was dropped and the update wrote nothing.
+    for (const key of Object.keys(rowOperation)) {
+      if (ROW_OPERATION_KEYS.includes(key)) continue;
+      const hint = settable.includes(key) ? `; move it into values.${key}` : "";
+      return mutationFail("USAGE", `unknown row operation key '${key}'; an operation takes ${ROW_OPERATION_KEYS.join(", ")}${hint}`);
+    }
+    // @req FR-NODE-093 AC-8
+    if (rowOperation.kind === "update" && Object.keys(rowOperation.values ?? {}).length === 0) {
+      return mutationFail("USAGE", `an update operation needs values with at least one of ${settable.join(", ")}`);
+    }
     for (const [field, value] of Object.entries(rowOperation.values ?? {})) {
       if (typeof value !== "string") return mutationFail("USAGE", `${field} value must be a string`);
       if (!settable.includes(field)) {
@@ -397,5 +418,6 @@ async function editRequirementTableRowsUnlocked(root: ProjectRoot, input: EditRe
 
   // @req FR-NODE-287 AC-5 — an updated evidence row warns as add_verification_evidence does.
   const { warnings } = judgeWrittenEvidence(root.root, loaded.record, writtenEvidence);
-  return applyGranularPlan(input.id, loaded.file, operations, "edit_requirement_table_rows", input.dryRun ?? false, [input.section, `changed:${todayStamp()}`], warnings);
+  // @req FR-NODE-093 AC-10 — the stamp says the document changed, so an edit that rewrites a row as it was carries none.
+  return applyGranularPlan(input.id, loaded.file, operations, "edit_requirement_table_rows", input.dryRun ?? false, [input.section], warnings, `changed:${todayStamp()}`);
 }

@@ -81,28 +81,28 @@ const RECORDED_RULE_BLOCKS: Record<string, Record<string, string[]>> = {
   "FR-FLOW-224 kiwi-roadmap": {
     "skills/claude": [
       "SKILL.md\t(top)\t1\t26f2c10b:1",
-      "SKILL.md\t# kiwi-roadmap v0.1\t6\tc48b9ec4:1 23fa003d:1 82192901:1 5b83418e:1 0b7beaa4:1 e854732d:1",
+      "SKILL.md\t# kiwi-roadmap v0.1\t6\tc48b9ec4:1 23fa003d:1 82192901:1 5b83418e:1 c03726ad:1 e854732d:1",
       "SKILL.md\t## 1. 순서\t5\tba7d70e3:1 76d4cb85:1 4656de1f:1 6b36f89d:1 5922b161:1",
       "SKILL.md\t## 2. 착수 — kiwi-prd 로 넘긴다\t3\t217d0713:1 40a05851:1 840f0c92:1",
       "references/extended-workflow.md\t(top)\t0\t"
     ],
     "skills/codex": [
       "SKILL.md\t(top)\t1\t4eac29b7:1",
-      "SKILL.md\t# kiwi-roadmap v0.1\t7\tc48b9ec4:1 23fa003d:1 82192901:1 5b83418e:1 0b7beaa4:1 86488b0f:1 e854732d:1",
+      "SKILL.md\t# kiwi-roadmap v0.1\t7\tc48b9ec4:1 23fa003d:1 82192901:1 5b83418e:1 c03726ad:1 86488b0f:1 e854732d:1",
       "SKILL.md\t## 1. 순서\t5\tba7d70e3:1 76d4cb85:1 4656de1f:1 6b36f89d:1 5922b161:1",
       "SKILL.md\t## 2. 착수 — kiwi-prd 로 넘긴다\t3\tc9ce8c65:1 66b6dcc1:1 840f0c92:1",
       "references/extended-workflow.md\t(top)\t0\t"
     ],
     "skills/etc": [
       "SKILL.md\t(top)\t1\t86e8348a:1",
-      "SKILL.md\t# kiwi-roadmap v0.1\t7\tc48b9ec4:1 23fa003d:1 82192901:1 5b83418e:1 0b7beaa4:1 3a4cc1df:1 e854732d:1",
+      "SKILL.md\t# kiwi-roadmap v0.1\t7\tc48b9ec4:1 23fa003d:1 82192901:1 5b83418e:1 c03726ad:1 3a4cc1df:1 e854732d:1",
       "SKILL.md\t## 1. 순서\t5\tba7d70e3:1 76d4cb85:1 4656de1f:1 6b36f89d:1 5922b161:1",
       "SKILL.md\t## 2. 착수 — kiwi-prd 로 넘긴다\t3\tc42b21ee:1 11e957df:1 840f0c92:1",
       "references/extended-workflow.md\t(top)\t0\t"
     ],
     ".agents/skills": [
       "SKILL.md\t(top)\t1\t4eac29b7:1",
-      "SKILL.md\t# kiwi-roadmap v0.1\t7\tc48b9ec4:1 23fa003d:1 82192901:1 5b83418e:1 0b7beaa4:1 86488b0f:1 e854732d:1",
+      "SKILL.md\t# kiwi-roadmap v0.1\t7\tc48b9ec4:1 23fa003d:1 82192901:1 5b83418e:1 c03726ad:1 86488b0f:1 e854732d:1",
       "SKILL.md\t## 1. 순서\t5\tba7d70e3:1 76d4cb85:1 4656de1f:1 6b36f89d:1 5922b161:1",
       "SKILL.md\t## 2. 착수 — kiwi-prd 로 넘긴다\t3\tc9ce8c65:1 66b6dcc1:1 840f0c92:1",
       "references/extended-workflow.md\t(top)\t0\t"

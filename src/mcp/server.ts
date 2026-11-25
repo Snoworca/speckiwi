@@ -380,7 +380,8 @@ export const toolSchemas: Record<string, Record<string, z.ZodTypeAny>> = withPer
   edit_requirement_table_rows: {
     id: z.string(),
     section: z.enum(["verification_evidence", "trace_links", "change_notes"]),
-    operations: z.array(z.object({ kind: z.enum(["update", "delete"]), rowId: z.string().optional(), rowIndex: z.number().int().nonnegative().optional(), values: z.record(z.string(), z.string()).optional() })),
+    // @req FR-NODE-093 AC-9 — passthrough, so a key beside values reaches the core refusal instead of being stripped.
+    operations: z.array(z.object({ kind: z.enum(["update", "delete"]), rowId: z.string().optional(), rowIndex: z.number().int().nonnegative().optional(), values: z.record(z.string(), z.string()).optional() }).passthrough()),
     dryRun: z.boolean().optional(),
     ignoreLock: z.boolean().optional()
   },

@@ -2,7 +2,7 @@
 name: kiwi-srs
 description: "신규 요구사항을 받아 기존 코드 + speckiwi MCP SRS 데이터베이스와 교차 분석하여 conflict/update/new-feature/new-scope 4방향 분류 → 구현 가능성 판정 → speckiwi MCP를 SSOT로 SRS 증분 작성·갱신. 3 Sonnet 사전조사 병렬 + Opus 시니어 작성자 + 현재 세션 모델을 상속하는 단일 검증 서브에이전트(Max는 + 독립 2차 검증 패스) + pass/fail 게이트(PRD 판정 통과 + 증거가 붙은 kept finding 0). 트리거 — SRS 업데이트, 요구사항 추가, kiwi srs 써줘, 기존 SRS에 반영해줘, 새 기능 요구사항 SRS, SRS 충돌 감지, 충돌 SRS 확인, 증분 SRS authoring, 신규 기능 SRS, 요구사항 명세 갱신, speckiwi 요구사항 등록, srs conflict 분석, kiwi srs 작성, incremental srs, add requirement to srs, update existing SRS, new feature spec, kiwi requirement authoring. **PRD 가 아닌 입력(인라인 요청·이슈·요구 파일)이면 /kiwi-prd 가 먼저 그 입력을 원문 그대로 PRD 에 기록·승인**하고, 검증은 PRD 항목을 하나씩 대조해 원문 미수용은 fail, 근거 없는 확장은 drop·residual, 구멍 메우기는 fills: 근거로 허용한다. **--auto 로 질문 없이 진행** (현재의 무옵션 동작과 등가). `--qna` 는 v0.11 까지 deprecated alias. --max로 검증 강화(단일 검증 서브에이전트 + 독립 2차 검증 패스, 같은 pass/fail 종료). 평가·검증은 현재 세션 모델을 상속하는 단일 검증 서브에이전트로 수행하며 `--model <name>` 로 override 한다(게이트 불변). 종료 시 ./kiwi/pipeline.jsonl 에 이벤트 1줄 append (kiwi-pipeline 메타 스킬용)."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-srs v0.11
 
 ## 핵심 규칙 — 컴팩션 뒤에도 남는 PRD 판정 (FR-FLOW-205)
@@ -59,7 +59,7 @@ pipeline 이벤트 기록의 **정상 경로**는 MCP `workflow_pipeline_emit` �
 | §0.3 | **코드 증거 우선**. 신규/갱신 REQ는 `add_requirement` 시 `trace` 배열에 source 첨부 (NFR/PERF 예외) |
 | §0.4 | **할루시네이션 금지**. 코드/요구사항 텍스트에 증거 없는 기능 작성 금지. 추정은 `stability=draft` + `[INFERRED:high\|med\|low]` |
 | §0.5 | **SRS-MD Authoring Rules v2.7.0 준수**. heading / ID 정규식 / prefix-type 매핑 위반 금지. `checked_compatible` 호환성 캐시 필드(§23.5, `semanticSha`/`checked-at`)는 허용 필드 allowlist 에 포함 |
-| §0.6 | **speckiwi MCP 필수 + 황금률**. 정상 target-scoped SRS read/mutation/status/evidence/completed-work 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 mutation 대체 경로가 아니다. **황금률**: speckiwi MCP mutation 도구 (`add_requirement` / `update_status` / `add_trace_link` / `add_verification_evidence` / `check_acceptance_criteria` / `add_completed_work` / `set_active_target`) 호출 1회 = Markdown line-patch 1회 (`apply-patch.ts` atomic write). **mutation 호출 후 동일 SRS 파일에 `Edit` 도구 사용 절대 금지** (예외는 §9.4) |
+| §0.6 | **speckiwi MCP 필수 + 황금률**. 정상 target-scoped SRS read/mutation/status/evidence/completed-work 는 MCP 로만 수행한다. CLI 는 설치/버전/설정 진단과 MCP 복구 안내에만 사용하고 정상 mutation 대체 경로가 아니다. 오케스트레이터 run 밖의 워크트리 한 경우는 예외다(루트 지침 Per-call workspace root 4번 항목). **황금률**: speckiwi MCP mutation 도구 (`add_requirement` / `update_status` / `add_trace_link` / `add_verification_evidence` / `check_acceptance_criteria` / `add_completed_work` / `set_active_target`) 호출 1회 = Markdown line-patch 1회 (`apply-patch.ts` atomic write). **mutation 호출 후 동일 SRS 파일에 `Edit` 도구 사용 절대 금지** (예외는 §9.4) |
 | §0.7 | **scope/target 결정은 사용자 확인**. AskUserQuestion 단일 호출 분해 |
 | §0.8 | **/snoworca-\* 스킬 호출 절대 금지**. 로직만 차용, 실행은 본 스킬 내부 |
 | §0.9 | **사실 위조 거절**. 존재하지 않는 함수/CVE/파일 추가 요구는 거절 + `rejected_findings.log` |
@@ -848,7 +848,7 @@ emit 실패는 best-effort — 본 작업 (SRS 갱신·사용자 보고) 의 성
 
 ## 13. MCP / CLI fallback — target 등록 예외와 CLI 진단
 
-정상 target-scoped SRS read/mutation 은 전부 MCP 로만 수행한다. 아래 CLI 칸은 그 작업의 대체 경로가 아니라 설치·버전·설정을 확인하는 자리다. **kiwi-srs 가 하는 mutation 가운데 미등록 target 등록만이 이 원칙의 예외**이며, 다른 어떤 SRS mutation 도 CLI 로 대체하지 않는다. 루트 지침은 MCP 도구가 없는 target 이름 바꾸기(`speckiwi rename-target`)와 target 상태 설정(`speckiwi set-target-status`)도 CLI 로 허용하지만, 둘 다 사용자가 정하는 일이라 kiwi-srs 는 하지 않는다.
+정상 target-scoped SRS read/mutation 은 전부 MCP 로만 수행한다. 아래 CLI 칸은 그 작업의 대체 경로가 아니라 설치·버전·설정을 확인하는 자리다. **kiwi-srs 가 하는 mutation 가운데 미등록 target 등록만이 이 원칙의 예외**이며, 다른 어떤 SRS mutation 도 CLI 로 대체하지 않는다. 오케스트레이터 run 밖의 워크트리 한 경우는 예외다(루트 지침 Per-call workspace root 4번 항목). 루트 지침은 MCP 도구가 없는 target 이름 바꾸기(`speckiwi rename-target`)와 target 상태 설정(`speckiwi set-target-status`)도 CLI 로 허용하지만, 둘 다 사용자가 정하는 일이라 kiwi-srs 는 하지 않는다.
 
 | 작업 | MCP | CLI (원칙: 진단 전용) |
 |---|---|---|

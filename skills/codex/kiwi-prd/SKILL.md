@@ -2,7 +2,7 @@
 name: kiwi-prd
 description: "사용자 요청을 조사·질문보다 먼저 원문 그대로 PRD 파일(docs/prd/)에 쓰고, 빠진 의도와 범위를 한 번에 하나씩 물어 짧은 PRD 로 정리한 뒤 승인을 받는 요구 수집 스킬. PRD 는 입력 기록이고 요구 원본은 docs/spec 의 SRS 다. 사용자 말과 에이전트 제안을 나눠 적고, 제외 항목을 함께 적어 SRS 가 요청보다 커지지 않게 한다. kiwi-srs·kiwi-tdd·kiwi-step·kiwi-orchestrator·kiwi-wave-master 가 PRD 없이 불리면 먼저 이 스킬을 부른다. 트리거 — kiwi prd, 요구사항 수집, 요구 정리, PRD 작성, 요구사항 문서로 남겨줘, $kiwi-prd. 옵션 — --auto, --qna-force."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-prd v0.1
 
 > Codex clarification gate means: ask the user directly in Default mode; use `request_user_input` only in Plan mode when that tool is available.

@@ -1,5 +1,8 @@
 #!/usr/bin/env node
+import { endQuietlyOnBrokenPipe } from "../dist/cli/broken-pipe.js";
 import { main } from "../dist/cli/index.js";
+
+endQuietlyOnBrokenPipe(process.stdout);
 
 const code = await main(process.argv.slice(2), {
   stdout: process.stdout,

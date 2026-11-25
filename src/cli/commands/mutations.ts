@@ -19,7 +19,7 @@ import { setTargetGoal } from "../../core/mutation/set-target-goal.js";
 import { setTargetStatus } from "../../core/mutation/set-target-status.js";
 import { addCompletedWork } from "../../core/mutation/add-completed-work.js";
 import { syncIndexRollups } from "../../core/mutation/sync-index.js";
-import { editRequirementTableRows, replaceAcceptanceCriteria, updateRequirementFields } from "../../core/mutation/edit-requirement.js";
+import { editRequirementTableRows, replaceAcceptanceCriteria, ROW_OPERATIONS_SHAPE, updateRequirementFields } from "../../core/mutation/edit-requirement.js";
 import { updateField, type UpdateFieldName } from "../../core/mutation/update-field.js";
 import { retargetSelection } from "../../core/mutation/retarget.js";
 import { supersedeRequirement } from "../../core/mutation/supersede-requirement.js";
@@ -306,6 +306,8 @@ export function registerMutationCommands(command: Command, context: CliContext):
 
   command
     .command("append-note")
+    // @req IR-CLI-122 AC-3 — the name says append; the description says it also replaces a section.
+    .description("append a note to a requirement section, or replace the whole section body with --mode replace (--section rationale --mode replace rewrites the Rationale)")
     .argument("<id>")
     .requiredOption("--section <section>", acceptedSectionsText())
     .requiredOption("--text <text>", `append: one note, max 500 UTF-16 code units; ${APPENDED_NOTE_DATE_RULE}; replace: the whole section body, uncapped, written as given`)
@@ -385,7 +387,7 @@ export function registerMutationCommands(command: Command, context: CliContext):
     .command("edit-requirement-table-rows")
     .argument("<id>")
     .requiredOption("--section <section>", "verification_evidence, trace_links or change_notes")
-    .requiredOption("--operations <json>", "JSON array of row operations")
+    .requiredOption("--operations <json>", `JSON array of row operations. ${ROW_OPERATIONS_SHAPE}`)
     .option("--dry-run")
     .option("--ignore-lock", SAFETY_BYPASS_OPTION_HELP.mutationLock)
     .option("--json")
@@ -613,7 +615,8 @@ export function registerMutationCommands(command: Command, context: CliContext):
   command
     .command("add-requirement")
     .requiredOption("--type <type>")
-    .requiredOption("--scope <scope>")
+    // @req FR-NODE-324 AC-3
+    .requiredOption("--scope <scope>", "scope prefix from the index Scope Map, such as USAGE; not the scope name")
     .option("--target <target>")
     .option("--requirement-id <id>", "a free Requirement ID to use instead of the next one; checked against this checkout only")
     .requiredOption("--title <title>")

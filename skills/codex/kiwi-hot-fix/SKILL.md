@@ -2,7 +2,7 @@
 name: kiwi-hot-fix
 description: "Urgent Kiwi hot-fix workflow for production bugs, GitHub issues, or reported regressions when the full SRS to pm to coder pipeline is too slow. Delegates root-cause analysis and reproduction to kiwi-bug-repro, whose reproduction test becomes the regression test (no fix when it cannot reproduce, finds the behaviour is not a bug, or reproduces it without an automated test; a working-tree change is reproduced in a temporary git worktree), and keeps SpecKiwi governance through prickly review, regression checks, and post-fix SRS sync through kiwi-srs-sync. Use for kiwi hot fix, hotfix, urgent fix, 긴급 수정, production issue, 이 이슈 고쳐줘, or 빠르게 고쳐줘. Supports --auto, --model, --max, --dry-run, --no-sync, --skip-regression, --resume."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 
 # kiwi-hot-fix
 

@@ -148,7 +148,9 @@ export async function allocateRequirementIdFromStatusCache(
 ): Promise<{ id: string | null; diagnostics: Diagnostic[] }> {
   const read = await readFreshSrsStatusCache(root, workspace);
   if (!read.ok) return { id: null, diagnostics: read.diagnostics };
-  const counter = read.value.idCounters[type]?.[scopePrefix];
+  // @req FR-NODE-326 AC-1 — a fresh cache was built from this SRS, so no counter means the series is
+  // empty yet: its first id, not cache damage. The candidate is still checked against every SRS document.
+  const counter = read.value.idCounters[type]?.[scopePrefix] ?? 0;
   if (typeof counter !== "number" || !Number.isInteger(counter) || counter < 0) {
     return { id: null, diagnostics: [cacheFallbackDiagnostic("incomplete-counter", { type, scopePrefix })] };
   }

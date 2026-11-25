@@ -10,7 +10,7 @@ import { parseTopLevelSectionTitle } from "../parser/block-scanner.js";
 import { linesOutsideFences } from "../parser/index-parser.js";
 import { parseWorkspace } from "../parser/workspace-parser.js";
 import { isCanonicalStability, isKnownStability, isRequirementStatus, isRequirementType } from "../schema.js";
-import type { Diagnostic, EvidenceRow, MutationResult, ParsedWorkspace, Priority, ProjectRoot, RequirementRecord, RequirementType, Risk, Stability, TextFile } from "../types.js";
+import type { Diagnostic, EvidenceRow, MutationResult, ParsedWorkspace, Priority, ProjectRoot, RequirementRecord, RequirementType, Risk, ScopeEntry, Stability, TextFile } from "../types.js";
 import { REQUIREMENT_STATUSES, REQUIREMENT_TYPES, STABILITY_LEVELS } from "../types.js";
 import { oneOf } from "../closed-values.js";
 import { mutationFail, mutationOk } from "./guards.js";
@@ -386,7 +386,7 @@ async function addRequirementUnlocked(root: ProjectRoot, input: NormalizedAddReq
   if (unsafeCell) return unsafeCell;
 
   const scope = workspace.index.scopes.find((candidate) => candidate.prefix === resolvedInput.scope);
-  if (!scope) return mutationFail("MUTATION_DENIED", `Unknown scope: ${resolvedInput.scope}`);
+  if (!scope) return mutationFail("MUTATION_DENIED", unknownScopeMessage(workspace.index.scopes, resolvedInput.scope));
   if (!workspace.index.targets.some((target) => target.target === resolvedInput.target)) {
     return mutationFail("MUTATION_DENIED", `Unknown target: ${resolvedInput.target}`);
   }
@@ -484,6 +484,19 @@ async function addRequirementUnlocked(root: ProjectRoot, input: NormalizedAddReq
 // unique against the reservation view (HEAD body records). The step block is copied
 // byte-for-byte so the promoted body requirement keeps the step's id, title, and content.
 
+/**
+ * The refusal of a scope no registered prefix matches: the scopes there are, and the prefix to use when
+ * the value is a scope's name, slug or prefix in another case. The prefix stays the only identifier,
+ * because the Requirement ID is built from it. @req FR-NODE-324 AC-1 AC-2
+ */
+export function unknownScopeMessage(scopes: readonly ScopeEntry[], value: string): string {
+  const fold = (text: string) => text.trim().toLowerCase();
+  const slug = (document: string) => /([^/\\()[\]]+?)\.srs\.md/.exec(document)?.[1]?.replace(/^\d+\./, "") ?? "";
+  const listed = scopes.map((scope) => `${scope.prefix} (${scope.scope})`).join(", ");
+  const named = scopes.find((scope) => [scope.scope, slug(scope.document), scope.prefix].some((form) => form !== "" && fold(form) === fold(value)));
+  return `Unknown scope: ${value}; registered scopes are ${listed === "" ? "none" : listed}${named ? `; use its prefix ${named.prefix}` : ""}`;
+}
+
 export interface PromoteStepRequirementInput {
   id: string;
   fromStep: string;
@@ -566,7 +579,7 @@ async function promoteStepRequirementUnlocked(root: ProjectRoot, input: PromoteS
   }
 
   const scope = workspace.index.scopes.find((candidate) => candidate.prefix === input.toScope);
-  if (!scope) return mutationFail("MUTATION_DENIED", `Unknown scope: ${input.toScope}`) as MutationResult<AddRequirementOutput>;
+  if (!scope) return mutationFail("MUTATION_DENIED", unknownScopeMessage(workspace.index.scopes, input.toScope)) as MutationResult<AddRequirementOutput>;
   let filePath: string;
   try {
     filePath = await resolveScopeDocumentPath(root, scope.document);

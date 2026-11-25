@@ -303,6 +303,11 @@ export async function expandInputJsonArgv(argv: string[], program: Command): Pro
       // back rather than stringified: String([...]) yields "[object Object]", which parses as
       // nothing. Only --items and --operations declare this encoding, and both belong to commands
       // that had no channel before IR-CLI-101, so this path had never been exercised.
+      // @req IR-CLI-122 AC-2 — a string here is the encoded form the catalog shows; encoding it again
+      // made the command read a string and refuse it without saying the array goes in as it is.
+      if (typeof value === "string") {
+        throw new Error(`${option.key} must be the array itself, not a JSON-encoded string: pass "${option.key}": [...] in --input-json`);
+      }
       optionTokens.push(option.flag, JSON.stringify(value));
     } else if (option.repeatable && Array.isArray(value)) {
       for (const item of value) optionTokens.push(option.flag, textToken(option.key, item, optionDescriptions.get(option.flag)));

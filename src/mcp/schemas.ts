@@ -3,7 +3,7 @@ import { isReadOnlyTool, toolSchemas } from "./server.js";
 import { BILINGUAL_SEARCH_EXAMPLE, BILINGUAL_SEARCH_RULE } from "../core/bootstrap/templates.js";
 import { MCP_READ_DIAGNOSTICS_SENTENCE } from "./read-diagnostics.js";
 import { APPENDED_NOTE_DATE_RULE } from "../core/mutation/append-section-note.js";
-import { SETTABLE_ROW_COLUMNS_RULE } from "../core/mutation/edit-requirement.js";
+import { ROW_OPERATIONS_SHAPE } from "../core/mutation/edit-requirement.js";
 import { LOCAL_REFERENCE_FORMS } from "../core/parser/file-references.js";
 import {
   ORCHESTRATE_TOOL_BINDINGS,
@@ -495,7 +495,7 @@ export const toolSpecs: readonly ToolSpec[] = [
     DRY_RUN,
     IGNORE_LOCK
   ]),
-  mutationSpec("edit-requirement-table-rows", mcp("edit_requirement_table_rows", "Updates or deletes rows of one requirement's Verification Evidence, Trace Links or Change Notes table through an explicit operation list; no other table is reachable from here, and appending a row belongs to the `add_*` tools and the status tools rather than to this one. A Change Notes cell is written with `|` as `/` and a line break as a space, which is how a row a pipe split is repaired. " + SETTABLE_ROW_COLUMNS_RULE + " Refused while the requirement's Status is `verified`. Writes the requirement block. It answers with the mutation summary, the changed lines in `mutation.operations` and `mutation.preview`, rather than the whole requirement, which `get_requirement` reads."), "req-scoped", "editRequirementTableRows", [
+  mutationSpec("edit-requirement-table-rows", mcp("edit_requirement_table_rows", "Updates or deletes rows of one requirement's Verification Evidence, Trace Links or Change Notes table through an explicit operation list; no other table is reachable from here, and appending a row belongs to the `add_*` tools and the status tools rather than to this one. A Change Notes cell is written with `|` as `/` and a line break as a space, which is how a row a pipe split is repaired. " + ROW_OPERATIONS_SHAPE + " Refused while the requirement's Status is `verified`. Writes the requirement block. It answers with the mutation summary, the changed lines in `mutation.operations` and `mutation.preview`, rather than the whole requirement, which `get_requirement` reads."), "req-scoped", "editRequirementTableRows", [
     opt("--section <section>", "section"),
     opt("--operations <json>", "operations", { encoding: "json" }),
     DRY_RUN,

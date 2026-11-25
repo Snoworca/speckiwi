@@ -2,7 +2,7 @@
 name: kiwi-srs-research
 description: "REQ 또는 연구 질문을 받아 5-서브에이전트 토폴로지(Sonnet×1 Triage + Opus×3 Code/External/Risk + Opus×1 Synthesizer)로 연구를 수행하고, dual-mode 로 동작한다. standalone 모드는 speckiwi MCP 에 research 본문을 영속화하고, subagent 모드는 read-only JSON 만 반환한다(kiwi-srs-feasibility 등이 호출). 트리거 — REQ 연구, kiwi srs research, 요구사항 연구, research enrichment, 연구 보강, deep research, requirement research, srs research, 연구문서 작성, 도메인 조사. --mode=standalone|subagent 로 모드 분기. --target/--scope/--req-id 로 입력 지정. 검증·연구 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 가능(토폴로지 불변)."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-srs-research v0.5
 
 REQ 본문 또는 연구 질문에 대해 **5-서브에이전트 고정 토폴로지** 로 연구를 수행하는 스킬.

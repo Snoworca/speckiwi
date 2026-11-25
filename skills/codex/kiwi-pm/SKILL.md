@@ -2,7 +2,7 @@
 name: kiwi-pm
 description: "요구 ID 집합(--req-filter, 없으면 활성 target 의 열린 작업 후보를 확인받는다)을 입력으로 받아 — SDS 는 사용자가 --sds <path>(별칭 SDS_PATH=)로 줄 때만 쓴다 — 그 작업을 격리된 sub-agent(kiwi-coder) 실행 하나로 구현시키는 runner v0.1 — 호출 하나 = kiwi-coder 실행 하나. 3상태 프로토콜(TASK_DONE / NEEDS_USER / FAILED) 로 메인 세션과 대화하며, 부팅 시 Stability lifecycle gate(evolving/stable 만 진행 — --sds 면 speckiwi sds check 도), 종료 시 요구 집합 중 테스트 충분성 gap 이 없는 요구의 implemented 승급 + add_completed_work(req-summary — --sds 면 sds-summary), doculight MCP 가용 시 보고서 표시, 단독 실행이면 끝에서 항상 kiwi-review-fix-loop 로 넘긴다. --auto 는 공용 auto-option 정책으로 clarification/business-decision/rollback-confirmation 게이트를 자동 결정하되 critical_gates[] 는 항상 중단한다. `--model <name>` 로 kiwi-coder 검증 서브에이전트 모델 지정 전파. --resume 재개 가능. 트리거 — SDS 구현, SDS 돌려, kiwi pm, kiwi 코더 실행, 자동 코딩 실행, sds 실행, coder runner. 범위 외 — SRS/feasibility/SDS 작성 스킬 호출 안 함(`--sds` 실행의 §6.4.1 `kiwi-sds --close` 마감 호출만 예외), /snoworca-* 호출 절대 금지."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-pm v0.1
 
 > Codex clarification gate means: ask the user directly in Default mode; use `request_user_input` only in Plan mode when that tool is available.

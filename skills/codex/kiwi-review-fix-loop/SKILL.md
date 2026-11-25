@@ -2,7 +2,7 @@
 name: kiwi-review-fix-loop
 description: "Run a Kiwi review, fix, and re-review loop for current working-tree changes or GitHub PR review comments. Code only: prose such as SKILL.md, README, SRS documents and research notes is neither reviewed nor edited. Use for kiwi review fix loop, self review, code review loop, PR comments apply, 리뷰 수정 루프, 셀프 리뷰, or 머지 전 품질 게이트. Enforces sub-agent review/fix separation, regression checks, blocking-kept-finding-zero exit (keep/drop termination; record findings are listed as declared limits and never block), optional PR responses, and optional --close-reqs per-REQ verified transition through speckiwi MCP. Supports --pr, --files, --since, --commits, --base/--head, --auto, --model, --max, --dry-run, --no-respond, --close-reqs, and --resume."
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 
 # kiwi-review-fix-loop
 

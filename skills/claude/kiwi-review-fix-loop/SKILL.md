@@ -3,7 +3,7 @@ name: kiwi-review-fix-loop
 description: "코드 리뷰 → 수정 → 재리뷰 루프를 자동으로 돌리는 스킬. **코드 전용** — 산문 문서(`SKILL.md` · `README` · SRS · 연구 노트)는 리뷰도 수정도 하지 않는다(§11). **셀프 리뷰가 기본** — 까칠 리뷰어 서브에이전트가 working tree 변경분(git status)을 분석. `--pr`/`-pr`/`--PR`/`-PR` 옵션 또는 사용자가 'PR 리뷰 읽고 수정' 명시 시 GitHub PR 모드 전환(`gh pr view --comments`). **코드 리뷰와 코드 개선은 반드시 서브에이전트로 수행**(메인 직접 수정 절대 금지). Finding 4분류(즉시수정/선언된 한계/논의필요/거절+사유) + TDD 회귀 테스트 + 시니어 fixer + 까칠 리뷰어 재검증 루프 + keep/drop 종료 게이트(차단 kept finding 0 — 기록 finding 은 통과를 막지 않음) + 회귀 PASS 의무. 트리거 — kiwi review fix loop, 리뷰 루프, 리뷰 수정 루프, 셀프 리뷰, 코드 리뷰해줘, 셀프 코드 리뷰, review fix, self review, code review loop, 리뷰 자동 적용, PR 리뷰 읽고 수정, PR 코멘트 적용, gh pr review fix, pr 응답, 머지 전 셀프 리뷰, 품질 게이트 돌려줘. --pr/-pr/--PR/-PR 로 PR 모드 활성. 검증(까칠 리뷰어·분류기·정형 검사) 서브에이전트는 현재 세션 모델을 상속하며 `--model <name>` 로 override 한다(시니어 fixer 는 영향 없음). --max 로 검증 강도(뮤테이션·적대적 실행) 승격(리뷰어는 전 모드 1개). --auto 로 사용자 게이트 자동 진행(keep/drop 가드레일). --no-respond 로 PR 모드에서 PR 코멘트 응답 skip. --close-reqs 로 회귀 PASS + finding 0건 시 영향 REQ status를 implemented→verified 전이 + verification evidence 등록 (셀프 모드 전용, 기본 off)."
 ---
 
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 
 # kiwi-review-fix-loop
 

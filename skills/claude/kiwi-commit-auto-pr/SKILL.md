@@ -3,7 +3,7 @@ name: kiwi-commit-auto-pr
 description: 'Git 변경사항을 자동 커밋·push 한 뒤 GitHub Pull Request 까지 자동 생성·갱신. 보호 브랜치(main/master/develop/release/*) 위 호출 시 issue/REQ 기반 feature branch 자동 생성. 신규 PR 시 Haiku 평가자가 body(요약+Test plan+Closes #N) A+ 까지 평가-개선. 기존 PR 감지 시 본문 보존 + `gh pr comment` 로 변경 요약 등록(`--update-pr-body` 로 본문 갱신). speckiwi 연동 시 `add_verification_evidence(type:"pr")` + `add_trace_link(type:"PullRequest")` 자동 호출. 자율 진행하되 frozen REQ · push 충돌 · fork repo · 보호 브랜치 직접 commit 요청 시에만 질문. 트리거 — kiwi commit auto pr, kiwi 커밋 PR, kiwi PR 만들어줘, kiwi 커밋하고 PR, kiwi pr open, kiwi-commit-auto-pr, kiwi 자동 PR. kiwi 키워드 없는 일반 발화는 자동 트리거 안 함. commit+push 만 필요하면 kiwi-commit-auto-push 사용.'
 ---
 
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 
 # kiwi-commit-auto-pr
 

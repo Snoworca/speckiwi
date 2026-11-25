@@ -2,7 +2,7 @@
 name: kiwi-commit-auto-push
 description: 'Git 변경사항을 자동 커밋·push 하면서 (1) GitHub issue 자동 감지·`Closes #N` trailer 부착·해결 코멘트 등록 + (2) speckiwi MCP 와 연계해 REQ-ID trailer 부착·`add_verification_evidence(type:"commit")`·`add_trace_link(type:"Code", relation:"implements")` 자동 호출 + (3) Stability=frozen REQ 변경 시 reason 가드. 2개 Haiku 서브에이전트가 메시지 품질·issue 매칭·REQ 매칭 정확도를 A+ 까지 평가-개선. 사용자 확인 없이 자동 진행, push 충돌·frozen 변경 시에만 질문. 트리거 — kiwi commit auto push, kiwi 커밋푸쉬, kiwi 이슈 닫고 커밋, kiwi REQ 커밋, kiwi 커밋 + speckiwi 연동, kiwi 커밋 이슈 코멘트, kiwi-commit-auto-push, kiwi issue-aware commit, kiwi speckiwi verification commit, kiwi 자동 커밋 푸쉬. 일반 발화 ("auto commit", "커밋해줘+푸쉬" 등 kiwi 키워드 없는 발화) 는 git-commit-auto-push 사용.'
 ---
-> Kiwi MCP rule: normal target-scoped SRS reads, mutations, validation, status/stability updates, acceptance-criteria changes, evidence, trace links, and completed-work logging require working `speckiwi mcp`. CLI is diagnostic/remediation only and is not a normal replacement for MCP mutations.
+> Kiwi MCP rule: normal target-scoped SRS reads and writes (status, stability, criteria, evidence, trace links, completed work) require working `speckiwi mcp`. CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 # kiwi-commit-auto-push
 
 Git 변경사항을 **사용자 확인 없이** 자동 커밋·push 하고, 관련 GitHub issue 를 감지해 자동으로 닫고 코멘트한다. `git-commit-auto-push` 의 차별점:

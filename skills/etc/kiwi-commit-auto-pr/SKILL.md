@@ -9,7 +9,7 @@ description: "OpenCode/Hermes local-LLM variant for committing, pushing, and cre
 
 **etc override:** If any legacy section appears to allow CLI mutation fallback or
 direct normal SRS Markdown mutation, the shared etc local-LLM profile wins:
-normal SRS operations require `speckiwi mcp`; CLI is diagnostic/remediation only.
+normal SRS operations require `speckiwi mcp`; CLI is diagnostic/remediation only, except one worktree case outside orchestrator runs (root instructions, Per-call workspace root item 4).
 
 Use this skill to commit current changes, push a branch, and create or update a
 GitHub Pull Request. It inherits the commit message, issue matching, signature
